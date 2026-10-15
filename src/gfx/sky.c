@@ -238,19 +238,29 @@ void backdrop_draw(const daylight *d)
 		float y_top = R->radius * tanf(DEG2RAD(R->top_deg));
 		const float texel = 1.0f / (3.0f * BACKDROP_LAYER_H);
 		float v0 = R->layer * layer_v + 1.5f * texel, v1 = (R->layer + 1) * layer_v - 1.5f * texel;
-		GX_Begin(GX_TRIANGLESTRIP, VF_3D, (SEG + 1) * 2);
-		for (int s = 0; s <= SEG; s++) {
-			float a = LL_TAU * s / SEG + R->spin;
-			float x = cosf(a) * R->radius, z = sinf(a) * R->radius;
-			float u = R->u_repeat * s / SEG;
-			GX_Position3f32(x, y_top, z);
-			GX_Color4u8(ct.r, ct.g, ct.b, 255);
-			GX_TexCoord2f32(u, v0);
-			GX_Position3f32(x, R->bottom_y, z);
-			GX_Color4u8(cb.r, cb.g, cb.b, 255);
-			GX_TexCoord2f32(u, v1);
+		/* In thick air the range is only a silhouette: a second, fog-coloured pass
+		 * flattens the texture's light and dark (the doubled texture would otherwise
+		 * still streak paler than the fog). */
+		float flat = saturatef((haze - 0.6f) / 0.35f);
+		GXColor cf = gx_col(d->fog, flat);
+		for (int pass = 0; pass < (flat > 0.01f ? 2 : 1); pass++) {
+			if (pass == 1) mat_vcolor_tex(&T_BACKDROP, true, false);
+			GX_Begin(GX_TRIANGLESTRIP, VF_3D, (SEG + 1) * 2);
+			for (int s = 0; s <= SEG; s++) {
+				float a = LL_TAU * s / SEG + R->spin;
+				float x = cosf(a) * R->radius, z = sinf(a) * R->radius;
+				float u = R->u_repeat * s / SEG;
+				GXColor c0 = pass ? cf : ct, c1 = pass ? cf : cb;
+				GX_Position3f32(x, y_top, z);
+				GX_Color4u8(c0.r, c0.g, c0.b, pass ? c0.a : 255);
+				GX_TexCoord2f32(u, v0);
+				GX_Position3f32(x, R->bottom_y, z);
+				GX_Color4u8(c1.r, c1.g, c1.b, pass ? c1.a : 255);
+				GX_TexCoord2f32(u, v1);
+			}
+			GX_End();
+			if (pass == 1) mat_vcolor_tex(&T_BACKDROP, false, true);
 		}
-		GX_End();
 	}
 	gfx_blend_none();
 }

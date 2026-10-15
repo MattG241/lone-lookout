@@ -146,9 +146,11 @@ void weather_apply(daylight *d)
 	d->sky_horizon = rgb_lerp(d->sky_horizon, rgb_make(0.55f, 0.52f, 0.52f), s * 0.5f);
 	d->fog = rgb_lerp(d->fog, rgb_make(0.50f, 0.48f, 0.49f), s * 0.5f);
 
-	/* Rain: low and grey. */
-	d->sky_top = rgb_lerp(d->sky_top, rgb_make(0.50f, 0.53f, 0.56f), w->rain * 0.5f);
-	d->fog = rgb_lerp(d->fog, rgb_make(0.62f, 0.64f, 0.66f), w->rain * 0.35f);
+	/* Rain: low and grey, at whatever brightness the hour has (a fixed grey made
+	 * rainy nights glow), and the horizon lost in it. */
+	d->sky_top = rgb_lerp(d->sky_top, grey_of(d->sky_top, 0.8f), w->rain * 0.6f);
+	d->fog = rgb_lerp(d->fog, grey_of(d->fog, 0.85f), w->rain * 0.5f);
+	d->sky_horizon = rgb_lerp(d->sky_horizon, d->fog, w->rain * 0.7f);
 
 	/* Haze from far-off fires: orange air, a red sun. */
 	float h = w->haze;
@@ -157,6 +159,9 @@ void weather_apply(daylight *d)
 	d->sky_top = rgb_lerp(d->sky_top, rgb_make(0.62f, 0.58f, 0.56f), h * 0.4f);
 	d->sun = rgb_lerp(d->sun, rgb_make(1.0f, 0.52f, 0.30f), h * 0.6f);
 	d->fog_density *= 1.0f + 0.9f * h;
+
+	/* In thick air the land fades into the sky: no bright band behind fogged hills. */
+	d->sky_horizon = rgb_lerp(d->sky_horizon, d->fog, saturatef((d->fog_density - 0.9f) * 0.8f));
 
 	/* Cold, clear air: further views, a bluer sky. */
 	d->fog_density *= 1.0f - 0.25f * w->cold;
