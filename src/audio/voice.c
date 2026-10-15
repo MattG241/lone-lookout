@@ -14,11 +14,13 @@ typedef struct {
 	bool radio;
 } speaker_profile;
 
-static const speaker_profile PROFILE[2] = {
+static const speaker_profile PROFILE[3] = {
 	/* Dot: warm alto, quicker, heard through the handset. */
 	{ 182.0f, 4.4f, 1.10f, 0.14f, 1.25f, true },
 	/* Theo: soft light baritone, slower, heard in the room. */
 	{ 104.0f, 3.8f, 0.94f, 0.10f, 0.85f, false },
+	/* Harrow Crew: a tired tenor on a handheld, clipped and quick. */
+	{ 132.0f, 4.9f, 0.98f, 0.22f, 1.15f, true },
 };
 
 /* Adult formants F1, F2, F3 (Hz) for a e i o u. */
@@ -214,6 +216,11 @@ void voice_render(voice_t *v, float *L, float *R, int frames)
 		}
 		float out = (voiced + cons) * sp->gain * v->fade;
 
+		if (v->garble) {
+			/* The signal drops out in ragged 90 ms chunks, with crackle in the gaps. */
+			u32 chunk = (u32)(v->t * 11.0f);
+			if ((hash2((s32)chunk, 7, 991u) & 255) < 95) out = out * 0.04f + nz * 0.06f;
+		}
 		if (sp->radio) {
 			/* Handset: band-limit to roughly 330-3200 Hz and lean into the clip. */
 			float h1 = hp_a * (v->hp1y + out - v->hp1x);

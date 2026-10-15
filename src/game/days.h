@@ -40,8 +40,15 @@ extern weather_t WX;
 
 const day_def *day_info(int day);            /* 1-based */
 bool day_is_supply(int day);                 /* the truck leaves a box at the gate */
-/* Today's instrument readings at the weather station, as a short card. */
-const char *weather_readings(int day, float hour);
+/* Instrument readings at the weather station. */
+typedef struct {
+	int dry, wet, rh;            /* deg F, deg F, percent */
+	const char *wind_dir;
+	int wind_mph;
+	float fuel;                  /* fuel stick, grams */
+} readings_t;
+readings_t weather_read(int day, float hour);
+const char *weather_readings(int day, float hour);   /* as a short card */
 void weather_update(int day, float hour, float dt);
 void weather_apply(daylight *d);             /* fold the weather into the lighting */
 

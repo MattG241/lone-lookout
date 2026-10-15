@@ -1,102 +1,57 @@
 /*
- * radio.c -- radio v0: a tiny node graph per call, played as murmur voices
- * with hand-lettered subtitles. Choices never time out; "[say nothing]" is
- * always offered explicitly (DESIGN.md section 4).
+ * radio.c -- the radio as the player meets it: the call chirp, raising the
+ * handset (B), subtitles, choice cards, and the log. The script itself runs
+ * in dialogue.c; this module only times lines, takes input and draws.
+ * Choices never time out; "[say nothing]" is always offered explicitly
+ * (DESIGN.md section 4).
  */
 #include <string.h>
 #include <wiiuse/wpad.h>
 #include "game/radio.h"
 #include "game/game.h"
+#include "game/story.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/text.h"
 #include "palette_data.h"
 
-typedef struct {
-	speaker_t who;
-	const char *text;
-} line_t;
-
-typedef struct {
-	const char *label;        /* what the card says */
-	int next;                 /* node to continue with */
-} choice_t;
-
-#define MAX_LINES 4
-#define MAX_CHOICES 3
-
-typedef struct {
-	line_t lines[MAX_LINES];
-	int nlines;
-	choice_t choices[MAX_CHOICES];
-	int nchoices;
-	int next;                 /* when there are no choices; -1 ends the call */
-} node_t;
-
-/* ---- Day 1: radio check (D1_ARRIVE in the design outline) ---------------- */
-static const node_t D1_NODES[] = {
-	/* 0 */ { { { SPEAKER_DOT, "Kestrel, Basin. Radio check, over." } }, 1,
-	          { { "\"Basin, Kestrel. Loud and clear.\"", 1 }, { "\"Hello? Is this... hello?\"", 2 },
-	            { "[say nothing]", 3 } }, 3, -1 },
-	/* 1 */ { { { SPEAKER_THEO, "Basin, Kestrel. Loud and clear." },
-	            { SPEAKER_DOT, "Well. Look at you. Augie took three days to say it right." } }, 2,
-	          { { 0 } }, 0, 5 },
-	/* 2 */ { { { SPEAKER_THEO, "Hello? Is this... hello?" },
-	            { SPEAKER_DOT, "It's a radio, Kestrel, not a seance." },
-	            { SPEAKER_DOT, "Push, talk, let go, listen. Most people get the last part wrong." } }, 3,
-	          { { 0 } }, 0, 5 },
-	/* 3 */ { { { SPEAKER_DOT, "...Kestrel? You push the button, you talk, you let go. Try again, over." } }, 1,
-	          { { "\"Basin, Kestrel. Loud and clear.\"", 1 }, { "\"Hello? Is this... hello?\"", 2 },
-	            { "[say nothing]", 4 } }, 3, -1 },
-	/* 4 */ { { { SPEAKER_DOT, "Okay. I'll take that as a nod." } }, 1, { { 0 } }, 0, 5 },
-	/* 5 */ { { { SPEAKER_DOT, "Welcome to Kestrel. Kettle sticks \xE2\x80\x94 hit it on the left side." },
-	            { SPEAKER_DOT, "Call me if you see smoke. Otherwise you're paid to sit. Basin out." } }, 2,
-	          { { 0 } }, 0, -1 },
-};
-
-/* ---- Player-initiated check-in ----------------------------------------- */
-static const node_t CHECKIN_NODES[] = {
-	/* 0 */ { { { SPEAKER_THEO, "Basin, Kestrel. Just checking in." },
-	            { SPEAKER_DOT, "Copy, Kestrel. All quiet down here. Go look at something pretty." } }, 2,
-	          { { 0 } }, 0, -1 },
-};
-
-static const struct { const node_t *nodes; int count; } CALLS[CALL_COUNT] = {
-	{ D1_NODES, sizeof(D1_NODES) / sizeof(D1_NODES[0]) },
-	{ CHECKIN_NODES, 1 },
-};
-
-typedef enum { R_IDLE, R_RINGING, R_LINE, R_CHOICE, R_CLOSING } rstate;
+#define RING_GIVE_UP 45.0f
+#define MAX_OPT 4
 
 static struct {
-	rstate state;
-	call_id call;
-	int node, line;
-	float t;                  /* time in current state/line */
+	dlg_state last;
+	float t;                  /* time in the current state or line */
 	float line_len;
 	float ring_t, next_chirp;
 	int hovered;
 	float sub_alpha;
-	const char *sub_text;
-	speaker_t sub_who;
-	bool d1_done;
+	char sub_text[400];
+	int sub_who;
+	float hold_hiss;          /* Day 6: the carrier stays open after Dot falls asleep */
 } R;
 
 static radio_log_entry s_log[RADIO_LOG_MAX];
+static char s_log_text[RADIO_LOG_MAX][200];
 static int s_log_n;
 
-static void log_line(speaker_t who, const char *text)
+static void log_line(int who, const char *text)
 {
 	if (s_log_n == RADIO_LOG_MAX) {
 		memmove(s_log, s_log + 1, sizeof(s_log[0]) * (RADIO_LOG_MAX - 1));
+		memmove(s_log_text, s_log_text + 1, sizeof(s_log_text[0]) * (RADIO_LOG_MAX - 1));
 		s_log_n--;
 	}
-	s_log[s_log_n++] = (radio_log_entry){ S.day, who, text };
+	strncpy(s_log_text[s_log_n], text, sizeof(s_log_text[0]) - 1);
+	s_log_text[s_log_n][sizeof(s_log_text[0]) - 1] = 0;
+	s_log[s_log_n] = (radio_log_entry){ S.day, (speaker_t)who, s_log_text[s_log_n] };
+	s_log_n++;
 }
 
 int radio_log(const radio_log_entry **out)
 {
+	/* Re-point the texts: the entries move when the log scrolls. */
+	for (int i = 0; i < s_log_n; i++) s_log[i].text = s_log_text[i];
 	*out = s_log;
 	return s_log_n;
 }
@@ -104,130 +59,110 @@ int radio_log(const radio_log_entry **out)
 void radio_init(void)
 {
 	memset(&R, 0, sizeof(R));
-	R.hovered = 0;
 	s_log_n = 0;
+	dlg_init();
 }
 
-bool radio_busy(void) { return R.state != R_IDLE; }
-bool radio_in_call(void) { return R.state == R_LINE || R.state == R_CHOICE; }
-bool radio_wants_pointer(void) { return R.state == R_CHOICE; }
+bool radio_busy(void) { return dlg_get_state() != DS_IDLE; }
+bool radio_in_call(void) { dlg_state s = dlg_get_state(); return s == DS_LINE || s == DS_CHOICE; }
+bool radio_wants_pointer(void) { return dlg_get_state() == DS_CHOICE; }
+void radio_hold_hiss(float seconds) { R.hold_hiss = seconds; }
 
-void radio_ring(call_id id)
+/* A line starts: voice it, log it, time it. */
+void dlg_hook_line(int speaker, const char *text)
 {
-	if (R.state != R_IDLE) return;
-	R.state = R_RINGING;
-	R.call = id;
-	R.ring_t = 0.0f;
-	R.next_chirp = 0.0f;
-}
-
-static const node_t *cur_node(void) { return &CALLS[R.call].nodes[R.node]; }
-
-static void start_line(void)
-{
-	const line_t *l = &cur_node()->lines[R.line];
-	R.state = R_LINE;
+	strncpy(R.sub_text, text, sizeof(R.sub_text) - 1);
+	R.sub_who = speaker;
 	R.t = 0.0f;
-	R.line_len = voice_line_seconds(l->text, l->who) + 0.8f;
-	R.sub_text = l->text;
-	R.sub_who = l->who;
-	audio_voice_line(l->text, l->who);
-	if (!P.input_locked) log_line(l->who, l->text);
-}
-
-static void enter_node(int n)
-{
-	if (n < 0) {
-		R.state = R_CLOSING;
-		R.t = 0.0f;
-		audio_ui(UI_SQUELCH);
-		audio_radio_hiss(false);
-		if (R.call == CALL_D1_RADIO_CHECK) R.d1_done = true;
-		return;
-	}
-	R.node = n;
-	R.line = 0;
-	if (cur_node()->nlines > 0) {
-		start_line();
-	} else {
-		R.state = R_CHOICE;
-		R.t = 0.0f;
-	}
-}
-
-static void finish_line(void)
-{
-	const node_t *nd = cur_node();
-	if (R.line + 1 < nd->nlines) {
-		R.line++;
-		start_line();
-	} else if (nd->nchoices > 0) {
-		R.state = R_CHOICE;
-		R.t = 0.0f;
-		R.hovered = 0;
-	} else {
-		enter_node(nd->next);
-	}
+	R.line_len = voice_line_seconds(text, (speaker_t)speaker) + 0.8f;
+	audio_voice_line_ex(text, (speaker_t)speaker, dlg_current_garbled() && speaker != SPEAKER_THEO);
+	if (!P.input_locked) log_line(speaker, text);
 }
 
 void radio_call_basin(void)
 {
-	if (R.state != R_IDLE) return;
-	R.call = CALL_CHECK_IN;
-	audio_ui(UI_KEY_UP);
-	audio_radio_hiss(true);
-	enter_node(0);
+	dlg_world w = story_world();
+	w.can_ring = true;
+	if (dlg_get_state() == DS_IDLE && dlg_answer(&w)) {
+		audio_ui(UI_KEY_UP);
+		audio_radio_hiss(true);
+	}
 }
 
 /* Choice card layout on the UI canvas. */
 #define CARD_X 48.0f
-#define CARD_W 330.0f
+#define CARD_W 360.0f
 #define CARD_H 28.0f
 #define CARD_GAP 6.0f
 static float card_y(int i, int n) { return 392.0f - (n - i) * (CARD_H + CARD_GAP); }
 
 void radio_update(float dt)
 {
+	dlg_world w = story_world();
+	dlg_tick(&w, dt);
+	dlg_state st = dlg_get_state();
+	if (st != R.last) {
+		if (st == DS_RINGING) {
+			R.ring_t = 0.0f;
+			R.next_chirp = 0.0f;
+		}
+		if (st == DS_CHOICE) R.hovered = 0;
+		if (st == DS_CLOSING) {
+			audio_ui(UI_SQUELCH);
+			if (R.hold_hiss <= 0.0f) audio_radio_hiss(false);
+		}
+		if (st == DS_CHOICE || st == DS_CLOSING || st == DS_IDLE) R.t = 0.0f;
+		R.last = st;
+	}
 	R.t += dt;
-	bool showing = R.state == R_LINE || R.state == R_CHOICE;
+	bool showing = st == DS_LINE || st == DS_CHOICE;
 	R.sub_alpha = approachf(R.sub_alpha, showing ? 1.0f : 0.0f, showing ? 9.0f : 4.0f, dt);
+	if (R.hold_hiss > 0.0f && st == DS_IDLE) {
+		R.hold_hiss -= dt;
+		if (R.hold_hiss <= 0.0f || (!P.input_locked && in_down(WPAD_BUTTON_B))) {
+			R.hold_hiss = 0.0f;
+			audio_radio_hiss(false);
+			audio_ui(UI_SQUELCH);
+		}
+	}
 
-	switch (R.state) {
-	case R_IDLE:
+	switch (st) {
+	case DS_IDLE:
 		/* B with nothing ringing: call Basin yourself. */
-		if (!P.input_locked && in_down(WPAD_BUTTON_B) && game_radio_allowed())
+		if (!P.input_locked && in_down(WPAD_BUTTON_B) && game_radio_allowed() && R.hold_hiss <= 0.0f)
 			radio_call_basin();
 		break;
-	case R_RINGING:
+	case DS_RINGING:
 		R.ring_t += dt;
 		if (R.ring_t >= R.next_chirp) {
 			audio_ui(UI_CALL_CHIRP);
 			R.next_chirp += 3.5f;
 		}
-		if (!P.input_locked && in_down(WPAD_BUTTON_B)) {
+		if (!P.input_locked && in_down(WPAD_BUTTON_B) && P.mode != MODE_SLEEP) {
 			audio_ui(UI_KEY_UP);
 			audio_radio_hiss(true);
-			enter_node(0);
-		} else if (R.ring_t > 45.0f) {
+			dlg_answer(&w);
+		} else if (R.ring_t > RING_GIVE_UP) {
 			/* Unanswered: Dot will try again later. Never a penalty. */
-			R.state = R_IDLE;
+			dlg_unanswered(&w);
 		}
 		break;
-	case R_LINE:
+	case DS_LINE:
 		if (R.t > R.line_len || (!P.input_locked && R.t > 0.35f && in_down(WPAD_BUTTON_A))) {
 			if (R.t <= R.line_len) audio_voice_stop();
-			finish_line();
+			dlg_next();
 		}
 		break;
-	case R_CHOICE: {
-		const node_t *nd = cur_node();
+	case DS_CHOICE: {
+		const char *opts[MAX_OPT];
+		int n = dlg_options(opts, MAX_OPT);
 		if (P.input_locked) break;
-		if (in_down(WPAD_BUTTON_UP)) { R.hovered = (R.hovered + nd->nchoices - 1) % nd->nchoices; audio_ui(UI_TICK); }
-		if (in_down(WPAD_BUTTON_DOWN)) { R.hovered = (R.hovered + 1) % nd->nchoices; audio_ui(UI_TICK); }
+		if (in_down(WPAD_BUTTON_UP)) { R.hovered = (R.hovered + n - 1) % n; audio_ui(UI_TICK); }
+		if (in_down(WPAD_BUTTON_DOWN)) { R.hovered = (R.hovered + 1) % n; audio_ui(UI_TICK); }
 		if (IN.ir_valid) {
 			float px = (IN.ir_x * 0.5f + 0.5f) * G.ui_w, py = (IN.ir_y * 0.5f + 0.5f) * G.ui_h;
-			for (int i = 0; i < nd->nchoices; i++) {
-				float y = card_y(i, nd->nchoices);
+			for (int i = 0; i < n; i++) {
+				float y = card_y(i, n);
 				if (px >= CARD_X - 8 && px <= CARD_X + CARD_W && py >= y && py <= y + CARD_H && R.hovered != i) {
 					R.hovered = i;
 					audio_ui(UI_TICK);
@@ -236,12 +171,12 @@ void radio_update(float dt)
 		}
 		if (R.t > 0.3f && in_down(WPAD_BUTTON_A)) {
 			audio_ui(UI_PAGE);
-			enter_node(nd->choices[R.hovered].next);
+			dlg_choose(R.hovered < n ? R.hovered : 0);
 		}
 		break;
 	}
-	case R_CLOSING:
-		if (R.t > 1.2f) R.state = R_IDLE;
+	case DS_CLOSING:
+		if (R.t > 1.2f) dlg_close();
 		break;
 	}
 }
@@ -263,16 +198,21 @@ static void draw_radio_glyph(float x, float y, float pulse, GXColor ink, GXColor
 	}
 }
 
+static const char *speaker_name(int who)
+{
+	return who == SPEAKER_DOT ? "Dot:" : (who == SPEAKER_THEO ? "Theo:" : "Harrow:");
+}
+
 void radio_draw(void)
 {
-	float W = G.ui_w;
-	(void)W;
 	text_begin();
 	GXColor paper = gx_col(rgb_from(UI_SUBTITLE), 1.0f);
 	GXColor dotc = gx_col(rgb_from(UI_SPEAKER_DOT), 1.0f);
 	GXColor theoc = gx_col(rgb_from(UI_SPEAKER_THEO), 1.0f);
+	GXColor crewc = gx_col(rgb_make(0.80f, 0.86f, 0.70f), 1.0f);
+	dlg_state st = dlg_get_state();
 
-	if (R.state == R_RINGING) {
+	if (st == DS_RINGING) {
 		float pulse = R.ring_t - (int)(R.ring_t / 3.5f) * 3.5f;
 		pulse = saturatef(pulse / 1.2f);
 		GXColor ink = paper;
@@ -286,18 +226,17 @@ void radio_draw(void)
 		}
 	}
 
-	/* Subtitle: speaker in their colour, then the line, max two lines. */
-	if (R.sub_alpha > 0.01f && R.sub_text) {
-		GXColor sc = R.sub_who == SPEAKER_DOT ? dotc : theoc;
-		const char *name = R.sub_who == SPEAKER_DOT ? "Dot:" : "Theo:";
+	/* Subtitle: speaker in their colour, then the line, up to four lines. */
+	if (R.sub_alpha > 0.01f && R.sub_text[0]) {
+		GXColor sc = R.sub_who == SPEAKER_DOT ? dotc : (R.sub_who == SPEAKER_THEO ? theoc : crewc);
+		const char *name = speaker_name(R.sub_who);
 		sc.a = (u8)(255 * R.sub_alpha);
 		GXColor tc = paper;
 		tc.a = (u8)(245 * R.sub_alpha);
-		float x = 48.0f, y = 430.0f;
-		x += 26.0f;
+		float x = 48.0f + 26.0f, y = 430.0f;
 		float nx = x + text_width(FONT_S, name, -1) + 8.0f;
-		int starts[3], lens[3];
-		int n = text_wrap(FONT_S, R.sub_text, G.ui_w - nx - 60.0f, starts, lens, 3);
+		int starts[4], lens[4];
+		int n = text_wrap(FONT_S, R.sub_text, G.ui_w - nx - 60.0f, starts, lens, 4);
 		float ly = y - (n - 1) * text_line_height(FONT_S);
 		draw_radio_glyph(x - 28, ly - 15, 0.0f, tc, sc);
 		text_begin();
@@ -307,51 +246,40 @@ void radio_draw(void)
 	}
 
 	/* Choice cards: little paper slips with pencil text. */
-	if (R.state == R_CHOICE) {
-		const node_t *nd = cur_node();
+	if (st == DS_CHOICE) {
+		const char *opts[MAX_OPT];
+		int n = dlg_options(opts, MAX_OPT);
 		float a = saturatef(R.t * 4.0f);
-		for (int i = 0; i < nd->nchoices; i++) {
+		for (int i = 0; i < n; i++) {
 			bool hot = i == R.hovered;
-			float y = card_y(i, nd->nchoices) - (hot ? 2.0f : 0.0f);
+			float y = card_y(i, n) - (hot ? 2.0f : 0.0f);
 			float x = CARD_X + (hot ? 6.0f : 0.0f);
+			float w = fmaxf(CARD_W, text_width(FONT_S, opts[i], -1) + 30.0f);
 			mat_vcolor();
 			gfx_blend_alpha();
 			rgbf pc = rgb_from(UI_PAPER);
-			ui_rect(x + 3, y + 3, CARD_W, CARD_H, (GXColor){ 0, 0, 0, (u8)(60 * a) });
-			ui_rect_grad(x, y, CARD_W, CARD_H, gx_col(pc, (hot ? 0.97f : 0.82f) * a),
+			ui_rect(x + 3, y + 3, w, CARD_H, (GXColor){ 0, 0, 0, (u8)(60 * a) });
+			ui_rect_grad(x, y, w, CARD_H, gx_col(pc, (hot ? 0.97f : 0.82f) * a),
 			             gx_col(rgb_scale(pc, 0.93f), (hot ? 0.97f : 0.82f) * a));
 			if (hot) ui_rect(x, y, 3, CARD_H, gx_col(rgb_from(UI_SPEAKER_THEO), a));
 			text_begin();
 			GXColor ink = gx_col(rgb_from(UI_INK), (hot ? 1.0f : 0.8f) * a);
-			text_draw(FONT_S, x + 12, y + 20, nd->choices[i].label, -1, ink);
+			text_draw(FONT_S, x + 12, y + 20, opts[i], -1, ink);
 		}
 	}
 	gfx_blend_none();
 }
 
 /* ------------------------------------------------------------------------ */
+/* Screenshot tour helpers                                                   */
+/* ------------------------------------------------------------------------ */
 
-void radio_debug_choices(call_id id, int node, int hovered)
+void radio_debug_call(int call, int lines)
 {
-	R.call = id;
-	R.node = node;
-	R.state = R_CHOICE;
+	dlg_force_call(call);
+	for (int i = 0; i < lines && dlg_get_state() == DS_LINE; i++) dlg_next();
+	R.last = dlg_get_state();
 	R.t = 1.0f;
-	R.hovered = hovered;
-	const node_t *nd = cur_node();
-	if (nd->nlines > 0) {
-		R.sub_text = nd->lines[nd->nlines - 1].text;
-		R.sub_who = nd->lines[nd->nlines - 1].who;
-		R.sub_alpha = 1.0f;
-	}
-}
-
-void radio_debug_line(call_id id, int node, int line, float age)
-{
-	R.call = id;
-	R.node = node;
-	R.line = line;
-	start_line();
-	R.t = age;
+	R.hovered = 0;
 	R.sub_alpha = 1.0f;
 }

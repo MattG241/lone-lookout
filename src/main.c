@@ -17,10 +17,12 @@
 #include "gfx/water.h"
 #include "gfx/props.h"
 #include "gfx/weather_fx.h"
+#include "gfx/creatures.h"
 #include "game/game.h"
 #include "game/hud.h"
 #include "game/tour.h"
 #include "game/radio.h"
+#include "game/story.h"
 #include "input/input.h"
 #include "audio/audio.h"
 #include "world/world.h"
@@ -38,12 +40,14 @@ static void draw_scene(const daylight *d)
 
 	sky_draw(d, WX.cloud);
 	backdrop_draw(d);
+	smoke_draw(d);
 
 	gfx_fog(d);
 	G.stat_chunks = terrain_draw(d);
 	paths_draw(d);
-	props_state ps = { S.lamp, S.binoculars };
+	props_state ps = { S.lamp, S.binoculars, story_flag(FLAG_SHUTTERS_DONE), story_flag(FLAG_CAIRN_STONE) };
 	props_draw(d, &ps);
+	creatures_draw(d);
 	terrain_draw_tufts(d);
 	G.stat_trees = foliage_draw(d, WX.wind * 1.6f);
 	water_draw(d);
@@ -74,12 +78,16 @@ int main(int argc, char **argv)
 	world_init();
 	game_init();
 	DAY.hour = 15.5f;                      /* Day 1: arrive at the trailhead mid-afternoon */
+#ifdef LL_INPUT_SCRIPT
+	DAY.hour = 16.97f;                     /* the scripted test: Dot's first call rings at 17:00 */
+#endif
 	DAY.rate = 1.0f;
 	terrain_build(game_season());
 	foliage_build(game_season());
 	paths_build();
 	water_build();
 	props_build();
+	creatures_build();
 	sky_init();
 	audio_init();
 	S.season_dirty = false;

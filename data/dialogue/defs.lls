@@ -1,0 +1,43 @@
+# defs.lls -- every story flag and game action the radio script may use.
+# The compiler rejects anything not declared here, so typos fail the build.
+
+# --- Set by the game ---------------------------------------------------------
+flag obs_am obs_pm              # today's readings taken at the weather station (cleared each morning)
+flag at_spring                  # reached the cold spring today
+flag supply_today               # opened the supply box today
+flag fawns_seen                 # the doe and fawns seen
+flag cabin_entered              # been inside Pell's Cabin
+flag gauge_read                 # read the meadow rain gauge (Day 4)
+flag sound_logged               # logged a sound with Listen
+flag cairn_stone                # added a stone to the cairn (Day 4)
+flag smoke_seen                 # the Day 5 smoke, seen at all
+flag smoke_sighted              # ...and sighted in the fire finder
+flag elk_done                   # the Day 8 bugling has finished
+flag stair_heard                # stepped on the singing stair
+flag shutters_done cistern_done # Day 10 chores
+flag rain_on                    # Day 11, the rain has started
+flag note_welcome note_stair note_map note_birds note_fence note_spring note_dock
+flag note_snag note_bench note_flowers note_letter note_postcard
+
+# --- Set by the script ----------------------------------------------------------
+flag gave_readings
+flag fawn_names                 # Sharp and Flat
+flag asked_about_tuning
+flag told_ear_early told_ear deflected_ear
+flag smoke_reported smoke_missed
+flag relay_done relay_clean
+flag sunset_described
+flag ruth_asked
+flag stair_is_eflat
+flag ps_told
+flag offered_tuning
+flag flower_book
+flag season_over
+
+# --- Game actions ------------------------------------------------------------------
+action errand                   # do errand <what>: today's errand, shown in the notebook
+action errand_done
+action elk                      # Day 8: the bulls start bugling
+action hiss_hold                # Day 6: Dot falls asleep; the carrier stays open
+action music                    # do music <piece>
+action season_over              # the gate now offers the way out

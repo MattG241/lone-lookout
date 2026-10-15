@@ -1,0 +1,143 @@
+# Day 7 — Land's Too Loud. 3 September. Orange haze from far-off fires.
+# Augie's bench: SIT HERE AT SEVEN. He described the sunset to Dot every night for 22 years.
+
+call D7_AM
+  day 7
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Morning. Readings?
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_am set gave_readings -> read
+  > "The air's orange." -> orange
+node read
+THEO Basin, Kestrel. Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}. Fuel stick {fuel}. And the air's orange.
+DOT  Copy.
+goto plan
+node orange
+THEO Basin, Kestrel. The air's orange.
+DOT  I know.
+node plan
+DOT  Haze from the fires down south. Nothing you need to do. It's just the rest of the world, burning politely, far away.
+DOT  Kestrel. Can I ask a favour?
+THEO Go ahead.
+DOT  Be at Augie's bench at seven tonight. On the ridge. Don't ask why yet. Basin out.
+do errand Be at Augie's bench on Cinder Ridge by seven.
+
+call D7_BENCH
+  day 7
+  time 06:30-18:55
+  where seat:4
+  after D7_AM
+DOT  Kestrel, Basin. You're at the bench already.
+THEO How do you —
+DOT  You sound like you're sitting down. Did Augie ever tell you why seven?
+choice
+  > "The carving says to." -> carving
+  > "No." -> no
+node carving
+THEO The bench says to. Somebody carved it.
+DOT  He carved it. With a pocketknife. It took him a whole summer.
+node no
+DOT  Because that's when I'd call him. He'd sit up there and describe the sunset. Every night. Twenty-two years.
+DOT  I've never seen it. I've heard it seven thousand times and I've never seen it. Basin out.
+
+call D7_SEVEN
+  day 7
+  time 19:00-21:00
+  where seat:4 until 19:30
+  after D7_AM
+DOT  Kestrel, Basin. It's seven.
+THEO Basin, Kestrel. It's seven.
+DOT  Well? Describe it.
+choice
+  > "The sun's going down into the haze." -> b1a
+  > "It's like the inside of a peach." -> b1b
+  > "I don't know how." -> b1c
+node b1a
+THEO The sun's going down into the haze. It's not a circle anymore. It's a coin somebody's pressing into wax.
+goto b2
+node b1b
+THEO It's like the inside of a peach. All of it. The air.
+DOT  Ha. Go on.
+goto b2
+node b1c
+THEO I don't know how. He had twenty-two years of practice.
+DOT  You tune pianos. Tell me what it sounds like.
+node b2
+choice
+  > "The ridges are layers. Each one paler." -> b2a
+  > "Like a bruise healing." -> b2b
+  > "Like a chord before the lights come up." -> b2c
+node b2a
+THEO The ridges are layers. Six of them. Each one paler than the one in front. The far ones are barely there. Like breath on glass.
+goto b3
+node b2b
+THEO The sky over the tower is going the colour of a bruise healing. Yellow at the edges. Purple in the middle.
+goto b3
+node b2c
+THEO It sounds like the last chord before the house lights come up. When everyone's still holding their breath.
+node b3
+DOT  ...Go on.
+choice
+  > "It's gone. Just the glow now." -> b3a
+  > "The tower's lit up. Like a match." if area:ridge -> b3b
+node b3a
+THEO It's gone. There's just the glow now, and the first star. Over the burn.
+goto ships
+node b3b
+THEO The tower's caught the last of it. The cab windows. It looks like somebody struck a match over there.
+node ships
+set sunset_described
+DOT  ...Thank you.
+DOT  I was twenty-four years at sea, did you know that? Radio officer. Cargo ships.
+THEO I didn't know.
+DOT  On a ship everybody's a voice. You never see the other station. Then I came ashore and everybody had faces. Everybody was watching you work out what to say.
+DOT  Land's too loud, Theo. That's why I took this desk.
+choice
+  > "It's quiet up here." -> quiet
+  > "You've got a good voice for it." -> voice
+  > [say nothing] -> nothing
+node quiet
+THEO It's quiet up here.
+DOT  I know. I can hear it. Goodnight, Kestrel.
+goto end
+node voice
+THEO You've got a good voice for it.
+DOT  Don't. ...Goodnight, Kestrel.
+goto end
+node nothing
+DOT  ...Goodnight, Kestrel.
+node end
+do errand_done
+do music seven
+
+call D7_NIGHT
+  day 7
+  time 21:30-26:00
+  after D7_SEVEN
+DOT  Kestrel, Basin. My turn to ask one. Why'd you come up here? Really.
+branch told_ear -> told
+choice
+  > Tell her about the ear. set told_ear -> tellnow
+  > "Just wanted quiet." -> quiet
+node told
+THEO You know about the ear.
+THEO ...I wanted to hear everything once. While I still can. Properly. Every small thing.
+DOT  ...You hear fine, Theo. You just hear slower now.
+THEO Is that a compliment?
+DOT  It's a reading. Goodnight.
+end
+node tellnow
+THEO My left ear went quiet in February. I came up here to hear everything once. While I still can.
+DOT  ...Okay. You hear fine, Theo. You just hear slower now.
+DOT  Goodnight.
+end
+node quiet
+THEO Just wanted quiet.
+DOT  Mm. That's what I said, too. Goodnight, Kestrel.
+
+call D7_EVE
+  day 7
+  time 16:30-18:30
+  kind report
+DOT  Kestrel, Basin. Skip the evening readings. Go to the bench. That's an order. Basin out.

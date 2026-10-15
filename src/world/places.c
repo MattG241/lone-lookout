@@ -61,6 +61,7 @@ void places_init(void)
 	add(IA_FINDER, 0, X, D + 1.18f, Z, 0.4f, "Sight");
 	add(IA_BINOCULARS, 0, X + 0.95f, D + 1.55f, Z + c - 0.08f, 0.16f, "Take");
 	add(IA_WEATHER, 0, X + TOWER_DECK_HALF + 0.3f, D + 1.25f, Z - 1.6f, 0.35f, "Read");      /* instrument shelter */
+	add(IA_CISTERN, 0, X + CISTERN_U - 0.55f, pad + 0.4f, Z + CISTERN_V + 0.55f, 0.25f, "Drain"); /* its valve */
 	add_seat(0, X - 0.75f, D + 0.5f, Z - 1.15f, BEARING(292.0f), 0.3f);      /* the lightning stool */
 	add_seat(1, X - 2.55f, D + 0.05f, Z - 1.4f, BEARING(262.0f), 0.4f);      /* the catwalk, facing west */
 
@@ -70,6 +71,7 @@ void places_init(void)
 		float px = lerpf(FENCE_AX, FENCE_BX, t), pz = lerpf(FENCE_AZ, FENCE_BZ, t);
 		add_note(NOTE_FENCE, px + 0.05f, world_height(px, pz) + 1.0f, pz + 0.13f);
 		add_seat(2, LOG_X, world_height(LOG_X, LOG_Z) + 0.42f, LOG_Z, LOG_FACING, 0.9f);
+		add(IA_GAUGE, 0, GAUGE_X, world_height(GAUGE_X, GAUGE_Z) + 1.15f, GAUGE_Z, 0.25f, "Read");
 	}
 
 	/* --- Cold spring ----------------------------------------------------- */
@@ -93,6 +95,7 @@ void places_init(void)
 		add_note(NOTE_BENCH, bx, hb + 0.82f, bz);
 		add_seat(4, BENCH_X + sinf(BENCH_FACING) * 0.05f, hb + 0.45f, BENCH_Z - cosf(BENCH_FACING) * 0.05f,
 		         BENCH_FACING, 0.5f);
+		add(IA_CAIRN, 0, CAIRN_X, world_height(CAIRN_X, CAIRN_Z) + 1.3f, CAIRN_Z, 0.45f, "Add");
 	}
 
 	/* --- The '98 Burn ------------------------------------------------------ */
@@ -109,6 +112,7 @@ void places_init(void)
 		add_note(NOTE_LETTER, CX + 1.75f, F + 0.62f, CZ - 0.66f);
 		add(IA_CHIMES, 0, CX + CABIN_HALF_X - 0.35f, F + 2.0f, CZ + CABIN_HALF_Z + CABIN_PORCH_D - 0.3f, 0.25f, "Ring");
 		add_seat(6, CX - 1.2f, F - 0.03f, CZ + CABIN_HALF_Z + CABIN_PORCH_D - 0.15f, CABIN_FACING, 0.5f);
+		add(IA_SHUTTERS, 0, CX - CABIN_HALF_X - 0.1f, F + 1.25f, CZ, 0.6f, "Close");     /* the west window */
 	}
 
 	/* --- Trailhead ---------------------------------------------------------- */

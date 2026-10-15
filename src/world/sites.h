@@ -32,6 +32,8 @@
 #define LOG_X 101.0f
 #define LOG_Z 341.0f
 #define LOG_FACING BEARING(52.0f)
+#define GAUGE_X 113.0f             /* Augie's rain gauge, on a post by the log */
+#define GAUGE_Z 334.0f
 
 /* The cold spring: a pipe out of the bank, a trough, a tin cup on a nail. */
 #define SPRING_X 196.0f

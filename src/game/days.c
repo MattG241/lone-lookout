@@ -175,20 +175,30 @@ void weather_apply(daylight *d)
 /* Readings at the instrument shelter on the catwalk: dry and wet bulb,
  * humidity, wind, and the fuel stick (how dry the forest is). Season and
  * weather drive them, so the numbers drift toward autumn day by day. */
-const char *weather_readings(int day, float hour)
+readings_t weather_read(int day, float hour)
 {
-	static char buf[200];
 	const day_def *d = day_info(day);
 	float daytime = sinf(clampf((hour - 6.0f) / 15.0f, 0.0f, 1.0f) * LL_PI);   /* peaks mid-afternoon */
 	float temp = lerpf(52.0f, 40.0f, d->season) + daytime * lerpf(26.0f, 18.0f, d->season);
 	temp -= 10.0f * WX.cold * (1.0f - daytime) + 8.0f * WX.rain + 6.0f * WX.storm;
 	float rh = clampf(28.0f + 30.0f * (1.0f - daytime) + 40.0f * WX.rain + 15.0f * WX.cloud + 10.0f * d->season, 8.0f, 99.0f);
-	float wet = temp - (100.0f - rh) * 0.2f;
-	int wind = (int)(4.0f + 14.0f * WX.wind + 10.0f * WX.storm);
 	static const char *dirs[] = { "W", "SW", "W", "NW", "SW", "W", "S", "NW", "N", "NW", "SW" };
-	float fuel = clampf(5.0f + rh * 0.12f + 6.0f * WX.rain, 3.0f, 20.0f);
+	readings_t r;
+	r.dry = (int)(temp + 0.5f);
+	r.wet = (int)(temp - (100.0f - rh) * 0.2f + 0.5f);
+	r.rh = (int)(rh + 0.5f);
+	r.wind_dir = dirs[(day - 1) % 11];
+	r.wind_mph = (int)(4.0f + 14.0f * WX.wind + 10.0f * WX.storm);
+	r.fuel = clampf(5.0f + rh * 0.12f + 6.0f * WX.rain, 3.0f, 20.0f);
+	return r;
+}
+
+const char *weather_readings(int day, float hour)
+{
+	static char buf[200];
+	readings_t r = weather_read(day, hour);
 	snprintf(buf, sizeof(buf),
 	         "Dry bulb %d\xC2\xB0" "F. Wet bulb %d\xC2\xB0" "F. Humidity %d%%.\nWind %s, %d mph.\nFuel stick %.1f grams.",
-	         (int)(temp + 0.5f), (int)(wet + 0.5f), (int)(rh + 0.5f), dirs[(day - 1) % 11], wind, fuel);
+	         r.dry, r.wet, r.rh, r.wind_dir, r.wind_mph, r.fuel);
 	return buf;
 }

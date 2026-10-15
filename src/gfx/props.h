@@ -12,6 +12,8 @@
 typedef struct {
 	float lamp;                  /* 0..1: the cab lamp */
 	bool binoculars_taken;       /* the hook by the door is empty */
+	bool shutters_shut;          /* Pell's Cabin closed up for the winter */
+	bool cairn_stone;            /* Theo's stone is on the cairn */
 } props_state;
 
 void props_build(void);

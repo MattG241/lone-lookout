@@ -109,6 +109,14 @@ void audio_ui_gain(ui_sound_t s, float gain)
 	post(&c);
 }
 
+void audio_ui_pan(ui_sound_t s, float gain, float pan)
+{
+	cmd_t c = { C_UI, (u8)s, gain, pan, { 0 } };
+	post(&c);
+}
+
+void audio_music_cue(const char *piece) { (void)piece; }
+
 void audio_set_weather(float rain, float indoor)
 {
 	s_rain = rain;
@@ -117,7 +125,12 @@ void audio_set_weather(float rain, float indoor)
 
 void audio_voice_line(const char *text, speaker_t who)
 {
-	cmd_t c = { C_VOICE, (u8)who, 0, 0, { 0 } };
+	audio_voice_line_ex(text, who, false);
+}
+
+void audio_voice_line_ex(const char *text, speaker_t who, bool garbled)
+{
+	cmd_t c = { C_VOICE, (u8)who, garbled ? 1.0f : 0.0f, 0, { 0 } };
 	strncpy(c.text, text, sizeof(c.text) - 1);
 	post(&c);
 }
@@ -176,13 +189,16 @@ static void handle(const cmd_t *c)
 		if (c->a >= UI_SOUND_COUNT) break;
 		s->kind = 100 + c->a;
 		s->gain = c->f0;
-		static const float lens[UI_SOUND_COUNT] = { 0.05f, 0.22f, 0.30f, 0.06f, 0.20f, 2.6f, 1.4f, 3.2f, 5.5f, 0.08f };
+		static const float lens[UI_SOUND_COUNT] = { 0.05f, 0.22f, 0.30f, 0.06f, 0.20f, 2.6f, 1.4f, 3.2f, 5.5f, 0.08f,
+		                                             4.2f, 0.35f, 0.45f, 3.0f };
 		s->len = lens[c->a];
+		s->pan = c->f1;
 		s->pitch = 0.97f + 0.06f * noise_unit(&s_rng);
 		break;
 	}
 	case C_VOICE:
 		voice_start(&s_vo, c->text, (speaker_t)c->a);
+		s_vo.garble = c->f0 > 0.5f;
 		break;
 	case C_VOICE_STOP:
 		voice_stop(&s_vo);
@@ -283,6 +299,38 @@ static float sfx_sample(sfx_t *s, float dt)
 		float low = svf_run(&s->f1, n, svf_coef(70.0f + 50.0f * s->gain, 0.9f), 0, 0);
 		float mid = svf_bp(&s->f2, n, svf_coef(240.0f, 0.6f)) * expf(-t * 3.0f) * s->gain;
 		out = (low * 2.2f + mid * 0.6f) * roll * 0.8f;
+		break;
+	}
+	case 100 + UI_ELK: {
+		/* A bull's bugle: a low grunt, a long rising whistle that breaks, then grunts. */
+		float f;
+		if (t < 0.5f) f = 220.0f + 260.0f * (t / 0.5f);
+		else if (t < 2.2f) f = 480.0f + 900.0f * smoothstepf(0.5f, 1.6f, t) + 40.0f * sinf(t * 37.0f);
+		else f = 380.0f - 120.0f * (t - 2.2f);
+		s->p0 += f * s->pitch / SR;
+		s->p1 += f * 2.01f * s->pitch / SR;
+		float tone = sinf(6.2831853f * s->p0) + 0.35f * sinf(6.2831853f * s->p1);
+		float breath = svf_bp(&s->f1, n, svf_coef(f * 1.5f, 1.2f));
+		e = smoothstepf(0.0f, 0.08f, t) * (1.0f - smoothstepf(2.4f, 2.6f, t));
+		float grunt = t > 2.7f ? svf_bp(&s->f2, n, svf_coef(160.0f, 2.0f)) *
+		                         (sinf((t - 2.7f) * 14.0f) > 0.2f ? 1.0f : 0.0f) * expf(-(t - 2.7f) * 1.5f) : 0.0f;
+		out = (tone * 0.55f + breath * 0.5f) * e * 0.12f + grunt * 0.25f;
+		break;
+	}
+	case 100 + UI_STONE:
+		e = expf(-t * 40.0f);
+		out = svf_bp(&s->f1, n, svf_coef(1400.0f, 3.0f)) * e * 0.6f + (t > 0.12f ? svf_bp(&s->f2, n, svf_coef(2600.0f, 4.0f)) * expf(-(t - 0.12f) * 60.0f) * 0.3f : 0.0f);
+		break;
+	case 100 + UI_SHUTTER:
+		e = expf(-t * 18.0f);
+		s->p0 += 90.0f / SR;
+		out = (sinf(6.2831853f * s->p0) * 0.6f + svf_bp(&s->f1, n, svf_coef(500.0f, 1.5f))) * e * 0.5f;
+		break;
+	case 100 + UI_VALVE: {
+		float squeal = t < 0.4f ? sinf(6.2831853f * (s->p0 += (900.0f + 300.0f * t) / SR)) * 0.08f * (1.0f - t / 0.4f) : 0.0f;
+		float water = svf_bp(&s->f1, n, svf_coef(700.0f + 300.0f * noise_unit(&s->rng), 0.8f)) *
+		              smoothstepf(0.3f, 0.8f, t) * (1.0f - smoothstepf(2.4f, 3.0f, t)) * 0.4f;
+		out = squeal + water;
 		break;
 	}
 	case 100 + UI_LAMP:

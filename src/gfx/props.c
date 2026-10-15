@@ -119,6 +119,8 @@ void props_draw(const daylight *d, const props_state *st)
 	vdesc_pnc_flush();
 	for (int g = 0; g < PG_COUNT; g++) {
 		if (g == PG_TOWER_IN || g == PG_CABIN_IN || g == PG_BINOCULARS) continue;
+		if ((g == PG_SHUTTERS_OPEN && st->shutters_shut) || (g == PG_SHUTTERS_SHUT && !st->shutters_shut)) continue;
+		if (g == PG_CAIRN_STONE && !st->cairn_stone) continue;
 		if (visible(g)) dl_draw(&s_groups[g].dl);
 	}
 

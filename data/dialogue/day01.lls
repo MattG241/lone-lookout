@@ -1,0 +1,80 @@
+# Day 1 — Channel Four. 21 August. Arrive at 15:30; the walk up; the first radio check.
+# On Day 1 Dot ends every transmission with "over".
+
+call D1_ARRIVE
+  day 1
+  time 15:00-26:00
+  where cab until 17:00
+DOT  Kestrel, Basin. Radio check, over.
+choice
+  > "Basin, Kestrel. Loud and clear." -> clear
+  > "Hello? Is this... hello?" -> hello
+  > [say nothing] -> quiet
+node clear
+THEO Basin, Kestrel. Loud and clear.
+DOT  Well. Look at you. Augie took three days to say it right. Over.
+goto job
+node hello
+THEO Hello? Is this... hello?
+DOT  It's a radio, Kestrel, not a seance.
+DOT  Push, talk, let go, listen. Most people get the last part wrong. Over.
+goto job
+node quiet
+DOT  ...Kestrel? You push the button, you talk, you let go. Try again, over.
+choice
+  > "Basin, Kestrel. Loud and clear." -> clear
+  > "Hello? Is this... hello?" -> hello
+  > [say nothing] -> nod
+node nod
+DOT  Okay. I'll take that as a nod. Over.
+node job
+DOT  Welcome to Kestrel. Kettle sticks — hit it on the left side.
+DOT  Get settled. I'll call you this evening with the rest of it. Basin out.
+
+call D1_PM
+  day 1
+  time 19:30-26:00
+  after D1_ARRIVE
+DOT  Kestrel, Basin. You got time for the job description? Over.
+THEO Basin, Kestrel. Go ahead.
+DOT  Look at the horizon now and then. You see smoke, you sight it in the finder — the big round thing in the middle of your room — and you call me with a bearing.
+DOT  Readings morning and evening from the white box on the catwalk. Write it all in the log.
+DOT  And otherwise, Kestrel, you are paid to sit. Augie was very, very good at it. Twenty-two years. Over.
+choice
+  > "That's it? Sit and look?" -> thatsit
+  > "He left things here. Notes." -> things
+  > [say nothing] -> quiet
+node thatsit
+THEO That's it? Sit and look?
+DOT  Sit and look and listen. People think it's the easy part. People are wrong about a lot of things. Over.
+goto out
+node things
+THEO He left things here. Notes. A kettle with opinions.
+DOT  He leaves everyone things. You'll find more. He was a terrible speller and a very good man. Over.
+goto out
+node quiet
+DOT  You'll get used to the quiet. Or you won't, and that's a different conversation. Over.
+node out
+DOT  Basin out.
+
+call D1_NIGHT
+  day 1
+  time 21:00-26:00
+  after D1_PM
+  kind small
+DOT  Kestrel, Basin. One more thing and then I'll let you sleep. Over.
+DOT  You'll hear the tower talking tonight. Ticks, knocks. It's the wood cooling. Don't answer it. Over.
+choice
+  > "Goodnight, Basin." -> night
+  > "What if it says something interesting?" -> interesting
+  > [say nothing] -> quiet
+node night
+THEO Goodnight, Basin.
+DOT  Goodnight, Kestrel. Basin out.
+end
+node interesting
+THEO What if it says something interesting?
+DOT  Then write it down. That's what the logbook's for. Goodnight, Kestrel. Over.
+end
+node quiet
+DOT  ...Goodnight, Kestrel. Over.

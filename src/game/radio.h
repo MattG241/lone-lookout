@@ -1,26 +1,23 @@
 /*
- * radio.h -- calls, lines, choices and the subtitle/choice-card UI.
- *
- * Radio v0 carries the Day 1 radio check and a small check-in you can start
- * yourself. Phase 4 replaces the hand-written tables with data
- * compiled from the .lls files in data/dialogue, keeping this runtime.
+ * radio.h -- the radio as the player meets it: the call chirp, the handset,
+ * subtitles, choice cards and the radio log. The script runs in dialogue.c,
+ * compiled from the .lls files in data/dialogue/.
  */
 #ifndef LL_RADIO_H
 #define LL_RADIO_H
 
 #include <stdbool.h>
 #include "audio/audio.h"
-
-typedef enum { CALL_D1_RADIO_CHECK, CALL_CHECK_IN, CALL_COUNT } call_id;
+#include "game/dialogue.h"
 
 void radio_init(void);
 void radio_update(float dt);
-void radio_ring(call_id id);          /* Basin calls you */
 bool radio_busy(void);                /* ringing or in a call */
 bool radio_in_call(void);             /* handset raised */
 bool radio_wants_pointer(void);       /* choice cards are taking the pointer */
 void radio_draw(void);
 void radio_call_basin(void);          /* B, or the handset on the cab table */
+void radio_hold_hiss(float seconds);  /* leave the carrier open after a call */
 
 /* Everything said on the radio, for the notebook's Radio page. */
 #define RADIO_LOG_MAX 40
@@ -31,8 +28,7 @@ typedef struct {
 } radio_log_entry;
 int radio_log(const radio_log_entry **out);           /* oldest first */
 
-/* Screenshot tour: jump straight to a node's choices with one card hovered. */
-void radio_debug_choices(call_id id, int node, int hovered);
-void radio_debug_line(call_id id, int node, int line, float age);
+/* Screenshot tour: start a call and skip ahead a number of lines. */
+void radio_debug_call(int call, int lines);
 
 #endif

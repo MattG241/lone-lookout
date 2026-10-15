@@ -1,0 +1,106 @@
+# Day 8 — Bugle. 6 September. Cool and breezy. The elk come down. A count, by ear, at dusk.
+# Ruth called Basin.
+
+call D8_AM
+  day 8
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Morning. It's cold down here. Readings?
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_am set gave_readings -> read
+  > "It's cold up here too." -> cold
+node read
+THEO Basin, Kestrel. Dry bulb {dry}, wet {wet}. Humidity {rh}. Wind {wind}. Fuel stick {fuel}.
+DOT  Copy. First morning under fifty. Season's turning.
+goto plan
+node cold
+THEO Basin, Kestrel. It's cold up here too.
+DOT  That's not a reading, Kestrel, that's a complaint.
+node plan
+DOT  Fish and Game wants an elk count. By ear. At dusk, from the meadow. The bulls come down to bugle.
+DOT  I told them you're a professional listener. Don't make me a liar.
+do errand At dusk, sit on the log in Larkspur Meadow and count the bulls by ear.
+
+call D8_DUSK
+  day 8
+  time 18:30-22:00
+  where seat:2
+  after D8_AM
+DOT  Kestrel, Basin. You at the meadow?
+THEO On the log. It's getting dark.
+DOT  Good. Now be quiet and listen. Call me when you have a number. Basin out.
+do elk
+
+call D8_COUNT
+  day 8
+  needs elk_done
+  kind initiated
+THEO Basin, Kestrel. Elk count.
+DOT  Go ahead.
+choice
+  > "Three." -> three
+  > "Four." -> four
+  > "Five." -> five
+  > "I lost count." -> lost
+node three
+THEO Three bulls.
+DOT  Three. Augie always said three. I'll put four, he always undercounted the one by the creek.
+goto out
+node four
+THEO Four. One of them's down by the creek. He's the loudest.
+DOT  Four. Augie always said three. Huh. Four it is.
+goto out
+node five
+THEO Five. Maybe five.
+DOT  Five, maybe. Fish and Game loves a maybe. I'll put four.
+goto out
+node lost
+THEO I lost count. I was listening to them instead.
+DOT  ...That's allowed. I'll put four. There's always four.
+node out
+do errand_done
+DOT  Thank you, Kestrel. Basin out.
+
+call D8_RUTH
+  day 8
+  time 20:00-26:00
+  after D8_AM
+DOT  Kestrel, Basin. My sister called. Here. On the land line. Nobody calls the land line.
+THEO Is she alright?
+DOT  She's fine. She's always fine. She wants me at Christmas. She wants me at Christmas every year.
+DOT  Anyway. How's the wind up there?
+choice
+  > "Tell me about Ruth." set ruth_asked -> ask
+  > "Wind's light. Northwest." -> letgo
+  > [say nothing] -> quiet
+node ask
+THEO Tell me about Ruth.
+DOT  ...She's older. She's in Calder. She has our mother's piano and nobody's played it since 2009.
+DOT  She'd like you. Everybody likes people who listen.
+DOT  How's the wind up there, Kestrel?
+THEO Light. Northwest.
+DOT  Copy. Goodnight.
+end
+node letgo
+THEO Wind's light. Northwest.
+DOT  Copy. ...Thank you. Goodnight, Kestrel.
+end
+node quiet
+DOT  ...Goodnight, Kestrel.
+
+call D8_EVE
+  day 8
+  time 16:30-18:20
+  retry 19:00
+  kind report
+DOT  Kestrel, Basin. Evening readings before you head down.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_pm set gave_readings -> read
+  > "Heading down now." -> down
+node read
+THEO Basin, Kestrel. Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}.
+DOT  Copy. Take a jacket. Basin out.
+end
+node down
+THEO Heading down now.
+DOT  Take a jacket. Basin out.

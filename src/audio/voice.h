@@ -43,6 +43,7 @@ typedef struct {
 	lp1_t tilt;
 	float hp1x, hp1y, hp2x, hp2y;
 	svf_t radio_lp, cons_f;
+	bool garble;         /* wind or distance eating the signal */
 } voice_t;
 
 void voice_plan(const char *text, speaker_t who, voice_plan_t *out);

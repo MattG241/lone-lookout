@@ -13,6 +13,7 @@
 #include "game/game.h"
 #include "game/radio.h"
 #include "game/notebook.h"
+#include "game/story.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
@@ -35,6 +36,7 @@
 #define SLEEP_FROM 19.0f
 #define SINGING_TREAD (3 * STAIR_STEPS + STAIR_STEPS - 3)   /* third from the top */
 #define DAY_POSTCARD 9                                      /* Last Season */
+#define DAY_CLOSING 10                                      /* First Frost: the closing chores */
 
 player_t P;
 story_t S;
@@ -146,6 +148,7 @@ void game_new_day(int day)
 	S.kettle_today = false;
 	S.obs_am = S.obs_pm = false;
 	S.areas_today = 0;
+	story_new_day(S.day);
 	S.season_dirty = true;
 	DAY.hour = 6.0f;
 	/* Wake beside the cot, looking out of the east windows. */
@@ -174,6 +177,7 @@ void game_init(void)
 	P.reading = -1;
 	P.mode = MODE_WALK;
 	radio_init();
+	story_init();
 }
 
 v3 game_eye(void)
@@ -215,6 +219,9 @@ static bool ia_available(const interactable_t *ia)
 	switch (ia->kind) {
 	case IA_BINOCULARS: return !S.binoculars;
 	case IA_NOTE: return ia->id != NOTE_POSTCARD;
+	case IA_CAIRN: return !story_flag(FLAG_CAIRN_STONE);
+	case IA_SHUTTERS: return S.day >= DAY_CLOSING && !story_flag(FLAG_SHUTTERS_DONE);
+	case IA_CISTERN: return S.day >= DAY_CLOSING && !story_flag(FLAG_CISTERN_DONE);
 	default: return true;
 	}
 }
@@ -358,6 +365,7 @@ static void update_walk(float dt)
 	int tread = world_stair_tread(P.pos);
 	if (tread == SINGING_TREAD && S.last_tread != SINGING_TREAD) {
 		audio_ui(UI_STAIR_NOTE);
+		story_raise(FLAG_STAIR_HEARD);
 		if (S.found[NOTE_STAIR]) think_once(TH_STAIR, "E-flat. A little flat, even. Not F, Augie.");
 	}
 	S.last_tread = tread;
@@ -378,6 +386,7 @@ static void use(int index)
 	switch (h->kind) {
 	case IA_NOTE:
 		S.found[h->id] = true;
+		story_note_read(h->id);
 		open_text(h->id);
 		if (h->id == NOTE_MAP) hint(IN.nunchuk ? "D-pad down: notebook" : "2: notebook");
 		break;
@@ -429,7 +438,11 @@ static void use(int index)
 	case IA_SUPPLY:
 		if (day_is_supply(S.day)) {
 			S.supply_opened[S.day] = true;
-			if (S.day == DAY_POSTCARD) S.found[NOTE_POSTCARD] = true;
+			story_raise(FLAG_SUPPLY_TODAY);
+		if (S.day == DAY_POSTCARD) {
+			S.found[NOTE_POSTCARD] = true;
+			story_note_read(NOTE_POSTCARD);
+		}
 			open_text(TEXT_SUPPLY + S.day);     /* on the postcard day, A turns over to it */
 		} else {
 			game_think("Empty. The truck only comes when Dot says so.");
@@ -438,6 +451,7 @@ static void use(int index)
 	case IA_WEATHER:
 		if (DAY.hour < 12.0f) S.obs_am = true;
 		else S.obs_pm = true;
+		story_readings_taken(DAY.hour < 12.0f);
 		open_text(TEXT_WEATHER);
 		break;
 	case IA_CHIMES:
@@ -445,7 +459,37 @@ static void use(int index)
 		think_once(TH_CHIMES, "They're out of tune. Of course they are.");
 		break;
 	case IA_GATE:
-		game_think("Not yet. The season isn't over.");
+		if (story_can_leave()) {
+			P.mode = MODE_ENDING;
+			S.ending_t = 0.0f;
+			audio_ui(UI_TICK);
+		} else if (S.day >= NUM_DAYS) {
+			game_think("Not yet. One more evening.");
+		} else {
+			game_think("Not yet. The season isn't over.");
+		}
+		break;
+	case IA_GAUGE:
+		story_raise(FLAG_GAUGE_READ);
+		audio_ui(UI_TICK);
+		if (S.day >= NUM_DAYS && WX.rain > 0.2f) game_think("Water in the gauge. Actual water.");
+		else if (S.day == 4) game_think("Dry. A spider's moved in. Zero, then.");
+		else game_think("Dry. Seven weeks of nothing.");
+		break;
+	case IA_CAIRN:
+		story_raise(FLAG_CAIRN_STONE);
+		audio_ui(UI_STONE);
+		game_think("One more. It sits there like it was always going to.");
+		break;
+	case IA_SHUTTERS:
+		story_raise(FLAG_SHUTTERS_DONE);
+		audio_ui(UI_SHUTTER);
+		game_think(story_flag(FLAG_CISTERN_DONE) ? "Shutters up. That's the list." : "Shutters up. Now the cistern.");
+		break;
+	case IA_CISTERN:
+		story_raise(FLAG_CISTERN_DONE);
+		audio_ui(UI_VALVE);
+		game_think(story_flag(FLAG_SHUTTERS_DONE) ? "Drained. That's the list." : "Drained. Now the shutters.");
 		break;
 	}
 }
@@ -471,13 +515,18 @@ static void update_interact(float dt)
 	P.read_fade = approachf(P.read_fade, 0.0f, 8.0f, dt);
 
 	if (P.mode == MODE_FINDER) {
-		if (!P.input_locked && (in_take(WPAD_BUTTON_A) | in_take(WPAD_BUTTON_B))) {
+		/* A takes a bearing through the sights; B steps back. */
+		if (!P.input_locked && in_take(WPAD_BUTTON_A)) {
+			story_finder_sight(P.yaw);
+			audio_ui(UI_TICK);
+		} else if (!P.input_locked && in_take(WPAD_BUTTON_B)) {
 			P.mode = MODE_WALK;
 			audio_ui(UI_PAGE);
 		}
 		return;
 	}
-	if (P.input_locked || radio_in_call() || P.mode == MODE_NOTEBOOK || P.mode == MODE_SLEEP) return;
+	if (P.input_locked || radio_in_call() || P.mode == MODE_NOTEBOOK || P.mode == MODE_SLEEP || P.mode == MODE_ENDING)
+		return;
 	if (!(IN.down & WPAD_BUTTON_A)) return;
 	if (P.hover >= 0 || P.mode == MODE_SIT) in_take(WPAD_BUTTON_A);
 
@@ -534,21 +583,6 @@ static void update_places(float dt)
 	S.thought_t += dt;
 	S.hint_t += dt;
 
-	/* The Day 1 radio check: on first stepping into the cab, or by 17:00. */
-	if (S.day == 1 && !S.d1_called && !P.input_locked && !radio_busy() && P.mode != MODE_SLEEP) {
-		bool in_cab = world_indoor(P.pos) == INDOOR_CAB;
-#ifdef LL_INPUT_SCRIPT
-		static float s_t;
-		bool late = (s_t += dt) > 20.0f;         /* the scripted test can't walk all the way up */
-#else
-		bool late = DAY.hour >= 17.0f;
-#endif
-		if (in_cab || late) {
-			radio_ring(CALL_D1_RADIO_CHECK);
-			S.d1_called = true;
-		}
-	}
-
 	/* The kettle: a minute on the stove, then the whistle and a cup. */
 	if (S.kettle_t >= 0.0f) {
 		float before = S.kettle_t;
@@ -566,7 +600,7 @@ static void update_places(float dt)
 static void update_sleep(float dt)
 {
 	if (P.mode != MODE_SLEEP) {
-		S.fade = approachf(S.fade, 0.0f, 1.6f, dt);
+		if (P.mode != MODE_ENDING) S.fade = approachf(S.fade, 0.0f, 1.6f, dt);
 		return;
 	}
 	S.sleep_t += dt;
@@ -574,6 +608,20 @@ static void update_sleep(float dt)
 	if (S.sleep_t > 2.2f) {
 		game_new_day(S.day + 1);
 		S.fade = 1.0f;
+	}
+}
+
+/* Through the gate on the last evening: fade out, a closing card, the credits. */
+static void update_ending(float dt)
+{
+	if (P.mode != MODE_ENDING) return;
+	S.ending_t += dt;
+	S.fade = saturatef(S.ending_t / 3.0f);
+	if (S.ending_t > ENDING_CREDITS_AT + 4.0f && !P.input_locked && in_take(WPAD_BUTTON_A)) {
+		/* After the credits, A walks back up for one more look. */
+		P.mode = MODE_WALK;
+		S.ending_t = 0.0f;
+		S.ended = true;
 	}
 }
 
@@ -605,5 +653,7 @@ void game_update(float dt)
 	water_update(dt);
 	P.day_card += dt;
 	update_places(dt);
+	story_update(dt);
 	update_sleep(dt);
+	update_ending(dt);
 }

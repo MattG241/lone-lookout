@@ -1,11 +1,11 @@
 /*
  * notebook.c -- the notebook (D-pad down, or 2 without a Nunchuk).
  *
- * One paper spread with four tabs: Map (Augie's, once found under the
- * cot, with a pencil mark where you stand), Notes (Augie's notes as you
- * find them; A reads one again), Radio (everything said on the radio) and
- * Sounds (the Listen log arrives with the sound work). D-pad left/right
- * turns the page; B closes it.
+ * One paper spread with five tabs: Today (the readings and Dot's errand),
+ * Map (Augie's, once found under the cot, with a pencil mark where you
+ * stand), Notes (Augie's notes as you find them; A reads one again), Radio
+ * (everything said on the radio) and Sounds (the Listen log). D-pad
+ * left/right turns the page; B closes it.
  */
 #include <math.h>
 #include <stdio.h>
@@ -13,13 +13,14 @@
 #include "game/notebook.h"
 #include "game/game.h"
 #include "game/radio.h"
+#include "game/story.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/text.h"
 #include "palette_data.h"
 
-static const char *TABS[NB_PAGES] = { "Map", "Notes", "Radio", "Sounds" };
+static const char *TABS[NB_PAGES] = { "Today", "Map", "Notes", "Radio", "Sounds" };
 
 void notebook_update(float dt)
 {
@@ -51,6 +52,79 @@ void notebook_update(float dt)
 }
 
 /* ------------------------------------------------------------------------ */
+
+/* A pencilled box, ticked when done. */
+static void check_box(float x, float y, bool done, float a)
+{
+	GXColor pen = gx_col(rgb_from(UI_INK), 0.75f * a), red = gx_col(rgb_make(0.55f, 0.18f, 0.14f), 0.9f * a);
+	mat_vcolor();
+	vdesc_2d(false);
+	const float s = 15.0f;
+	GX_Begin(GX_LINESTRIP, VF_2D, 5);
+	GX_Position2f32(x, y); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
+	GX_Position2f32(x + s, y + 0.6f); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
+	GX_Position2f32(x + s - 0.4f, y + s); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
+	GX_Position2f32(x + 0.3f, y + s - 0.5f); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
+	GX_Position2f32(x, y); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
+	GX_End();
+	if (!done) return;
+	GX_Begin(GX_LINESTRIP, VF_2D, 3);
+	GX_Position2f32(x + 2.0f, y + 7.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
+	GX_Position2f32(x + 6.5f, y + 13.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
+	GX_Position2f32(x + s + 3.0f, y - 4.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
+	GX_End();
+}
+
+/* A duty line: a box and up to three wrapped lines of text. Returns the next y. */
+static float duty(float x, float y, float w, const char *text, bool done, float a)
+{
+	GXColor ink = gx_col(rgb_from(UI_INK), (done ? 0.5f : 0.9f) * a);
+	int st[3], ln[3];
+	int n = text_wrap(FONT_L, text, w - 40.0f, st, ln, 3);
+	float lh = text_line_height(FONT_L) * 0.9f;
+	gfx_blend_alpha();
+	check_box(x, y - 15.0f, done, a);
+	text_begin();
+	for (int i = 0; i < n; i++) text_draw(FONT_L, x + 32.0f, y + i * lh, text + st[i], ln[i], ink);
+	return y + n * lh + 18.0f;
+}
+
+/* Basin's forecast, as Theo wrote it down at the morning call. */
+static const char *FORECAST[] = {
+	[WX_CLEAR] = "Forecast: clear, light winds.",
+	[WX_WARM] = "Forecast: clear and warm.",
+	[WX_HIGH_CLOUD] = "Forecast: high cloud, breezy by afternoon.",
+	[WX_BREEZY] = "Forecast: breezy, westerly.",
+	[WX_STORM] = "Forecast: dry thunderstorms from 14:00.",
+	[WX_SMOKE] = "Forecast: smoke from Harrow, light winds.",
+	[WX_HAZE] = "Forecast: haze from fires to the south.",
+	[WX_COLD] = "Forecast: clear and cold.",
+	[WX_FROST] = "Forecast: frost early, then clear.",
+	[WX_RAIN] = "Forecast: clouding over, rain by noon.",
+};
+
+static void today_page(float x, float y, float w, float h, float a)
+{
+	GXColor ink = gx_col(rgb_from(UI_INK), 0.9f * a), faint = gx_col(rgb_from(UI_INK), 0.5f * a);
+	const day_def *di = day_info(S.day);
+	char head[96];
+	snprintf(head, sizeof(head), "%s. %s", di->title, di->date);
+	text_begin();
+	text_draw(FONT_L, x + 30.0f, y + 40.0f, head, -1, ink);
+	text_draw(FONT_S, x + 30.0f, y + 66.0f, FORECAST[di->weather], -1, faint);
+	float ly = y + 128.0f;
+	if (S.day < NUM_DAYS || !story_flag(FLAG_SEASON_OVER)) {
+		ly = duty(x + 30.0f, ly, w - 60.0f, "Morning readings at the instrument shelter, before noon.", S.obs_am, a);
+		ly = duty(x + 30.0f, ly, w - 60.0f, "Evening readings, after five. Call them in.", S.obs_pm, a);
+	}
+	const char *errand = story_errand();
+	if (errand) ly = duty(x + 30.0f, ly, w - 60.0f, errand, story_errand_done(), a);
+	else {
+		text_begin();
+		text_draw(FONT_S, x + 62.0f, ly, "Nothing else from Basin yet.", -1, faint);
+	}
+	(void)h;
+}
 
 static void map_page(float x, float y, float w, float h, float a)
 {
@@ -135,12 +209,12 @@ static void radio_page(float x, float y, float w, float h, float a)
 	float lh = text_line_height(FONT_S) * 0.92f, by = y + h - 14.0f;
 	for (int i = n - 1; i >= 0 && by > y + 20.0f; i--) {
 		int st[4], ln[4];
-		const char *name = log[i].who == SPEAKER_DOT ? "Dot" : "Theo";
+		const char *name = log[i].who == SPEAKER_DOT ? "Dot" : (log[i].who == SPEAKER_CREW ? "Crew" : "Theo");
 		float nw = 60.0f;
 		int lines = text_wrap(FONT_S, log[i].text, w - nw - 40.0f, st, ln, 4);
 		float top = by - lines * lh;
 		if (top < y + 10.0f) break;
-		text_draw(FONT_S, x + 16, top + lh * 0.8f, name, -1, log[i].who == SPEAKER_DOT ? dot : theo);
+		text_draw(FONT_S, x + 16, top + lh * 0.8f, name, -1, log[i].who == SPEAKER_THEO ? theo : dot);
 		for (int k = 0; k < lines; k++)
 			text_draw(FONT_S, x + 16 + nw, top + lh * (0.8f + k), log[i].text + st[k], ln[k], ink);
 		by = top - 6.0f;
@@ -188,6 +262,7 @@ void notebook_draw(void)
 
 	float px = x + 14, py = y + 12, pw = w - 28, ph = h - 24;
 	switch (S.notebook_page) {
+	case NB_TODAY: today_page(px, py, pw, ph, a); break;
 	case NB_MAP: map_page(px, py, pw, ph, a); break;
 	case NB_NOTES: notes_page(px, py, pw, ph, a); break;
 	case NB_RADIO: radio_page(px, py, pw, ph, a); break;

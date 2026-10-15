@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include "world/world.h"
 
-typedef enum { SPEAKER_DOT, SPEAKER_THEO } speaker_t;
+typedef enum { SPEAKER_DOT, SPEAKER_THEO, SPEAKER_CREW } speaker_t;
 typedef enum {
 	UI_TICK, UI_PAGE, UI_CALL_CHIRP, UI_KEY_UP, UI_SQUELCH,
 	UI_CHIMES,           /* Pell's spoon chimes (out of tune) */
@@ -20,6 +20,10 @@ typedef enum {
 	UI_KETTLE,           /* the kettle comes to the boil */
 	UI_THUNDER,          /* distant thunder (gain = how close) */
 	UI_LAMP,             /* lamp switch */
+	UI_ELK,              /* a bull elk's bugle, far off */
+	UI_STONE,            /* a stone set on the cairn */
+	UI_SHUTTER,          /* a wooden shutter swung to */
+	UI_VALVE,            /* the cistern valve, and water running out */
 	UI_SOUND_COUNT
 } ui_sound_t;
 
@@ -27,7 +31,11 @@ void audio_init(void);
 void audio_footstep(surface_t surf, float intensity, float pan);
 void audio_ui(ui_sound_t s);
 void audio_ui_gain(ui_sound_t s, float gain);
+void audio_ui_pan(ui_sound_t s, float gain, float pan);     /* pan -1 left .. 1 right */
+/* Music: start a piece by name ("channel", "settling", "tarn", "ash", "seven", "rain"). */
+void audio_music_cue(const char *piece);
 void audio_voice_line(const char *text, speaker_t who);   /* murmur voice for one line */
+void audio_voice_line_ex(const char *text, speaker_t who, bool garbled);   /* wind eats syllables */
 void audio_voice_stop(void);
 void audio_radio_hiss(bool on);                            /* carrier hiss while the handset is up */
 /* Per-frame scene parameters (0..1). */

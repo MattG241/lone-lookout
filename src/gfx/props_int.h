@@ -16,7 +16,9 @@
 
 typedef enum {
 	PG_TOWER, PG_TOWER_IN, PG_CABIN, PG_CABIN_IN, PG_TARN, PG_RIDGE, PG_MEADOW, PG_SPRING,
-	PG_BURN, PG_TRAILHEAD, PG_BRIDGES, PG_BINOCULARS, PG_COUNT
+	PG_BURN, PG_TRAILHEAD, PG_BRIDGES, PG_BINOCULARS,
+	PG_SHUTTERS_OPEN, PG_SHUTTERS_SHUT, PG_CAIRN_STONE,          /* drawn by story state */
+	PG_COUNT
 } prop_group;
 
 void pg_begin(prop_group g, int boxes);          /* capacity in MESH_BOX_BYTES units */

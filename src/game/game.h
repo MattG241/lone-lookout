@@ -17,6 +17,7 @@ typedef enum {
 	MODE_FINDER,        /* sighting through the fire finder */
 	MODE_NOTEBOOK,
 	MODE_SLEEP,         /* fading through the night to the next morning */
+	MODE_ENDING,        /* through the gate on the last evening: the closing card and credits */
 } play_mode;
 
 typedef struct {
@@ -49,12 +50,11 @@ extern player_t P;
 
 /* What has happened this summer. */
 typedef struct {
-	int day;                         /* 1..7 */
+	int day;                         /* 1..NUM_DAYS */
 	bool found[NOTE_COUNT];          /* notes read */
 	bool binoculars;                 /* taken from the hook */
 	bool lamp_on;
 	float lamp;                      /* smoothed 0..1 */
-	bool d1_called;                  /* the Day 1 radio check has rung */
 	float kettle_t;                  /* < 0 idle, else seconds since it went on */
 	bool kettle_today;
 	bool supply_opened[NUM_DAYS + 1];
@@ -73,6 +73,8 @@ typedef struct {
 	float fade;                      /* 0..1 to black */
 	bool season_dirty;               /* main loop: rebuild the season's colours */
 	int notebook_page, notebook_sel;
+	float ending_t;                  /* MODE_ENDING timer */
+	bool ended;                      /* the credits have rolled once */
 } story_t;
 
 extern story_t S;
@@ -95,6 +97,9 @@ bool game_radio_allowed(void);           /* B may raise the radio now */
 void game_think(const char *text);       /* show one of Theo's thoughts */
 void game_new_day(int day);              /* jump to a morning (sleep, tour) */
 float game_season(void);
+
+/* The ending: seconds into MODE_ENDING when the closing card gives way to the credits. */
+#define ENDING_CREDITS_AT 14.0f
 
 /* Readable texts: notes (0..NOTE_COUNT-1), the logbook and supply box cards. */
 #define TEXT_LOGBOOK 100

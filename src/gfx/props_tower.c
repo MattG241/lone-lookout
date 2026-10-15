@@ -223,8 +223,13 @@ static void base(void)
 			if (z > 0.1f) continue;
 			mesh_prism(a, b, 0.15f, 6, bark, split);
 		}
-	mesh_prism(T(5.4f, -0.3f, -4.6f), T(5.4f, 1.6f, -4.6f), 0.75f, 12, col3(0.46f, 0.47f, 0.46f), col3(0.36f, 0.37f, 0.36f));
-	mesh_beam(T(5.4f, 1.6f, -4.6f), T(2.0f, 3.2f, -2.0f), 0.08f, 0.08f, C_IRON);   /* downpipe from the deck */
+	const float cu = CISTERN_U, cv = CISTERN_V;
+	mesh_prism(T(cu, -0.3f, cv), T(cu, 1.6f, cv), 0.75f, 12, col3(0.46f, 0.47f, 0.46f), col3(0.36f, 0.37f, 0.36f));
+	mesh_beam(T(cu, 1.6f, cv), T(2.0f, 3.2f, -2.0f), 0.08f, 0.08f, C_IRON);   /* downpipe from the deck */
+	/* The drain: a stub of pipe out of the SW side and a red wheel valve. */
+	mesh_beam(T(cu - 0.4f, 0.4f, cv + 0.4f), T(cu - 0.62f, 0.4f, cv + 0.62f), 0.06f, 0.06f, C_IRON);
+	mesh_prism(T(cu - 0.55f, 0.4f, cv + 0.55f), T(cu - 0.59f, 0.4f, cv + 0.59f), 0.11f, 10,
+	           col3(0.62f, 0.18f, 0.14f), col3(0.52f, 0.14f, 0.11f));
 }
 
 static void interior(void)

@@ -55,7 +55,8 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 # so the wildcard below always sees the freshly generated .bin files.
 #---------------------------------------------------------------------------------
 .DEFAULT_GOAL	:=	all
-ASSET_DEPS	:=	$(wildcard tools/assets/*.py tools/font/*.py tools/worldgen/*.py data/palette/*.json)
+ASSET_DEPS	:=	$(wildcard tools/assets/*.py tools/font/*.py tools/worldgen/*.py tools/dialogue/*.py \
+				data/palette/*.json data/dialogue/*.lls)
 
 $(GEN)/assets.mk: $(ASSET_DEPS)
 	@echo assets ...
@@ -92,10 +93,15 @@ HOST_CC		?=	cc
 HOST_TEST_SRC	:=	tests/host/test_world.c tests/host/blobs_host.c src/world/ashen.c src/world/walk.c \
 					src/world/places.c src/core/noise.c src/audio/voice.c
 
+HOST_STORY_SRC	:=	tests/host/test_story.c src/game/dialogue.c src/audio/voice.c src/core/noise.c
+
 test: $(GEN)/assets.mk
 	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
 		-o tests/host/run_tests $(HOST_TEST_SRC) -lm
+	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
+		-o tests/host/run_story $(HOST_STORY_SRC) -lm
 	@./tests/host/run_tests
+	@./tests/host/run_story
 
 all: $(BUILD)
 
@@ -105,7 +111,7 @@ $(BUILD):
 
 clean:
 	@echo clean ...
-	@rm -fr build build_shots build_walktest $(GEN) dist tests/host/run_tests *.elf *.dol *.map
+	@rm -fr build build_shots build_walktest $(GEN) dist tests/host/run_tests tests/host/run_story *.elf *.dol *.map
 
 run: $(BUILD)
 	wiiload $(OUTPUT).dol

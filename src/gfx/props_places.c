@@ -13,6 +13,7 @@
 #include "core/noise.h"
 
 static float s_floor;
+static float s_cairn_top;      /* where Theo's stone goes */
 
 /* Cabin-local to world: u east, v south, y above the cabin floor. */
 static v3 C(float u, float y, float v) { return v3_make(CABIN_X + u, s_floor + y, CABIN_Z + v); }
@@ -188,6 +189,29 @@ static void ridge(void)
 		             i * 0.9f, rgba_u32(rgb_scale(rgb_from(ALB_ROCK), 0.85f + 0.06f * (i % 3)), 1.0f));
 		y += hh * 2.0f - 0.02f;
 	}
+	s_cairn_top = y;
+}
+
+/* Theo's stone, Day 4: small, pale, a little off-centre. */
+static void cairn_stone(void)
+{
+	mesh_box_yaw(v3_make(CAIRN_X + 0.05f, s_cairn_top + 0.06f, CAIRN_Z + 0.02f), v3_make(0.11f, 0.07f, 0.09f), 0.6f,
+	             rgba_u32(rgb_scale(rgb_from(ALB_ROCK), 1.15f), 1.0f));
+}
+
+/* The west window's shutters: folded back against the wall, or closed over it. */
+static void shutters(bool shut)
+{
+	const float x = -CABIN_HALF_X - (shut ? 0.08f : 0.04f);
+	u32 paint = col3(0.42f, 0.50f, 0.46f), hinge = C_IRON;
+	for (int s = -1; s <= 1; s += 2) {
+		float v = shut ? s * 0.28f : s * 0.86f;
+		mesh_box(C(x, 1.25f, v), v3_make(0.03f, 0.38f, 0.27f), paint);
+		mesh_box(C(x - 0.035f, 1.25f, v), v3_make(0.005f, 0.3f, 0.025f), col3(0.36f, 0.43f, 0.40f));  /* batten */
+		mesh_box(C(x - 0.02f, 1.5f, s * 0.56f), v3_make(0.01f, 0.03f, 0.05f), hinge);
+		mesh_box(C(x - 0.02f, 1.0f, s * 0.56f), v3_make(0.01f, 0.03f, 0.05f), hinge);
+	}
+	if (shut) mesh_box(C(x - 0.045f, 1.25f, 0), v3_make(0.02f, 0.03f, 0.34f), C_IRON);   /* the bar */
 }
 
 static void meadow(void)
@@ -220,6 +244,12 @@ static void meadow(void)
 	v3 a = on_ground(LOG_X - rt.x * 1.6f, LOG_Z - rt.z * 1.6f, 0.27f);
 	v3 b = on_ground(LOG_X + rt.x * 1.6f, LOG_Z + rt.z * 1.6f, 0.27f);
 	mesh_prism(a, b, 0.29f, 8, C_BARK, C_CUT);
+	/* Augie's rain gauge: a clear tube in a tin holder, on its own post. */
+	v3 g = on_ground(GAUGE_X, GAUGE_Z, -0.3f);
+	mesh_beam(g, v3_add(g, v3_make(0, 1.3f, 0)), 0.1f, 0.1f, grey);
+	mesh_prism(v3_add(g, v3_make(0.09f, 1.05f, 0)), v3_add(g, v3_make(0.09f, 1.5f, 0)), 0.045f, 8,
+	           col3(0.72f, 0.73f, 0.74f), col3(0.25f, 0.27f, 0.28f));
+	mesh_box(v3_add(g, v3_make(0.065f, 1.1f, 0)), v3_make(0.02f, 0.03f, 0.06f), C_IRON);
 }
 
 static void spring(void)
@@ -334,7 +364,17 @@ void build_place_props(void)
 	ridge();
 	pg_end(PG_RIDGE, on_ground((BENCH_X + CAIRN_X) * 0.5f, (BENCH_Z + CAIRN_Z) * 0.5f, 1.0f), 9.0f);
 
-	pg_begin(PG_MEADOW, 50);
+	pg_begin(PG_CAIRN_STONE, 2);
+	cairn_stone();
+	pg_end(PG_CAIRN_STONE, v3_make(CAIRN_X, s_cairn_top, CAIRN_Z), 1.0f);
+	pg_begin(PG_SHUTTERS_OPEN, 10);
+	shutters(false);
+	pg_end(PG_SHUTTERS_OPEN, C(-CABIN_HALF_X, 1.25f, 0), 1.6f);
+	pg_begin(PG_SHUTTERS_SHUT, 10);
+	shutters(true);
+	pg_end(PG_SHUTTERS_SHUT, C(-CABIN_HALF_X, 1.25f, 0), 1.6f);
+
+	pg_begin(PG_MEADOW, 54);
 	meadow();
 	pg_end(PG_MEADOW, on_ground((FENCE_AX + LOG_X) * 0.5f, (FENCE_AZ + LOG_Z) * 0.5f, 1.0f), 40.0f);
 

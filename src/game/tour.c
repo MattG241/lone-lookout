@@ -12,6 +12,7 @@
 #include "game/game.h"
 #include "game/radio.h"
 #include "game/notebook.h"
+#include "game/story.h"
 #include "world/world.h"
 #include "world/sites.h"
 
@@ -22,7 +23,7 @@
 
 typedef enum {
 	SHOT_PLAIN, SHOT_DAY_CARD, SHOT_CHOICES, SHOT_SEAT, SHOT_LAMP, SHOT_NOTEBOOK, SHOT_BINOCULARS, SHOT_FINDER,
-	SHOT_READ,
+	SHOT_READ, SHOT_ENDING,
 } shot_kind;
 
 typedef struct {
@@ -33,6 +34,9 @@ typedef struct {
 	float lx, ly_up, lz;         /* look at: a point ly_up above the highest ground there */
 	shot_kind kind;
 	int arg;                     /* seat id, note id, notebook page */
+	int call1, lines;            /* a call to show (call id + 1), so many lines in */
+	float bearing, pitch;        /* if bearing != 0: face this way instead of looking at lx, lz */
+	int play1;                   /* a call to play through first (call id + 1): errands, the log */
 } shot_t;
 
 #define TX TOWER_X
@@ -47,16 +51,26 @@ static const shot_t SHOTS[] = {
 	{ "cab_night", 1, 22.9f, TX + 0.3f, TZ + 1.55f, 1.62f, TX - 1.3f, 0.7f, TZ - 0.9f, SHOT_LAMP, 0 },
 	{ "tower_at_night", 1, 23.1f, 263.0f, 296.0f, 1.62f, TX, 10.0f, TZ, SHOT_LAMP, 0 },
 	{ "tarn_dawn", 2, 6.4f, 0, 0, 0, 104.0f, 4.0f, 200.0f, SHOT_SEAT, 3 },
+	{ "fawns_day2", 2, 7.2f, 152.0f, 322.0f, 1.62f, 132.0f, 0.9f, 297.0f, SHOT_PLAIN, 0 },
 	{ "burn_morning", 2, 8.6f, 372.0f, 394.0f, 1.62f, 404.0f, 3.0f, 358.0f, SHOT_PLAIN, 0 },
 	{ "cabin_afternoon", 3, 15.2f, 254.0f, 447.0f, 1.62f, 243.0f, 1.6f, 434.0f, SHOT_PLAIN, 0 },
+	{ "notebook_today", 4, 10.4f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2.0f, SHOT_NOTEBOOK, NB_TODAY,
+	  0, 0, 0, 0, CALL_D4_AM + 1 },
+	{ "notebook_radio", 4, 10.5f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2.0f, SHOT_NOTEBOOK, NB_RADIO,
+	  0, 0, 0, 0, CALL_D4_AM + 1 },
 	{ "notebook_map", 3, 16.0f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2.0f, SHOT_NOTEBOOK, NB_MAP },
 	{ "binoculars", 1, 17.6f, TX + 2.5f, TZ - 2.5f, 1.62f, 398.0f, 2.0f, 112.0f, SHOT_BINOCULARS, 0 },
 	{ "fire_finder", 5, 15.4f, TX + 0.2f, TZ + 0.85f, 1.62f, TX, 1.0f, TZ - 3.0f, SHOT_FINDER, 0 },
 	{ "storm_day5", 5, 15.8f, TX + 2.5f, TZ + 2.5f, 1.62f, 400.0f, 20.0f, 330.0f, SHOT_PLAIN, 0 },
-	{ "haze_day7", 7, 18.9f, 0, 0, 0, TX, 8.0f, TZ, SHOT_SEAT, 4 },
+	{ "smoke_day5", 5, 17.3f, TX + 2.6f, TZ + 0.6f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 101.0f, 3.0f },
+	{ "smoke_finder_day5", 5, 17.4f, TX + 0.2f, TZ + 0.85f, 1.62f, 0, 0, 0, SHOT_FINDER, 0, 0, 0, 104.0f, -8.0f },
+	{ "bench_call_day7", 7, 19.05f, 0, 0, 0, TX, 8.0f, TZ, SHOT_SEAT, 4, CALL_D7_SEVEN + 1, 3 },
 	{ "rain_day11", 11, 14.0f, 0, 0, 0, 250.0f, 1.5f, 470.0f, SHOT_SEAT, 6 },
-	{ "radio_choices", 1, 17.05f, TX - 0.2f, TZ + 1.2f, 1.62f, TX - 1.8f, 1.2f, TZ - 1.8f, SHOT_CHOICES, 0 },
+	{ "rain_deck_day11", 11, 15.0f, TX - 2.5f, TZ + 2.4f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 215.0f, -4.0f },
+	{ "radio_choices", 1, 17.05f, TX - 0.2f, TZ + 1.2f, 1.62f, TX - 1.8f, 1.2f, TZ - 1.8f, SHOT_CHOICES, 0,
+	  CALL_D1_ARRIVE + 1, 1 },
 	{ "note_bench", 7, 18.7f, 0, 0, 0, TX, 8.0f, TZ, SHOT_READ, NOTE_BENCH },
+	{ "ending_card", 11, 21.0f, GATE_X, GATE_Z - 3.0f, 1.62f, GATE_X, 1.0f, GATE_Z + 20.0f, SHOT_ENDING, 0 },
 };
 #define NUM_SHOTS ((int)(sizeof(SHOTS) / sizeof(SHOTS[0])))
 
@@ -64,6 +78,19 @@ static int s_shot = -1;
 static int s_frame;
 
 static float top_ground(float x, float z) { return world_ground(x, z, 1e9f, NULL); }
+
+/* Play a call straight through, taking the first card at every choice. */
+static void play_through(int call)
+{
+	dlg_force_call(call);
+	for (int guard = 0; guard < 400 && dlg_get_state() != DS_IDLE; guard++) {
+		switch (dlg_get_state()) {
+		case DS_LINE: dlg_next(); break;
+		case DS_CHOICE: dlg_choose(0); break;
+		default: dlg_close(); break;
+		}
+	}
+}
 
 static void look_at(v3 eye, float lx, float ly, float lz)
 {
@@ -101,6 +128,11 @@ static void begin_shot(const shot_t *s)
 	DAY.hour = s->hour;
 	weather_update(S.day, DAY.hour, 100.0f);         /* settle the weather at once */
 	radio_init();
+	dlg_init();
+	story_init();
+	story_new_day(S.day);
+	if (s->play1) play_through(s->play1 - 1);
+	if (s->kind == SHOT_NOTEBOOK) S.obs_am = true;
 
 	int n;
 	const interactable_t *ia = world_interactables(&n);
@@ -111,6 +143,7 @@ static void begin_shot(const shot_t *s)
 		P.sit_blend = 1.0f;
 		P.pos = v3_make(ia[seat].sit_eye.x, top_ground(ia[seat].sit_eye.x, ia[seat].sit_eye.z), ia[seat].sit_eye.z);
 		look_at(ia[seat].sit_eye, s->lx, top_ground(s->lx, s->lz) + s->ly_up, s->lz);
+		if (s->call1) radio_debug_call(s->call1 - 1, s->lines);
 		if (s->kind == SHOT_READ) {
 			P.mode = MODE_READ;
 			P.reading = s->arg;
@@ -119,11 +152,21 @@ static void begin_shot(const shot_t *s)
 		return;
 	}
 	P.pos = v3_make(s->x, top_ground(s->x, s->z) + s->eye_up - 1.62f, s->z);
-	look_at(v3_add(P.pos, v3_make(0, 1.62f, 0)), s->lx, top_ground(s->lx, s->lz) + s->ly_up, s->lz);
+	if (s->bearing != 0.0f) {
+		P.yaw = BEARING(s->bearing);
+		P.pitch = DEG2RAD(s->pitch);
+	} else {
+		look_at(v3_add(P.pos, v3_make(0, 1.62f, 0)), s->lx, top_ground(s->lx, s->lz) + s->ly_up, s->lz);
+	}
+	if (s->call1) radio_debug_call(s->call1 - 1, s->lines);
 
 	switch (s->kind) {
-	case SHOT_CHOICES:
-		radio_debug_choices(CALL_D1_RADIO_CHECK, 0, 0);
+	case SHOT_ENDING:
+		P.mode = MODE_ENDING;
+		S.ending_t = 8.5f;
+		S.fade = 1.0f;
+		dlg_set_flag(FLAG_STAIR_IS_EFLAT, true);
+		dlg_set_flag(FLAG_PS_TOLD, true);
 		break;
 	case SHOT_NOTEBOOK:
 		S.found[NOTE_MAP] = true;

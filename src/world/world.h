@@ -34,6 +34,9 @@
 #define STAIR_STEPS 12           /* treads per flight */
 #define STAIR_TOP_V 2.0f         /* flight D ends at v = 2; the top landing runs on to v = 4 */
 
+#define CISTERN_U 5.4f           /* the rain cistern by the tower legs (tower-local) */
+#define CISTERN_V (-4.6f)
+
 #define CABIN_HALF_X 2.5f        /* Pell's Cabin: 5 x 4 m, door and porch on the south */
 #define CABIN_HALF_Z 2.0f
 #define CABIN_FLOOR_LIFT 0.35f
@@ -101,6 +104,10 @@ typedef enum {
 	IA_CHIMES,        /* spoon chimes on the cabin porch */
 	IA_GATE,          /* the road gate (the way out, at the end) */
 	IA_WEATHER,       /* the instrument shelter on the catwalk */
+	IA_GAUGE,         /* Augie's rain gauge in the meadow */
+	IA_CAIRN,         /* the cairn on Cinder Ridge: add a stone */
+	IA_SHUTTERS,      /* Pell's Cabin window shutters (closing day) */
+	IA_CISTERN,       /* the tower cistern's drain valve (closing day) */
 } ia_kind;
 
 typedef struct {

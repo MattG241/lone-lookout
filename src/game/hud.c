@@ -13,6 +13,7 @@
 #include "game/game.h"
 #include "game/radio.h"
 #include "game/notebook.h"
+#include "game/story.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/text.h"
@@ -347,6 +348,41 @@ static void draw_fade(void)
 		ui_rect(0, 0, G.ui_w, G.ui_h, (GXColor){ 0, 0, 0, (u8)(255 * saturatef(S.fade)) });
 }
 
+/* Through the gate: the closing card, then the credits. */
+static void draw_ending(void)
+{
+	if (P.mode != MODE_ENDING) return;
+	float t = S.ending_t;
+	GXColor paper = gx_col(rgb_from(UI_SUBTITLE), 1.0f);
+	const char *card[6];
+	int n = 0;
+	card[n++] = "Kestrel Lookout closed for the season on 15 September.";
+	card[n++] = "The logbook was left on the table for whoever's next.";
+	if (story_flag(FLAG_STAIR_IS_EFLAT)) card[n++] = "The third stair from the top still sings. E-flat.";
+	if (story_flag(FLAG_PS_TOLD)) card[n++] = "In October, Dot took a week off and went to see her sister.";
+	if (story_flag(FLAG_OFFERED_TUNING)) card[n++] = "Ruth's piano was tuned the following spring.";
+	text_begin();
+	if (t < ENDING_CREDITS_AT) {
+		for (int i = 0; i < n; i++) {
+			float a = saturatef((t - 3.0f - i * 1.6f) / 1.2f) * (1.0f - saturatef((t - ENDING_CREDITS_AT + 1.5f) / 1.2f));
+			if (a > 0.01f) centred(FONT_S, 170.0f + i * 34.0f, card[i], gx_col(rgb_from(UI_SUBTITLE), 0.9f * a), a);
+		}
+		return;
+	}
+	static const char *CREDITS[] = {
+		"Lone Lookout", "", "A small game about listening.", "", "Dot, Theo, Augie, and the Harrow crew",
+		"were played by a synthesiser that only knows how to murmur.", "", "Thank you for keeping watch.",
+	};
+	float c = t - ENDING_CREDITS_AT;
+	for (int i = 0; i < (int)(sizeof(CREDITS) / sizeof(CREDITS[0])); i++) {
+		float a = saturatef((c - i * 0.5f) / 1.5f);
+		if (a > 0.01f && CREDITS[i][0])
+			centred(i ? FONT_S : FONT_L, 150.0f + i * 30.0f, CREDITS[i], gx_col(rgb_from(UI_SUBTITLE), 0.92f * a), a);
+	}
+	float pa = saturatef((c - 4.0f) / 1.0f) * (0.6f + 0.25f * sinf(t * 2.0f));
+	if (pa > 0.01f) centred(FONT_S, 430.0f, "A: one more look", paper, pa);
+}
+
 static void draw_dev_overlay(void)
 {
 #if defined(LL_SHOT_TOUR)
@@ -383,6 +419,7 @@ void hud_draw(void)
 	notebook_draw();
 	draw_text_card();
 	draw_fade();
+	draw_ending();
 	draw_dev_overlay();
 	gfx_blend_none();
 }

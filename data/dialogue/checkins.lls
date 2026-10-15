@@ -1,0 +1,127 @@
+# Check-ins: what you get when you key the radio with nothing ringing. The runtime picks
+# one that fits the day and hasn't been used today; the last one is the fallback.
+
+call CI_QUIET
+  day 1-3
+  kind checkin
+THEO Basin, Kestrel. Is it always this quiet?
+DOT  Quieter, usually. You're new. The mountain's still deciding about you.
+
+call CI_DOING
+  day 1-11
+  time 09:00-18:00
+  kind checkin
+THEO Basin, Kestrel. What are you doing right now?
+DOT  Crossword. Seven letters, "patient listener." Don't you dare say it.
+
+call CI_KETTLE
+  day 2-11
+  time 05:00-11:00
+  kind checkin
+THEO Basin, Kestrel. The kettle's stuck again.
+DOT  Left side, Kestrel. Hit it on the left. Firmly. Like you mean it.
+
+call CI_SLEEP
+  day 1-11
+  time 22:00-29:00
+  kind checkin
+THEO Basin, Kestrel. Can't sleep.
+DOT  Count the stairs. Forty-eight. Nobody's ever made it to the top.
+
+call CI_RIDGE
+  day 1-11
+  where area:ridge
+  kind checkin
+THEO Basin, Kestrel. Calling from the ridge.
+DOT  Show-off. Is it as good as he said?
+THEO Better.
+DOT  Don't tell me. I'll be jealous for a week.
+
+call CI_TARN
+  day 1-11
+  where area:tarn
+  kind checkin
+THEO Basin, Kestrel. I'm at the tarn. It's very still.
+DOT  Don't fall in. I'm not driving up there to fish you out.
+
+call CI_BURN
+  day 1-11
+  where area:burn
+  kind checkin
+THEO Basin, Kestrel. I'm in the burn.
+DOT  Ninety-eight. I was on this desk. I heard Augie call that one in. His voice did a thing I'd never heard before or since.
+
+call CI_TWINS
+  day 3-11
+  time 05:00-12:00
+  needs fawn_names
+  kind checkin
+THEO Basin, Kestrel. Sharp and Flat say good morning.
+DOT  Tell them Basin says good morning back. Tell them to stay off the road.
+
+call CI_PEACH
+  day 3-6
+  needs supply_today
+  kind checkin
+THEO Basin, Kestrel. I ate a peach. Cold. You were right.
+DOT  I'm always right. It's a curse.
+
+call CI_SOUND
+  day 4-11
+  needs sound_logged
+  kind checkin
+THEO Basin, Kestrel. I've got a sound for you.
+DOT  Go on, then.
+THEO The wind in the snags. Like a bow on a cello string nobody's holding.
+DOT  ...That's a good one. Write it down.
+
+call CI_FIRE
+  day 5-6
+  kind checkin
+THEO Basin, Kestrel. How's Harrow?
+DOT  Hungry. It'll keep. The crew's good. Go and look at something that isn't burning.
+
+call CI_TIRED
+  day 6-7
+  kind checkin
+THEO Basin, Kestrel. Get some sleep.
+DOT  Says the man calling me to tell me. ...Copy. Soon.
+
+call CI_HAZE
+  day 7
+  kind checkin
+THEO Basin, Kestrel. The haze is getting in my eyes.
+DOT  Shut the windows. Sit. You're good at that now.
+
+call CI_ELK
+  day 8-11
+  needs elk_done
+  kind checkin
+THEO Basin, Kestrel. The big one's bugling again. Down by the creek.
+DOT  He's showing off for you. Don't encourage him.
+
+call CI_AFTER
+  day 9-11
+  kind checkin
+THEO Basin, Kestrel. What will you do? After?
+DOT  Same as everybody. Find out. Ask me in October.
+
+call CI_COLD
+  day 9-11
+  time 05:00-10:00
+  kind checkin
+THEO Basin, Kestrel. My breath's showing in the cab.
+DOT  Light the stove. Augie used to read me the thermometer every hour like it was a ball game.
+
+call CI_RAIN
+  day 11
+  needs rain_on
+  kind checkin
+THEO Basin, Kestrel. It's raining.
+DOT  I know, Kestrel. I can hear it on your roof. Stay in it as long as you like.
+
+call CI_GENERIC
+  day 1-11
+  kind checkin
+THEO Basin, Kestrel. Just checking in.
+DOT  Copy, Kestrel. All quiet down here. Go and look at something pretty.
