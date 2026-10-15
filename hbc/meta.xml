@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<app version="1">
+  <name>Lone Lookout</name>
+  <coder>Lone Lookout contributors</coder>
+  <version>0.2-prototype</version>
+  <release_date>20261015</release_date>
+  <short_description>A quiet season in a fire lookout</short_description>
+  <long_description>A quiet first-person exploration game. Spend the end of a fire season as the lookout on Kestrel Knob in the Ashen Peaks: walk, look, listen, sit, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states.
+
+Phase 2 prototype: a small test area around the tower, pointer look, Nunchuk walking, the Day 1 radio check, a note to read and a log to sit on.
+
+Controls: Nunchuk stick to walk (Z to stride), point to look, A to interact, B for the radio, HOME to exit.</long_description>
+  <ahb_access/>
+</app>

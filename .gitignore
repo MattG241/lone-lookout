@@ -1,9 +1,13 @@
-# Build outputs (Phase 2+)
+# Build outputs
 build/
+build_shots/
+build_walktest/
+gen/
 dist/
 *.dol
 *.elf
 *.map
+tests/host/run_tests
 
 # Python
 __pycache__/

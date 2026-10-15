@@ -239,8 +239,8 @@ the radio (**B**) to answer, whenever you like.
 
 When no Nunchuk is detected, a small card says "*Connect a Nunchuk for the best experience,
 or press A to continue*." The fallback scheme is: **D-pad ↑/↓** walk, **D-pad ←/→** turn (smooth),
-**pointer** looks, **A** interact, **B** radio, **1** binoculars, **2** notebook, **hold −** listen,
-**hold B + ↑** stride.
+**pointer** looks, **A** interact, **B** radio, **1** binoculars, **2** notebook, **hold −** listen.
+There is no stride without the Nunchuk, because B stays reserved for the radio.
 
 ### Suggested Dolphin mapping (emulated Wii Remote + Nunchuk)
 
@@ -846,7 +846,8 @@ the notebook's radio log.
 
 - **Setup:** current stable Dolphin, Wii mode, emulated Wii Remote with Nunchuk (mapping in §5),
   virtual SD card on. Graphics at native 1× internal resolution, so grain and copy-filter softness
-  look as on hardware, with **"Disable Copy Filter" left off**.
+  look as on hardware. Dolphin turns **"Disable Copy Filter" on by default**
+  (Graphics → Enhancements); untick it to see the intended softness.
 - **Test matrix:**
   - NTSC 480i/480p, PAL50 · 4:3 and 16:9
   - with and without Nunchuk · with and without SD
@@ -858,18 +859,21 @@ the notebook's radio log.
 - **Real hardware:** the final check runs on a real Wii through the Homebrew Channel. That needs
   someone with a Wii; it can't be automated here.
 
-### Build & run (preview — finalised in Phase 5)
+### Build & run
 
 ```sh
 # 1. devkitPro: https://devkitpro.org/wiki/Getting_Started
 dkp-pacman -S wii-dev                 # devkitPPC, libogc, libfat, wii_rules
 pip install numpy pillow              # asset generators
 # 2. Build
-make                                  # runs tools → build/gen/, compiles, links lonelookout.dol
+make                                  # runs the generators into gen/, compiles, links lonelookout.dol
+make test                             # host-side logic tests (system C compiler)
 # 3. Run
 dolphin-emu -e lonelookout.dol        # emulator
 make package                          # dist/apps/lonelookout/{boot.dol, meta.xml, icon.png} → copy to SD
 ```
+
+The README has the up-to-date details, including the Dolphin settings and the screenshot tour.
 
 ---
 
@@ -916,7 +920,7 @@ tree LOD → Listen labels (keep the logging) → piece count (6 → 4) → Day 
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| **Toolchain access from the cloud dev environment.** Its network policy currently blocks `devkitpro.org` / `pkg.devkitpro.org` / GitHub release downloads. | Can't build or capture Dolphin screenshots here | Allow those hosts in the environment settings, or build locally with devkitPro. Until then, screenshots are clearly labelled mock-ups. |
+| Toolchain access from the cloud dev environment (devkitPro hosts were blocked) | Couldn't build or capture here | **Resolved in Phase 2:** the official `devkitpro/devkitppc` image is pulled from a registry mirror and checked against its digest, and Dolphin is built from source for headless captures |
 | Alpha-tested foliage overdraw on hardware | Missed 30 fps in forests | Density and LOD knobs, trees faded into the terrain wash at range, worst-case test views, the 30 fps lock |
 | Pointer look discomfort (mouse in Dolphin, IR on hardware) | Players bounce off | Comfort box, IR-loss easing, snap turn, sensitivity options, early tuning in Phase 2 |
 | Murmur voices feeling cheap | Weakens the emotional core | Tune for "tired human," not "cute"; subtitles carry the writing; VO loader for real actors |
