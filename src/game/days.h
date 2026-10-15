@@ -1,7 +1,7 @@
 /*
- * days.h -- the seven days, their weather, and the season.
+ * days.h -- the eleven days, their weather, and the season.
  *
- * DESIGN.md section 3: seven days across the last four weeks of the
+ * DESIGN.md section 3: eleven days across the last four weeks of the
  * season. Each has a date, a weather pattern and a "season" value (0 late
  * summer .. 1 early autumn) that recolours grass and aspens. The weather is
  * evaluated from the day and the hour, and folded into the colour script's
@@ -13,9 +13,11 @@
 #include <stdbool.h>
 #include "game/daycycle.h"
 
-#define NUM_DAYS 7
+#define NUM_DAYS 11
 
-typedef enum { WX_CLEAR, WX_WARM, WX_HIGH_CLOUD, WX_STORM, WX_HAZE, WX_COLD, WX_RAIN } weather_kind;
+typedef enum {
+	WX_CLEAR, WX_WARM, WX_HIGH_CLOUD, WX_BREEZY, WX_STORM, WX_SMOKE, WX_HAZE, WX_COLD, WX_FROST, WX_RAIN
+} weather_kind;
 
 typedef struct {
 	const char *title;           /* "Channel Four" */
@@ -37,6 +39,9 @@ typedef struct {
 extern weather_t WX;
 
 const day_def *day_info(int day);            /* 1-based */
+bool day_is_supply(int day);                 /* the truck leaves a box at the gate */
+/* Today's instrument readings at the weather station, as a short card. */
+const char *weather_readings(int day, float hour);
 void weather_update(int day, float hour, float dt);
 void weather_apply(daylight *d);             /* fold the weather into the lighting */
 

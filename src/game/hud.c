@@ -139,7 +139,9 @@ static void draw_text_card(void)
 	static char lines[14][160];
 	float w = 490.0f;
 	int n = layout(game_text(P.reading), w - 56.0f, lines, 14);
-	const char *title = P.reading < NOTE_COUNT ? note_title(P.reading) : (P.reading > TEXT_SUPPLY ? "Supply box" : "Logbook");
+	const char *title = P.reading < NOTE_COUNT ? note_title(P.reading)
+	                    : P.reading == TEXT_WEATHER ? "Weather station"
+	                    : (P.reading > TEXT_SUPPLY ? "Supply box" : "Logbook");
 	float lh = text_line_height(FONT_L) * 0.84f;
 	float h = n * lh + 92.0f;
 	float x = (G.ui_w - w) * 0.5f, y = (G.ui_h - h) * 0.5f + (1.0f - a) * 12.0f;

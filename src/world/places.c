@@ -60,6 +60,7 @@ void places_init(void)
 	add(IA_LAMP, 0, X + 1.7f, D + 1.12f, Z + 0.82f, 0.18f, "Lamp");
 	add(IA_FINDER, 0, X, D + 1.18f, Z, 0.4f, "Sight");
 	add(IA_BINOCULARS, 0, X + 0.95f, D + 1.55f, Z + c - 0.08f, 0.16f, "Take");
+	add(IA_WEATHER, 0, X + TOWER_DECK_HALF + 0.3f, D + 1.25f, Z - 1.6f, 0.35f, "Read");      /* instrument shelter */
 	add_seat(0, X - 0.75f, D + 0.5f, Z - 1.15f, BEARING(292.0f), 0.3f);      /* the lightning stool */
 	add_seat(1, X - 2.55f, D + 0.05f, Z - 1.4f, BEARING(262.0f), 0.4f);      /* the catwalk, facing west */
 

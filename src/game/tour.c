@@ -51,12 +51,12 @@ static const shot_t SHOTS[] = {
 	{ "cabin_afternoon", 3, 15.2f, 254.0f, 447.0f, 1.62f, 243.0f, 1.6f, 434.0f, SHOT_PLAIN, 0 },
 	{ "notebook_map", 3, 16.0f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2.0f, SHOT_NOTEBOOK, NB_MAP },
 	{ "binoculars", 1, 17.6f, TX + 2.5f, TZ - 2.5f, 1.62f, 398.0f, 2.0f, 112.0f, SHOT_BINOCULARS, 0 },
-	{ "fire_finder", 4, 15.4f, TX + 0.2f, TZ + 0.85f, 1.62f, TX, 1.0f, TZ - 3.0f, SHOT_FINDER, 0 },
-	{ "storm_day4", 4, 15.8f, TX + 2.5f, TZ + 2.5f, 1.62f, 400.0f, 20.0f, 330.0f, SHOT_PLAIN, 0 },
-	{ "haze_day5", 5, 18.9f, 0, 0, 0, TX, 8.0f, TZ, SHOT_SEAT, 4 },
-	{ "rain_day7", 7, 14.0f, 0, 0, 0, 250.0f, 1.5f, 470.0f, SHOT_SEAT, 6 },
+	{ "fire_finder", 5, 15.4f, TX + 0.2f, TZ + 0.85f, 1.62f, TX, 1.0f, TZ - 3.0f, SHOT_FINDER, 0 },
+	{ "storm_day5", 5, 15.8f, TX + 2.5f, TZ + 2.5f, 1.62f, 400.0f, 20.0f, 330.0f, SHOT_PLAIN, 0 },
+	{ "haze_day7", 7, 18.9f, 0, 0, 0, TX, 8.0f, TZ, SHOT_SEAT, 4 },
+	{ "rain_day11", 11, 14.0f, 0, 0, 0, 250.0f, 1.5f, 470.0f, SHOT_SEAT, 6 },
 	{ "radio_choices", 1, 17.05f, TX - 0.2f, TZ + 1.2f, 1.62f, TX - 1.8f, 1.2f, TZ - 1.8f, SHOT_CHOICES, 0 },
-	{ "note_bench", 5, 18.7f, 0, 0, 0, TX, 8.0f, TZ, SHOT_READ, NOTE_BENCH },
+	{ "note_bench", 7, 18.7f, 0, 0, 0, TX, 8.0f, TZ, SHOT_READ, NOTE_BENCH },
 };
 #define NUM_SHOTS ((int)(sizeof(SHOTS) / sizeof(SHOTS[0])))
 

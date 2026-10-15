@@ -10,8 +10,8 @@
 
 #include "core/mathx.h"
 
-#define DAY_SECONDS_PER_HOUR 90.0f   /* 1 in-game hour = 90 real seconds */
-#define DAY_TIMELAPSE_RATE   30.0f   /* while seated and holding Z */
+#define DAY_SECONDS_PER_HOUR 120.0f  /* 1 in-game hour = 2 real minutes (DESIGN.md section 3) */
+#define DAY_TIMELAPSE_RATE   40.0f   /* while seated and holding Z: an hour in 3 s */
 
 typedef struct {
 	float hour;                      /* 0..24 */

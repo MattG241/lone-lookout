@@ -123,6 +123,24 @@ static void cab(void)
 	/* Lightning rod and the radio aerial. */
 	mesh_beam(apex, v3_add(apex, v3_make(0, 1.0f, 0)), 0.03f, 0.03f, C_IRON);
 	mesh_beam(T(c - 0.2f, rh + 0.3f, -c + 0.2f), T(c - 0.2f, rh + 2.6f, -c + 0.2f), 0.025f, 0.025f, C_IRON);
+	/* The instrument shelter on a bracket off the east railing (morning and
+	 * evening readings), and the anemometer cups up on the roof. */
+	u32 white = col3(0.90f, 0.89f, 0.85f), slat = col3(0.72f, 0.72f, 0.70f);
+	float sx = TOWER_DECK_HALF + 0.3f, sz = -1.6f;
+	mesh_box(T(sx, D + 1.25f, sz), v3_make(0.22f, 0.22f, 0.26f), white);
+	for (int k = 0; k < 4; k++)
+		mesh_box(T(sx + 0.225f, D + 1.1f + k * 0.08f, sz), v3_make(0.006f, 0.012f, 0.24f), slat);
+	mesh_box(T(sx, D + 1.5f, sz), v3_make(0.26f, 0.03f, 0.3f), white);
+	mesh_beam(T(TOWER_DECK_HALF - 0.05f, D + 1.0f, sz), T(sx, D + 1.02f, sz), 0.05f, 0.05f, C_IRON);
+	mesh_beam(T(sx, D + 0.6f, sz), T(sx, D + 1.03f, sz), 0.05f, 0.05f, C_IRON);
+	v3 mast = T(c - 0.4f, D + 2.5f, -c + 0.4f);
+	mesh_beam(mast, v3_add(mast, v3_make(0, 1.4f, 0)), 0.03f, 0.03f, C_IRON);
+	for (int k = 0; k < 3; k++) {
+		float a = k * LL_TAU / 3.0f;
+		v3 hub = v3_add(mast, v3_make(0, 1.4f, 0)), tip = v3_add(hub, v3_make(cosf(a) * 0.2f, 0, sinf(a) * 0.2f));
+		mesh_beam(hub, tip, 0.015f, 0.015f, C_IRON);
+		mesh_prism(tip, v3_add(tip, v3_make(0, 0.06f, 0)), 0.04f, 6, C_IRON, C_IRON);
+	}
 	/* Augie's welcome note beside the door. */
 	mesh_box(T(-1.0f, D + 0.72f, c + 0.04f), v3_make(0.11f, 0.14f, 0.006f), C_PAPER);
 }

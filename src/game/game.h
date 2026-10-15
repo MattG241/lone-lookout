@@ -58,6 +58,7 @@ typedef struct {
 	float kettle_t;                  /* < 0 idle, else seconds since it went on */
 	bool kettle_today;
 	bool supply_opened[NUM_DAYS + 1];
+	bool obs_am, obs_pm;             /* today's weather readings taken (morning, evening) */
 	u32 areas_today;                 /* area name cards shown today */
 	int area;                        /* area the player is in, or -1 */
 	float area_card_t;
@@ -98,6 +99,7 @@ float game_season(void);
 /* Readable texts: notes (0..NOTE_COUNT-1), the logbook and supply box cards. */
 #define TEXT_LOGBOOK 100
 #define TEXT_SUPPLY 200
+#define TEXT_WEATHER 300
 const char *game_text(int id);
 const char *note_title(int id);
 

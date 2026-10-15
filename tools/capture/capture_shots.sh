@@ -32,4 +32,4 @@ timeout "$RUN_SECONDS" "$DOLPHIN" -u "$USERDIR" -p headless -v Vulkan \
 python3 tools/capture/split_shots.py "$USERDIR/Dump/Frames" "$OUT" \
 	trailhead_day1 tower_from_trail meadow_afternoon ridge_vista from_the_deck cab_night \
 	tower_at_night tarn_dawn burn_morning cabin_afternoon notebook_map binoculars fire_finder \
-	storm_day4 haze_day5 rain_day7 radio_choices note_bench
+	storm_day5 haze_day7 rain_day11 radio_choices note_bench

@@ -100,6 +100,7 @@ typedef enum {
 	IA_SUPPLY,        /* the bear-proof box at the trailhead */
 	IA_CHIMES,        /* spoon chimes on the cabin porch */
 	IA_GATE,          /* the road gate (the way out, at the end) */
+	IA_WEATHER,       /* the instrument shelter on the catwalk */
 } ia_kind;
 
 typedef struct {

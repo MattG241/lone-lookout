@@ -34,6 +34,7 @@
 #define FOV_BINOCULARS 16.0f
 #define SLEEP_FROM 19.0f
 #define SINGING_TREAD (3 * STAIR_STEPS + STAIR_STEPS - 3)   /* third from the top */
+#define DAY_POSTCARD 9                                      /* Last Season */
 
 player_t P;
 story_t S;
@@ -76,15 +77,21 @@ static const char *LOGBOOK[NUM_DAYS] = {
 	"Nothing to report.\n" EM " T. Marsh",
 	"22 Aug. Clear and warm. Walked the north loop. Doe and two fawns below the fence. Nothing to report.",
 	"23 Aug. High cloud, breezy. Supply drop at the gate. Radio poor near the tarn. Nothing to report.",
+	"25 Aug. Breezy. Walked Augie's round: rain gauge, spring, the cairn. Told Basin what the wind sounds like.",
 	"28 Aug. Dry storm from 14:00. Lightning on Harrow Ridge. Smoke reported to Basin.",
+	"30 Aug. Smoke from Harrow all day. Relayed for the crew from the ridge. Dot on her third night shift.",
 	"3 Sep. Haze from fires to the south all day. Sun red at 19:00. Sat at the bench, as instructed.",
+	"6 Sep. Cool, breezy. Elk in the meadow at dusk " EM " counted four bulls by ear. Nothing to report.",
 	"10 Sep. Clear, cold. First aspens turning by the meadow. Basin is closing. Nothing to report.",
+	"13 Sep. Frost on the meadow at 06:00. Closing list came up on the truck. Shutters by the 15th.",
 	"15 Sep. Clouding over. Rain by noon " EM " the first in seven weeks. Last page.",
 };
 
 static const char *SUPPLY[NUM_DAYS + 1] = {
 	[3] = "In the box: tinned peaches, batteries, and a paperback with the cover torn off.",
-	[6] = "In the box: batteries, coffee, and a postcard with a lighthouse on it.",
+	[9] = "In the box: batteries, coffee, and a postcard with a lighthouse on it.",
+	[10] = "In the box: a closing checklist in Dot's capitals. Shutters. Drain the cistern. "
+	       "Leave the logbook for whoever's next.",
 };
 
 const char *game_text(int id)
@@ -92,6 +99,7 @@ const char *game_text(int id)
 	if (id >= 0 && id < NOTE_COUNT) return NOTES[id];
 	if (id > TEXT_LOGBOOK && id <= TEXT_LOGBOOK + NUM_DAYS) return LOGBOOK[id - TEXT_LOGBOOK - 1];
 	if (id > TEXT_SUPPLY && id <= TEXT_SUPPLY + NUM_DAYS && SUPPLY[id - TEXT_SUPPLY]) return SUPPLY[id - TEXT_SUPPLY];
+	if (id == TEXT_WEATHER) return weather_readings(S.day, DAY.hour);
 	return "";
 }
 
@@ -136,6 +144,7 @@ void game_new_day(int day)
 	S.lamp_on = false;
 	S.kettle_t = -1.0f;
 	S.kettle_today = false;
+	S.obs_am = S.obs_pm = false;
 	S.areas_today = 0;
 	S.season_dirty = true;
 	DAY.hour = 6.0f;
@@ -416,13 +425,18 @@ static void use(int index)
 		hint(IN.nunchuk ? "D-pad up: binoculars" : "1: binoculars");
 		break;
 	case IA_SUPPLY:
-		if (S.day == 3 || S.day == 6) {
+		if (day_is_supply(S.day)) {
 			S.supply_opened[S.day] = true;
-			if (S.day == 6) S.found[NOTE_POSTCARD] = true;
-			open_text(TEXT_SUPPLY + S.day);     /* on Day 6, A turns over to the postcard */
+			if (S.day == DAY_POSTCARD) S.found[NOTE_POSTCARD] = true;
+			open_text(TEXT_SUPPLY + S.day);     /* on the postcard day, A turns over to it */
 		} else {
-			game_think("Empty. The drops come on Thursdays.");
+			game_think("Empty. The truck only comes when Dot says so.");
 		}
+		break;
+	case IA_WEATHER:
+		if (DAY.hour < 12.0f) S.obs_am = true;
+		else S.obs_pm = true;
+		open_text(TEXT_WEATHER);
 		break;
 	case IA_CHIMES:
 		audio_ui(UI_CHIMES);
@@ -440,8 +454,8 @@ static void update_interact(float dt)
 		P.read_fade = approachf(P.read_fade, 1.0f, 10.0f, dt);
 		bool a = !P.input_locked && in_take(WPAD_BUTTON_A), b = !P.input_locked && in_take(WPAD_BUTTON_B);
 		if (a || b) {
-			/* The supply box on Day 6: the postcard comes after the contents. */
-			if (P.reading == TEXT_SUPPLY + 6 && a) {
+			/* The postcard day's supply box: the postcard comes after the contents. */
+			if (P.reading == TEXT_SUPPLY + DAY_POSTCARD && a) {
 				P.reading = NOTE_POSTCARD;
 				audio_ui(UI_PAGE);
 				return;

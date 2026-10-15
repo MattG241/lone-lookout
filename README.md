@@ -3,6 +3,7 @@
 A quiet first-person exploration game for the **Nintendo Wii** (Homebrew Channel). You spend the
 end of a fire season as the lookout on Kestrel Knob in the fictional **Ashen Peaks**: walk, look,
 listen, sit, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states.
+Eleven in-game days, with a story path of about 4–6 hours.
 
 ![Cinder Ridge at golden hour (Dolphin capture)](docs/screenshots/phase3/ridge_vista.png)
 

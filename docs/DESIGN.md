@@ -39,8 +39,8 @@ tools**, not in-engine or Dolphin screenshots. Real Dolphin captures start in Ph
 | **Player** | Theo Marsh, new fire lookout at Kestrel Lookout (radio call sign *Kestrel*) |
 | **Voice on the radio** | Dot Amsel, district dispatcher at Basin Station (*Basin*) |
 | **Setting** | The Ashen Peaks, a fictional mountain range; last month of fire season |
-| **Length** | Story path 60–90 min · wanderer 2–3 h · no time limit, no fail states |
-| **Scope** | 1 map (512 × 512 m) · 6 areas · 7 days · ~28 radio calls · 12 notes · 12 sounds · 1 tower interior |
+| **Length** | Story path **4–6 h** over 11 days (~30 min a day) · wanderers longer · no time limit, no fail states |
+| **Scope** | 1 map (512 × 512 m) · 6 areas · 11 days · ~45 radio calls · a daily duty loop · 12 notes · 12 sounds · 2 interiors |
 | **Platform** | Original Wii, `.dol` from the Homebrew Channel; tested in Dolphin first |
 | **Tech** | C99, devkitPPC + libogc (GX, WPAD, ASND, LWP) + libfat; Python 3 asset tools |
 | **Frame rate** | 60 fps in Dolphin; adaptive lock to a steady 30 fps on hardware |
@@ -79,7 +79,7 @@ spent twenty-two seasons as the lookout on Kestrel Knob and has just retired. Th
 him for the last few weeks of the fire season. His only regular contact is Dot Amsel, who has run
 radio dispatch at Basin Station, 40 km down the valley, for nineteen summers, on Channel 4.
 
-Nothing goes wrong. Over seven days Theo and Dot work out why each of them chose to be this alone,
+Nothing goes wrong. Over eleven days Theo and Dot work out why each of them chose to be this alone,
 and both quietly decide to be a little less alone afterwards.
 
 ### Characters
@@ -106,7 +106,7 @@ precise and loosens over the season.
 He's never heard on the radio. He appears only through notes, carvings and one postcard: kind,
 wry, sentimental, and a terrible speller of bird names. He's alive and well. There is no twist.
 
-### Why they chose isolation (revealed gently, Days 3–6)
+### Why they chose isolation (revealed gently, Days 3–10)
 
 | | On the surface | Underneath | Where they land (the hope) |
 |---|---|---|---|
@@ -117,11 +117,11 @@ wry, sentimental, and a terrible speller of bird names. He's alive and well. The
 
 There's no conspiracy, no missing person, no disaster and no twist. There's no romance arc either:
 it's warmth and friendship, and players can read it how they like. The biggest "event" is a small
-lightning smoke on Day 4. A ground crew handles it off-screen, and Dot says "nice catch."
+lightning smoke on Day 5. A ground crew handles it off-screen, and Dot says "nice catch."
 
 ### Ending
 
-On Day 7 the first autumn rain ends the season. Theo can write on the last page of Augie's
+On Day 11 the first autumn rain ends the season. Theo can write on the last page of Augie's
 logbook. Dot makes her last call from Basin. Afterwards the player can stay out in the rain as
 long as they like. When they walk down to the trailhead gate, a prompt asks *"Leave the
 mountain?"*. Confirming shows a closing card, *"Kestrel Lookout — closed for the season,"* and
@@ -131,27 +131,59 @@ credits drawn as notebook pages. Nobody meets on screen. It's left open.
 
 ## 3. Day structure
 
-There are seven days, spread across the last four weeks of the season, so the land visibly turns
-from late-summer green-gold to early-autumn amber. Each day runs from **06:00 → ~23:30**.
-**1 in-game hour = 90 real seconds**, so a full day takes about 26 minutes if you never sit.
-The cot unlocks sleep from 19:00. After 23:30 the night simply holds (stars, crickets) until you
-sleep. There is no forced end.
+There are **eleven days**, spread across the last four weeks of the season, so the land visibly
+turns from late-summer green-gold to early-autumn amber. Seven of them carry the main story; the
+four between them carry smaller threads and give the season room to breathe. Each day runs from
+**06:00 → ~23:30**. **1 in-game hour = 2 real minutes**, so a waking day from 06:00 to a 21:30
+bedtime takes about 31 minutes, and the full north loop on foot is about three in-game hours, not
+half a day. The cot unlocks sleep from 19:00. After 23:30 the night simply holds (stars,
+crickets) until you sleep. There is no forced end.
 
-| Day | Date | Weather | Season | Story beat (all optional) | Discoveries it nudges you toward |
-|---|---|---|---|---|---|
-| **1** *Channel Four* | 21 Aug | Clear, light haze | 0.00 | Arrive at the trailhead at 15:30 and walk up to the tower (the tutorial walk). First radio check. Dot explains the job: "You are paid to sit." | Welcome note, the singing stair, binoculars, Augie's map under the cot |
-| **2** *Piano Man* | 22 Aug | Clear, warm | 0.05 | First real walk out. The doe and fawns. "What did you do before?" "I tune pianos." The wobble conversation. | Drift-fence note, cold spring |
-| **3** *Say Again* | 23 Aug | High cloud, breezy | 0.10 | Supply drop at the gate. Wind garbles Dot at the tarn, and Theo snaps, then apologises. Pell's Cabin. | Dock tin & thermos, the cabin |
-| **4** *Dry Lightning* | 28 Aug | Dry thunderstorm 14:00–17:30 | 0.30 | The one real "job": a lightning smoke on Harrow Ridge. Sight it with the fire finder and report a bearing. That night Theo can tell Dot about his ear. | The '98 Burn |
-| **5** *Land's Too Loud* | 3 Sep | Orange haze from far-off fires | 0.50 | Augie's bench: "SIT HERE AT SEVEN." Augie described the sunset to Dot every night for 22 years. Theo describes it now. Dot's story of the ships. | Cinder Ridge |
-| **6** *Last Season* | 10 Sep | Clear, cold; first gold aspens | 0.80 | A postcard from Augie in the supply box ("Is it F?"). Dot reveals Basin is closing, and talks about Ruth's piano. | Cabin: the resignation draft, pressed flowers |
-| **7** *First Rain* | 15 Sep | Clouding over; rain from 12:00 | 1.00 | The last weather report. The logbook's last page. The last call. Leave when ready. | Rain on the tin roof |
+| Day | Date | Weather | Season | Story beat (all optional) | The day's errand | Discoveries it nudges you toward |
+|---|---|---|---|---|---|---|
+| **1** *Channel Four* | 21 Aug | Clear, light haze | 0.00 | Arrive at the trailhead at 15:30 and walk up to the tower (the tutorial walk). First radio check. Dot explains the job: "You are paid to sit." | Walk up; take the binoculars | Welcome note, the singing stair, binoculars, Augie's map under the cot |
+| **2** *Piano Man* | 22 Aug | Clear, warm | 0.03 | First real walk out. The doe and fawns. "What did you do before?" "I tune pianos." The wobble conversation. | Check the spring is running | Drift-fence note, cold spring |
+| **3** *Say Again* | 23 Aug | High cloud, breezy | 0.06 | Supply drop at the gate. Wind garbles Dot at the tarn, and Theo snaps, then apologises. Pell's Cabin. | Carry the supply box contents up | Dock tin & thermos, the cabin |
+| **4** *Field Notes* | 25 Aug | Breezy, small cloud | 0.15 | Augie's end-of-month round. Dot asks what the mountain *sounds* like, and Theo starts describing sounds to her: the sound log becomes something they share. | Augie's round: rain gauge (meadow), spring flow, a stone for the cairn | The pressed-flower book, the sound log |
+| **5** *Dry Lightning* | 28 Aug | Dry thunderstorm 14:00–17:30 | 0.30 | The one real "job": a lightning smoke on Harrow Ridge. Sight it with the fire finder and report a bearing. That night Theo can tell Dot about his ear. | Fire watch through the storm | The '98 Burn |
+| **6** *Relay* | 30 Aug | Smoke from the Harrow fire | 0.40 | Dot is on her third night shift. The crew's handhelds can't reach Basin, but they can reach the ridge, so Theo relays for them, listening hard with one good ear. "Talk to me about something that isn't fire." | Climb to the ridge and relay three messages | The cairn, the whitebark pines |
+| **7** *Land's Too Loud* | 3 Sep | Orange haze from far-off fires | 0.50 | Augie's bench: "SIT HERE AT SEVEN." Augie described the sunset to Dot every night for 22 years. Theo describes it now. Dot's story of the ships. | Be at the bench by seven | Cinder Ridge |
+| **8** *Bugle* | 6 Sep | Cool, breezy | 0.65 | The elk come down. Fish & Game wants a count, by ear, at dusk. Ruth called Basin; Dot mentions it and changes the subject twice. | Count the bulls from the meadow log at dusk | The elk, the fawns' spots fading |
+| **9** *Last Season* | 10 Sep | Clear, cold; first gold aspens | 0.80 | A postcard from Augie in the supply box ("Is it F?"). Dot reveals Basin is closing, and talks about Ruth's piano. | Fetch the supply box | Cabin: the resignation draft, pressed flowers |
+| **10** *First Frost* | 13 Sep | Frost and morning mist, then clear | 0.92 | The closing checklist comes up on the last truck. Theo packs Augie's things at the cabin and decides what stays. Dot hasn't decided about Calder. | Closing chores: cabin shutters, the cistern | What Augie left for whoever's next |
+| **11** *First Rain* | 15 Sep | Clouding over; rain from 12:00 | 1.00 | The last weather report. The logbook's last page. The last call. Leave when ready. | None: the season's over | Rain on the tin roof |
 
 **If the player ignores everything,** days still advance by sleeping, the rain still comes on
-Day 7, and the gate still offers the ending. Nothing in the story is needed to finish.
+Day 11, and the gate still offers the ending. Nothing in the story is needed to finish.
 
 **Season** (0→1) is a single scalar. It shifts grass and aspen tints, the angle of the light,
 bird and insect activity, and the evening temperature in Dot's weather reports.
+
+### Pacing: a 4–6 hour story
+
+The story path (doing each day's duties, errand and calls, and sleeping when the day winds down)
+is budgeted at **4–6 hours**. Wanderers will take longer, and nothing stops a player from going
+faster by letting time pass.
+
+| Part of a story day (Days 2–10) | Real minutes |
+|---|---|
+| Morning: wake, kettle, morning readings, Dot's weather call | 4–6 |
+| The day's errand (walking there and back, doing it) | 10–15 |
+| Story calls (two to four, 1–3 minutes each) | 4–8 |
+| Wandering, discoveries, sitting, the sound log | 5–10 |
+| Evening readings, golden hour, evening and night calls | 5–8 |
+| **A day** | **≈ 28–47, typically 30–35** |
+
+| Whole game | Real time |
+|---|---|
+| Day 1 (from 15:30: the walk up, the radio check, the first night) | 15–20 min |
+| Days 2–10 (nine story days) | 4.5–5.3 h at 30–35 min a day |
+| Day 11 (rain, the last call, the gate) | 20–30 min |
+| **Story path** | **≈ 4.5–6 h** (≈ 4 h if every evening is time-lapsed) |
+
+The clock is the main dial: the waking day is about 31 minutes of real time, so a day's
+duties and errand fill it naturally rather than racing it. Time-lapse (seated, hold Z) runs at
+×40, an hour in 3 seconds. It stops whenever a call comes in, so skipping never loses story.
 
 ---
 
@@ -173,14 +205,24 @@ bird and insect activity, and the evening temperature in Dot's weather reports.
 
 ### A typical day
 
-1. You wake on the cot at 06:00 to a title card (*Day 2 — 22 August*). The kettle's on. Dot gives
-   her morning weather report: temperature, humidity, wind, fire danger.
-2. You wander. Maybe the meadow for the fawns, the tarn to sit on the dock, or nowhere at all.
-3. Place-based or time-based calls come in: you arrive somewhere, find something, or golden hour
-   starts.
-4. Golden hour. Many players head to a sit spot and let time pass.
-5. Evening call. Back at the tower, the lamp goes on. Optionally a short night call.
-6. You sleep. The day autosaves.
+1. You wake on the cot at 06:00 to a title card (*Day 2 — Piano Man — 22 August*). Put the
+   kettle on.
+2. **Morning readings.** Step out to the instrument shelter on the catwalk and read the dry and
+   wet bulb, the wind and the fuel stick. Dot's morning call asks for them (the choices are the
+   numbers you read, or *"haven't been out yet"*), then gives her weather report and **the day's
+   errand**.
+3. **The errand** takes you somewhere on the map: check the spring, fetch the supply box, relay
+   for a crew from the ridge, count elk at dusk. That takes 10–15 minutes of walking and doing,
+   with the rest of the map on either side of it.
+4. You wander. Maybe the meadow for the fawns, the tarn to sit on the dock, or nowhere at all.
+   Place-based and time-based calls come in: you arrive somewhere, find something, or golden
+   hour starts.
+5. **Evening readings** at the shelter around 17:00, and golden hour. Many players head to a sit
+   spot and let time pass.
+6. Evening call. Back at the tower, the lamp goes on. Optionally a short night call.
+7. You sleep. The day autosaves.
+
+All of it is optional: unread instruments only mean Dot says *"I'll guess, then. Warm."*
 
 ### Radio etiquette as a mechanic
 
@@ -283,7 +325,7 @@ A. Pell's notebook" once you find his map under the cot.*
 | # | Area | Elevation* | Character | Sit spot | Best time |
 |---|---|---|---|---|---|
 | 1 | **Kestrel Lookout** | 2,257 m | A 9 m timber tower with four flights of stairs, a catwalk and a 4 × 4 m glazed cab. Fire finder in the middle, cot, iron stove and kettle, radio table, lamp, logbook, Augie's shelf, and a wooden **lightning stool** with glass-insulator feet. A woodpile and cistern at the base. | Lightning stool; catwalk | Any; night with the lamp on |
-| 2 | **Larkspur Meadow** | 2,214 m | A flat meadow of dry grass and purple larkspur. The creek meanders through, an old grey drift fence is half fallen, and aspens ring the edge. A doe and twin fawns graze at dawn. | Fallen log | Dawn, dusk (elk, Day 5+) |
+| 2 | **Larkspur Meadow** | 2,214 m | A flat meadow of dry grass and purple larkspur. The creek meanders through, an old grey drift fence is half fallen, and aspens ring the edge. A doe and twin fawns graze at dawn. | Fallen log | Dawn, dusk (elk, Day 8+) |
 | 3 | **Mirror Tarn** | 2,205 m (water) | A small alpine lake (~110 m) with still water that reflects the ridge and the distant ranges. There's a weathered dock with Augie's tin box, and an open shoreline of sedge and boulders. | End of the dock | Morning calm; night frogs |
 | 4 | **Cinder Ridge Overlook** | 2,287 m | The highest point you can walk to. Dark cinder and pale ash scree (where the range gets its name), wind-bent whitebark pines, and Augie's carved bench. You can see everything from here. | Augie's bench | Golden hour ("SIT HERE AT SEVEN") |
 | 5 | **The '98 Burn** | 2,221 m | A slope that burned 27 years ago: silver standing snags, pink fireweed, and dense knee-high lodgepole saplings growing back. Augie watched it burn from the tower. | A fallen snag | Morning (woodpecker), windy afternoons |
@@ -331,14 +373,15 @@ the ending.
 |---|---|---|---|
 | **Radio** | Theo's belt (B) / handset on the tower table | Answer, call Basin | Story calls, check-ins |
 | **Binoculars** | Hook by the tower door (Day 1) | D-pad ↑ | Zoom view with soft vignette; faint pencil labels on known landmarks |
-| **Fire finder** | Centre of the tower cab | A → top-down sighting ring | Shows bearings to the six areas; reports the Day 4 smoke (bearing 104°) |
+| **Fire finder** | Centre of the tower cab | A → top-down sighting ring | Shows bearings to the six areas; reports the Day 5 smoke (bearing 104°) |
 | **Lightning stool / catwalk / dock / bench / porch step / meadow log** | 6 sit spots | A to sit / stand | Sit; hold Z to let time pass |
 | **Cot** | Tower | A (after 19:00) | Sleep → day card → autosave |
+| **Weather station** | Instrument shelter on the catwalk (anemometer on the roof) | A | Today's readings (dry/wet bulb, humidity, wind, fuel stick) for the morning and evening reports |
 | **Kettle & stove** | Tower | A | Morning coffee ritual: steam, whistle, one line from Theo |
 | **Lamp** | Tower | A | Warm point light in the cab at night (it shows from across the map) |
-| **Logbook** | Tower table | A | Theo's handwritten daily entry summarises the day so far. On Day 7, the last page. |
+| **Logbook** | Tower table | A | Theo's handwritten daily entry summarises the day so far. On Day 11, the last page. |
 | **Thermos** | Tarn tin box | Taken automatically | Sitting with it lets Theo pour coffee (flavour) |
-| **Supply box** | Trailhead | A on Days 3 & 6 | Peaches, batteries, a paperback; Augie's postcard on Day 6 |
+| **Supply box** | Trailhead | A on Days 3, 9 & 10 | Peaches, batteries, a paperback; Augie's postcard on Day 9; the closing checklist on Day 10 |
 | **Spoon chimes** | Cabin porch | A | They ring (they're out of tune, and Theo notices) |
 | **The third stair** | Tower stairs | Walk on it | It "sings" a slightly flat E-flat |
 
@@ -357,7 +400,7 @@ the ending.
 | N09 | Ridge bench | Carved: **SIT HERE AT SEVEN** |
 | N10 | Cabin table | Pressed-flower book: *"Things that came back after '98"* — fireweed, lupine, larkspur, paintbrush… |
 | N11 | Cabin drawer | A 2009 resignation letter, crossed out: *"Changed my mind. Stayed 14 more."* |
-| N12 | Supply box, Day 6 | Postcard: *"Kestrel — heard there's a piano man up there now. Settle it: is it F? — Augie. P.S. Tell Dot to go see her sister."* |
+| N12 | Supply box, Day 9 | Postcard: *"Kestrel — heard there's a piano man up there now. Settle it: is it F? — Augie. P.S. Tell Dot to go see her sister."* |
 
 ### The sound log (12, via Listen)
 
@@ -366,14 +409,14 @@ the ending.
 | S01 | The third stair (E-flat, not F) | Tower stairs |
 | S02 | Creek over stones | Along the creek |
 | S03 | Grasshoppers clicking | Meadow, midday |
-| S04 | Elk bugle | Meadow edge, dusk, Day 5+ |
+| S04 | Elk bugle | Meadow edge, dusk, Day 8+ |
 | S05 | Sandpiper's *peet-weet* | Tarn shore, morning |
 | S06 | Chorus frogs | Tarn, night |
 | S07 | Pika in the scree | Ridge, day |
 | S08 | Wind in the snags | Burn, any wind |
 | S09 | Woodpecker drumming | Burn, morning |
 | S10 | Spoon chimes | Cabin porch, breezy |
-| S11 | Rain on the tin roof | Tower cab, Day 7 |
+| S11 | Rain on the tin roof | Tower cab, Day 11 |
 | S12 | *Almost nothing* | Ridge at night, still air, listen 10 s → *"Not nothing. Very small things."* |
 
 ---
@@ -385,15 +428,17 @@ the ending.
 - **Call IDs** are `D<day>_<slot>`. Lines are `D<day>_<slot>_<nnn>`, and the same IDs name voice files.
 - **Procedure as characterisation.** Calls follow real radio form: the called station first, then
   the caller ("*Kestrel, Basin*"), plus *over*, *copy*, *say again*, *clear*. On Day 1 Dot ends
-  every transmission with "over". By Day 6 she never does. Her very last line goes back to formal
+  every transmission with "over". By Day 9 she never does. Her very last line goes back to formal
   (*"Basin, clear."*).
 - **Morning weather report** every day (temp · humidity · wind · fire danger). It's a ritual, and it
-  quietly marks the season's progress.
+  quietly marks the season's progress. It runs both ways: Dot asks for Theo's readings from the
+  instrument shelter (the choices are the numbers he read), then gives the forecast and the day's
+  errand. An evening report around 17:00 is shorter and often turns into small talk.
 - **Branching is shallow.** Choices change tone and a few lines. Seven flags carry forward:
   `fawn_names`, `told_ear_early`, `told_ear`, `deflected_ear`, `stair_is_eflat`, `offered_tuning`,
   `logbook_line`.
-- **Volume:** ~28 scripted calls (~400 lines) + ~60 check-in lines + notes + 7 logbook entries,
-  about 10,000 words in total.
+- **Volume:** ~45 scripted calls (~650 lines, including 22 morning/evening reports) + ~60
+  check-in lines + notes + 11 logbook entries, about 16,000 words in total.
 
 ### Day by day
 
@@ -426,57 +471,92 @@ the ending.
 - `D3_CABIN` *(finding the cabin)* — "*He'd go down there when the tower got too loud. A tower's
   never loud, Theo. That's what I told him.*"
 
-**Day 4 — *Dry Lightning*** *(five days later: "Five days of nothing. Congratulations, you're a professional.")*
-- `D4_AM` — "*Dry storms building this afternoon. Eyes open.*"
-- `D4_STORM` *(14:00–17:30)* — Thunder rolls in from the east, the light goes dark and cool, and
+**Day 4 — *Field Notes*** *(two days on)*
+- `D4_AM` — Readings, then: "*End of the month. Augie did a round: rain gauge at the meadow, the
+  spring, and a stone on the cairn. Don't ask me about the stone.*"
+- `D4_SOUND` *(first sound logged with Listen)* — Dot: "*What does it sound like up there? No,
+  really. Describe it.*" Theo does, badly, then well. From here on Dot sometimes asks what's in
+  the sound log, and the Sounds page becomes something they share.
+- `D4_CAIRN` *(adding a stone on the ridge)* — "*He said every stone was a season. Count them.*"
+  There are twenty-two.
+
+**Day 5 — *Dry Lightning*** *(three quiet days later: "Three days of nothing. Congratulations, you're a professional.")*
+- `D5_AM` — "*Dry storms building this afternoon. Eyes open.*"
+- `D5_STORM` *(14:00–17:30)* — Thunder rolls in from the east, the light goes dark and cool, and
   a strike lands on Harrow Ridge (the backdrop).
-- `D4_SMOKE` — A thin white column rises at ~16:30. Sight it with the fire finder and report:
+- `D5_SMOKE` — A thin white column rises at ~16:30. Sight it with the fire finder and report:
   "*Bearing one-zero-four, about nine miles, white smoke, single tree.*" Dot: "*Copy. Crew's
   rolling. Nice catch.*" If you report with binoculars only: "*Give me a bearing, Kestrel. The
   finder. The big round thing in the middle of your room.*" If it's never reported, at 18:00:
   "*Prospect Lookout called in a smoke on Harrow. You seeing it?*" No penalty.
-- `D4_NIGHT` — **The ear.** "*You say 'say again' a lot for a man who tunes pianos.*"
+- `D5_NIGHT` — **The ear.** "*You say 'say again' a lot for a man who tunes pianos.*"
   - *Tell her* → "*Left ear went quiet in February. I just… woke up and it was gone. Mostly.*"
     The longest call in the game; sets `told_ear`. If `told_ear_early` is set, Dot opens instead
     with "*Is it getting worse?*"
   - *"Radios are bad."* → "*Mm. Radios are bad.*" She lets it go (`deflected_ear`).
   - [say nothing] → "*…Okay. I'm here. That's all. Basin out.*"
 
-**Day 5 — *Land's Too Loud***
-- `D5_AM` — Haze from far-off fires turns the light orange. "*Nothing you need to do. It's just
+**Day 6 — *Relay***
+- `D6_AM` — Dot's voice is flat with tiredness: "*Third night on. The Harrow crew's handhelds
+  can't reach me from that drainage. They can reach your ridge. Go up and be my ears.*"
+- `D6_RELAY` *(at the overlook)* — Three short messages from **Harrow Crew** (a third murmur
+  voice), relayed to Basin. Each is a little garbled. Theo can relay it as heard, ask *"say
+  again"* (he has to, on his bad side, and it costs him to), or guess. Nothing goes wrong
+  whichever he picks; Dot notices which.
+- `D6_NIGHT` — "*Talk to me about something that isn't fire.*" Theo talks about the worst piano
+  he ever tuned. Dot falls asleep at the desk mid-call; the carrier hiss stays open.
+
+**Day 7 — *Land's Too Loud***
+- `D7_AM` — Haze from far-off fires turns the light orange. "*Nothing you need to do. It's just
   the rest of the world, burning politely, far away.*"
-- `D5_BENCH` *(at Augie's bench)* — "*Did Augie ever say why seven?*" — "*Because that's when
+- `D7_BENCH` *(at Augie's bench)* — "*Did Augie ever say why seven?*" — "*Because that's when
   I'd call him. He'd sit up there and describe the sunset. Every night, twenty-two years. I've
   never seen it.*"
-- `D5_SEVEN` *(19:00 while seated at the bench, or else at the tower)* — "*Well? Describe it.*"
+- `D7_SEVEN` *(19:00 while seated at the bench, or else at the tower)* — "*Well? Describe it.*"
   Three beats, each a choice of three phrases (*like the inside of a peach* / *like a bruise
   healing* / *like the last chord before the lights come up*…). Dot reacts to each. Then her
   story: 24 years at sea. "*On a ship everybody's a voice. Then I came ashore and everybody had
   faces. Land's too loud, Theo.*"
-- `D5_NIGHT` — Dot asks why he came. With `told_ear`: "*I wanted to hear everything once. While
+- `D7_NIGHT` — Dot asks why he came. With `told_ear`: "*I wanted to hear everything once. While
   I still can.*" Otherwise he can tell her now, or say "*Just wanted quiet.*"
 
-**Day 6 — *Last Season***
-- `D6_AM` — Cold morning, first gold aspens. "*Supply run today. Augie sent you something. No, I
+**Day 8 — *Bugle***
+- `D8_AM` — "*Fish and Game wants an elk count. By ear. At dusk. I told them you're a
+  professional listener.*"
+- `D8_COUNT` *(dusk, at the meadow log)* — Bugles come from four directions over ten minutes;
+  Theo reports a number. Any number is accepted; the right one gets "*Four. Augie always said
+  three.*"
+- `D8_RUTH` — Dot mentions, too casually, that her sister called Basin. She changes the subject
+  twice. Choices: *ask about Ruth* / *let it go* / [say nothing].
+
+**Day 9 — *Last Season***
+- `D9_AM` — Cold morning, first gold aspens. "*Supply run today. Augie sent you something. No, I
   didn't read it. I read it.*"
-- `D6_POSTCARD` *(opening the box)* — "*Is it F?*" Theo calls in: "*Tell Augie it's E-flat. A
+- `D9_POSTCARD` *(opening the box)* — "*Is it F?*" Theo calls in: "*Tell Augie it's E-flat. A
   little flat.*" (`stair_is_eflat`) Dot laughs properly for the first time. Theo can bring up
   the P.S. ("*He says you should go see your sister*"), and Dot goes quiet.
-- `D6_PM` *(golden hour)* — "*They're automating Basin. Relay towers, a desk in Calder. This is
+- `D9_PM` *(golden hour)* — "*They're automating Basin. Relay towers, a desk in Calder. This is
   the last season anyone sits in this chair.*" Then Ruth's piano: "*Probably sounds like a drawer
   full of forks.*" Choices: *"I could tune it."* (`offered_tuning`) / *"Pianos forgive a lot."* /
   [say nothing].
-- `D6_NIGHT` — "*Theo. …Thanks. Basin out.*"
+- `D9_NIGHT` — "*Theo. …Thanks. Basin out.*"
 
-**Day 7 — *First Rain***
-- `D7_AM` — The last weather report, read slowly: "*Rain by noon. Real rain. That's the season,
+**Day 10 — *First Frost***
+- `D10_AM` — Frost on the meadow. "*Last truck's at the gate. There's a list. It's in my
+  capitals, so you know I mean it.*"
+- `D10_CABIN` *(at the cabin, packing)* — Theo describes what's left: the flower book, the
+  letter, the chimes. Dot says take nothing, then asks him to bring her the flower book.
+- `D10_NIGHT` — Dot hasn't decided about Calder. "*Ask me tomorrow. No. Don't.*"
+
+**Day 11 — *First Rain***
+- `D11_AM` — The last weather report, read slowly: "*Rain by noon. Real rain. That's the season,
   Kestrel.*"
-- `D7_WHERE` *(once, anywhere after the rain starts)* — "*Where are you right now? Describe it.*"
+- `D11_WHERE` *(once, anywhere after the rain starts)* — "*Where are you right now? Describe it.*"
   Lines are written for each of the six areas.
-- `D7_LOGBOOK` *(tower)* — The last page. Theo writes one of: *"Whoever's next: it's E-flat. Say
+- `D11_LOGBOOK` *(tower)* — The last page. Theo writes one of: *"Whoever's next: it's E-flat. Say
   good morning anyway."* / *"Whoever's next: listen slower."* / *"Whoever's next: the peaches are
   from Dot."* / or leaves it blank.
-- `D7_LAST` *(dusk)* — "*Basin to Kestrel. Last call of the season. There's no Basin next year,
+- `D11_LAST` *(dusk)* — "*Basin to Kestrel. Last call of the season. There's no Basin next year,
   so I'll just say it plain: it was good, having a voice on four.*" Choices: *"Tell Ruth to keep
   the piano."* / *"Go see your sister, Dot."* / *"Thank you, Basin."* / [say nothing] →
   "*…I'll take that as a maybe. Basin, clear.*" Then only static and the rain.
@@ -547,7 +627,7 @@ It holds the keyframes for sky, horizon, fog, key light, shadow and ambient, plu
 light side and window glow, along with the material albedos and the grade settings. The game
 interpolates between keyframes every frame and layers two modifiers on top:
 
-- **weather:** haze (Day 5, orange), storm (Day 4, cool and dark), rain (Day 7, grey-blue, low contrast)
+- **weather:** haze (Day 7, orange; a thinner pall on Day 6), storm (Day 5, cool and dark), frost mist (Day 10), rain (Day 11, grey-blue, low contrast)
 - **season (0→1):** grass and aspen tints shift through the TEV constant colour (§11)
 
 ![Night — the lamp in the cab is the brightest thing in the district](concept/style_target_night.png)
@@ -614,8 +694,8 @@ trees and props, and the cut-paper drop shadow baked into the backdrop rings.
   fixed and tops move, at zero per-vertex cost.
 - **Deer:** cut-out planes with three poses (graze, look up, walk), driven by a tiny state machine.
 - **Birds:** occasional distant flock sprites.
-- **Effects:** clouds drift, water ripples scroll, kettle steam, smoke column (Day 4, stacked soft
-  billboards), rain streaks (Day 7, ≤ 300 screen-space lines plus splash rings on the tarn).
+- **Effects:** clouds drift, water ripples scroll, kettle steam, smoke column (Day 5, stacked soft
+  billboards), rain streaks (Day 11, ≤ 300 screen-space lines plus splash rings on the tarn).
 
 ---
 
@@ -635,11 +715,11 @@ so the music never loops identically.
 | Piece | Instrumentation | Where |
 |---|---|---|
 | *Channel Four* (main theme) | Acoustic guitar in DADGAD, distant piano | Title; Day 1 arrival; D7 credits |
-| *Settling In* | Guitar fingerpicking | Mornings, Days 1–3 |
+| *Settling In* | Guitar fingerpicking | Mornings, Days 1–4 |
 | *Mirror Tarn* | Solo felt piano, very slow | Sitting at the tarn |
 | *Ash & Fireweed* | Guitar harmonics, low drone | The Burn |
-| *Seven O'Clock* | Guitar & piano duet | Golden hour, Day 5 bench |
-| *First Rain* | Piano with rain | Day 7 |
+| *Seven O'Clock* | Guitar & piano duet | Golden hour, Day 7 bench |
+| *First Rain* | Piano with rain | Day 11 |
 
 **Instruments.** A Karplus-Strong plucked string with a body resonator and sympathetic open-string
 drones gives the DADGAD guitar. The piano is additive partials with soft hammer noise and a long
@@ -652,7 +732,7 @@ release. A filtered-saw pad, very quiet, is used only at night.
 - the first arrival at an area each day (if nothing has played in the last 6 min)
 - sunrise and golden hour outdoors
 - sitting for more than 20 s
-- a few story beats (after `D4_NIGHT`, after `D7_LAST`)
+- a few story beats (after `D5_NIGHT`, after `D11_LAST`)
 
 Silence and ambience are the default.
 
@@ -669,12 +749,12 @@ Silence and ambience are the default.
 - **Insects:** grasshopper clicks at midday, crickets at night.
 - **Weather:** dry thunder (brown-noise rumbles, delayed after the flash by distance); rain (dense
   noise plus droplet pings, metallic on the tin roof).
-- **Specials:** elk bugle (Day 5+), chorus frogs.
+- **Specials:** elk bugle (Day 8+), chorus frogs.
 
 ### Sound effects
 
 - **Footsteps per surface:** trail dirt, dry grass, cinder/gravel, pine needles, rock, wood plank,
-  stairs, dock, puddles (Day 7). Each is synthesised from a burst profile, randomised every step,
+  stairs, dock, puddles (Day 11). Each is synthesised from a burst profile, randomised every step,
   and panned slightly left/right. The surface comes from the baked terrain surface-ID map.
 - **Tower:** every stair creaks at its own pitch (the third one sings E-flat). Also the door and
   latch, wind on the glass, the lamp click, the stove crackle and the kettle whistle.
@@ -891,8 +971,8 @@ The README has the up-to-date details, including the Dolphin settings and the sc
 ## 12. Scope control
 
 **In scope (the whole game):** everything in §3–§11. That's one map with six areas, one tower
-interior, one cabin interior, seven days, ~28 calls, 12 notes, 12 sounds, 6 music pieces and the
-murmur voice system.
+interior, one cabin interior, eleven days (a 4–6 hour story path), ~45 calls, a daily duty loop
+(readings and one errand a day), 12 notes, 12 sounds, 6 music pieces and the murmur voice system.
 
 **Explicitly out:**
 - combat, survival meters, inventory beyond binoculars and thermos
@@ -912,7 +992,7 @@ murmur voice system.
 4. Extra check-in lines.
 
 **Cut order if we slip** (last to first): wildlife animation → backdrop water reflection → second
-tree LOD → Listen labels (keep the logging) → piece count (6 → 4) → Day 5 haze palette.
+tree LOD → Listen labels (keep the logging) → piece count (6 → 4) → Day 7 haze palette.
 
 ---
 
@@ -922,7 +1002,7 @@ tree LOD → Listen labels (keep the logging) → piece count (6 → 4) → Day 
 |---|---|---|---|
 | **2 · Prototype** | Makefile & skeleton; GX init and frame loop with copy filter; camera, pointer comfort-box look, stick walking, fallback scheme; a **64 × 64 m test area** (procedural ground, a few cut-paper trees, the tower blockout); sky gradient + fog + light ramp; text rendering (first cut of Lookout Hand); **radio v0** (one call with choices, subtitles, static + murmur) | Builds clean with `-Wall -Wextra`; runs at 60 fps in Dolphin; walk/look/interact/radio all work; 30 fps lock works | Test area at noon · golden hour with fog · radio call with choices · interaction prompt |
 | **3 · World building** | Worldgen bakers (heightmap, colours, surface IDs, foliage); chunked terrain; foliage + LOD + wind shear; backdrop rings; tarn; all six areas dressed; tower & cabin interiors with walkmesh; interactables (notes, binoculars, radio, chairs, cot, finder, kettle, lamp); day/night/weather/season; notebook | Every area reachable on foot; full loop at ≥ 30 fps under hardware budgets; day cycle across all 6 keyframes | Ridge vista · inside the cab at night · the burn at morning · tarn at dawn |
-| **4 · Narrative & audio** | Dialogue compiler + all 7 days of calls; flags & retries; notes & logbook; sound log; synth engine (ambience, birds, weather, footsteps, tower); music sequencer + 6 pieces; murmur voices + SD VO loader; mixing & ducking | Full story playthrough and ignore-everything playthrough both reach the ending; no audio underruns in a 1 h soak | Day 4 storm with smoke · Day 5 bench call · notebook pages · Day 7 rain |
+| **4 · Narrative & audio** | Dialogue compiler + all 11 days of calls (~45); the duty loop (readings, errands, morning/evening reports); flags & retries; notes & logbook; sound log; synth engine (ambience, birds, weather, footsteps, tower); music sequencer + 6 pieces; murmur voices + SD VO loader; mixing & ducking | Full story playthrough and ignore-everything playthrough both reach the ending; a timed story playthrough lands in 4–6 h; no audio underruns in a 1 h soak | Day 5 storm with smoke · Day 7 bench call · notebook pages · Day 11 rain |
 | **5 · Polish & testing** | Performance pass (overdraw, culling, TEV trimming); options & saves; title, day cards, ending & credits; Dolphin test matrix; HBC packaging (`meta.xml`, icon); build/run docs | Test matrix all green; release `.dol` + package; README with build/run instructions | Final 4 Dolphin captures (title, tower, ridge golden hour, rain) |
 
 ---

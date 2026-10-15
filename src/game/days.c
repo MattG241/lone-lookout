@@ -2,6 +2,7 @@
  * days.c -- the day table and the weather.
  */
 #include <math.h>
+#include <stdio.h>
 #include "game/days.h"
 #include "audio/audio.h"
 #include "core/noise.h"
@@ -10,13 +11,19 @@ weather_t WX;
 
 static const day_def DAYS[NUM_DAYS] = {
 	{ "Channel Four", "21 August", 0.00f, WX_CLEAR },
-	{ "Piano Man", "22 August", 0.05f, WX_WARM },
-	{ "Say Again", "23 August", 0.10f, WX_HIGH_CLOUD },
+	{ "Piano Man", "22 August", 0.03f, WX_WARM },
+	{ "Say Again", "23 August", 0.06f, WX_HIGH_CLOUD },
+	{ "Field Notes", "25 August", 0.15f, WX_BREEZY },
 	{ "Dry Lightning", "28 August", 0.30f, WX_STORM },
+	{ "Relay", "30 August", 0.40f, WX_SMOKE },
 	{ "Land's Too Loud", "3 September", 0.50f, WX_HAZE },
+	{ "Bugle", "6 September", 0.65f, WX_BREEZY },
 	{ "Last Season", "10 September", 0.80f, WX_COLD },
+	{ "First Frost", "13 September", 0.92f, WX_FROST },
 	{ "First Rain", "15 September", 1.00f, WX_RAIN },
 };
+
+bool day_is_supply(int day) { return day == 3 || day == 9 || day == 10; }
 
 const day_def *day_info(int day)
 {
@@ -43,6 +50,16 @@ void weather_update(int day, float hour, float dt)
 		w.cloud = 0.45f + 0.1f * sinf(hour * 0.7f);
 		w.wind = 0.95f;
 		break;
+	case WX_BREEZY:
+		w.cloud = 0.22f + 0.08f * sinf(hour * 0.9f);
+		w.wind = 1.05f;
+		break;
+	case WX_SMOKE:
+		/* The Harrow fire, two days on: a thin pall, worst in the afternoon. */
+		w.haze = 0.35f + 0.2f * smoothstepf(11.0f, 16.0f, hour);
+		w.cloud = 0.1f;
+		w.wind = 0.45f;
+		break;
 	case WX_STORM:
 		/* Dry lightning, 14:00 to 17:30. */
 		w.storm = smoothstepf(13.3f, 14.3f, hour) * (1.0f - smoothstepf(17.3f, 18.3f, hour));
@@ -58,6 +75,12 @@ void weather_update(int day, float hour, float dt)
 		w.cold = 1.0f;
 		w.cloud = 0.12f;
 		w.wind = 0.7f;
+		break;
+	case WX_FROST:
+		/* A white morning: mist in the hollows until the sun gets to it. */
+		w.cold = 1.0f;
+		w.cloud = 0.3f * (1.0f - smoothstepf(8.0f, 11.0f, hour));
+		w.wind = 0.3f;
 		break;
 	case WX_RAIN:
 		/* Clouding over through the morning; rain from noon. */
@@ -147,4 +170,25 @@ void weather_apply(daylight *d)
 		d->sky_horizon = rgb_lerp(d->sky_horizon, fl, 0.5f * w->flash);
 		d->fog = rgb_lerp(d->fog, fl, 0.35f * w->flash);
 	}
+}
+
+/* Readings at the instrument shelter on the catwalk: dry and wet bulb,
+ * humidity, wind, and the fuel stick (how dry the forest is). Season and
+ * weather drive them, so the numbers drift toward autumn day by day. */
+const char *weather_readings(int day, float hour)
+{
+	static char buf[200];
+	const day_def *d = day_info(day);
+	float daytime = sinf(clampf((hour - 6.0f) / 15.0f, 0.0f, 1.0f) * LL_PI);   /* peaks mid-afternoon */
+	float temp = lerpf(52.0f, 40.0f, d->season) + daytime * lerpf(26.0f, 18.0f, d->season);
+	temp -= 10.0f * WX.cold * (1.0f - daytime) + 8.0f * WX.rain + 6.0f * WX.storm;
+	float rh = clampf(28.0f + 30.0f * (1.0f - daytime) + 40.0f * WX.rain + 15.0f * WX.cloud + 10.0f * d->season, 8.0f, 99.0f);
+	float wet = temp - (100.0f - rh) * 0.2f;
+	int wind = (int)(4.0f + 14.0f * WX.wind + 10.0f * WX.storm);
+	static const char *dirs[] = { "W", "SW", "W", "NW", "SW", "W", "S", "NW", "N", "NW", "SW" };
+	float fuel = clampf(5.0f + rh * 0.12f + 6.0f * WX.rain, 3.0f, 20.0f);
+	snprintf(buf, sizeof(buf),
+	         "Dry bulb %d\xC2\xB0" "F. Wet bulb %d\xC2\xB0" "F. Humidity %d%%.\nWind %s, %d mph.\nFuel stick %.1f grams.",
+	         (int)(temp + 0.5f), (int)(wet + 0.5f), (int)(rh + 0.5f), dirs[(day - 1) % 11], wind, fuel);
+	return buf;
 }
