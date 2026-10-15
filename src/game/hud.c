@@ -14,6 +14,9 @@
 #include "game/radio.h"
 #include "game/notebook.h"
 #include "game/story.h"
+#include "game/listen.h"
+#include "game/director.h"
+#include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/text.h"
@@ -401,6 +404,13 @@ static void draw_dev_overlay(void)
 	         (int)P.mode, P.hover, radio_busy() ? (radio_in_call() ? "call" : "ring") : "idle", (int)P.surface, S.area,
 	         G.stat_chunks, G.stat_trees, WX.cloud, WX.storm, WX.rain, WX.haze);
 	text_draw_soft(FONT_S, 20, 54, line, -1, c, 1.0f);
+	u32 under, blocks;
+	float mix_ms;
+	audio_stats(&under, &blocks, &mix_ms);
+	snprintf(line, sizeof(line), "audio: %u blocks, %u underruns, mix %.2f ms of 16  music %s %.0f%% of play  sounds %d",
+	         (unsigned)blocks, (unsigned)under, mix_ms, audio_music_playing() ? "on" : "off",
+	         director_music_share() * 100.0f, sounds_logged());
+	text_draw_soft(FONT_S, 20, 78, line, -1, c, 1.0f);
 }
 
 void hud_draw(void)
@@ -411,6 +421,7 @@ void hud_draw(void)
 	draw_day_card();
 	draw_area_card();
 	draw_reticle();
+	listen_draw();
 	draw_seated_hint();
 	draw_thought();
 	draw_hint();

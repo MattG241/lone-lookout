@@ -23,8 +23,10 @@
 #include "game/tour.h"
 #include "game/radio.h"
 #include "game/story.h"
+#include "game/listen.h"
 #include "input/input.h"
 #include "audio/audio.h"
+#include "audio/vo.h"
 #include "world/world.h"
 
 static volatile bool s_power_off;
@@ -81,6 +83,11 @@ int main(int argc, char **argv)
 #ifdef LL_INPUT_SCRIPT
 	DAY.hour = 16.97f;                     /* the scripted test: Dot's first call rings at 17:00 */
 #endif
+#ifdef LL_SOAK
+	game_new_day(NUM_DAYS);                /* the soak: Day 11, in the cab as the rain starts */
+	DAY.hour = 12.3f;
+	P.day_card = 100.0f;
+#endif
 	DAY.rate = 1.0f;
 	terrain_build(game_season());
 	foliage_build(game_season());
@@ -90,6 +97,7 @@ int main(int argc, char **argv)
 	creatures_build();
 	sky_init();
 	audio_init();
+	vo_init();
 	S.season_dirty = false;
 	clock_init();
 
@@ -114,7 +122,7 @@ int main(int argc, char **argv)
 		float birds = (1.0f - d.night) * (d.hour > 5.0f && d.hour < 20.5f ? 1.0f : 0.0f) * (1.0f - WX.rain) *
 		              (1.0f - 0.7f * WX.storm);
 		audio_set_scene(saturatef(WX.wind * (0.8f + 0.3f * (above > 4.0f))), birds, d.night,
-		                saturatef((P.pos.y - 60.0f) / 50.0f + (above > 4.0f ? 0.3f : 0.0f)), 0.0f);
+		                saturatef((P.pos.y - 60.0f) / 50.0f + (above > 4.0f ? 0.3f : 0.0f)), listen_amount());
 		audio_set_weather(WX.rain, in != INDOOR_NONE ? 1.0f : 0.0f);
 		ramp_update(&d);
 

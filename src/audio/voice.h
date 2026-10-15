@@ -44,10 +44,16 @@ typedef struct {
 	float hp1x, hp1y, hp2x, hp2y;
 	svf_t radio_lp, cons_f;
 	bool garble;         /* wind or distance eating the signal */
+	const s16 *pcm;      /* recorded line (VO), 22,050 Hz mono, in place of the murmur */
+	int pcm_len;
+	float pcm_pos;
 } voice_t;
+
+#define VO_RATE 22050.0f
 
 void voice_plan(const char *text, speaker_t who, voice_plan_t *out);
 void voice_start(voice_t *v, const char *text, speaker_t who);
+void voice_start_pcm(voice_t *v, const s16 *pcm, int len, speaker_t who);
 void voice_stop(voice_t *v);
 void voice_render(voice_t *v, float *L, float *R, int frames);
 

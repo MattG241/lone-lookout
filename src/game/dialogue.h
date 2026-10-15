@@ -69,6 +69,9 @@ int dlg_current_call(void);
 bool dlg_current_garbled(void);
 /* The line being spoken (tokens filled in). */
 const char *dlg_line(int *speaker);
+/* Its stable id for recorded voice-over, e.g. "D7_SEVEN_03" (the call and the
+ * line's number in it). False for lines with live values in them. */
+bool dlg_line_id(char *out, int n);
 /* Visible choices (tokens filled in); returns the count. */
 int dlg_options(const char **texts, int max);
 void dlg_next(void);                     /* the current line is over */

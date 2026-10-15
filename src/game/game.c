@@ -14,6 +14,8 @@
 #include "game/radio.h"
 #include "game/notebook.h"
 #include "game/story.h"
+#include "game/listen.h"
+#include "game/director.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
@@ -178,6 +180,8 @@ void game_init(void)
 	P.mode = MODE_WALK;
 	radio_init();
 	story_init();
+	listen_init();
+	director_init();
 }
 
 v3 game_eye(void)
@@ -204,7 +208,7 @@ bool game_radio_allowed(void)
 }
 
 /* Ray through the reticle, in world space. */
-static v3 reticle_dir(void)
+v3 game_reticle_dir(void)
 {
 	float th = tanf(DEG2RAD(game_fov()) * 0.5f);
 	float tw = th * G.aspect;
@@ -230,7 +234,7 @@ static void update_hover(void)
 {
 	int n;
 	const interactable_t *ia = world_interactables(&n);
-	v3 eye = game_eye(), dir = reticle_dir();
+	v3 eye = game_eye(), dir = game_reticle_dir();
 	float best = 1e9f;
 	P.hover = -1;
 	if (P.mode != MODE_WALK && P.mode != MODE_SIT) return;
@@ -325,7 +329,7 @@ static void update_walk(float dt)
 
 	/* Stride needs the Nunchuk's Z; the remote-only scheme keeps B for the radio. */
 	bool stride = IN.nunchuk && in_held(WPAD_NUNCHUK_BUTTON_Z);
-	float speed = stride ? STRIDE_SPEED : WALK_SPEED;
+	float speed = (stride ? STRIDE_SPEED : WALK_SPEED) * (1.0f - 0.55f * listen_amount());   /* listening: slow down */
 	v3 fwd = v3_make(sinf(P.yaw), 0.0f, -cosf(P.yaw));
 	v3 right = v3_make(cosf(P.yaw), 0.0f, sinf(P.yaw));
 	v3 want = v3_scale(v3_add(v3_scale(right, sx), v3_scale(fwd, sy)), speed);
@@ -365,6 +369,7 @@ static void update_walk(float dt)
 	int tread = world_stair_tread(P.pos);
 	if (tread == SINGING_TREAD && S.last_tread != SINGING_TREAD) {
 		audio_ui(UI_STAIR_NOTE);
+		listen_event(SND_STAIR, v3_add(P.pos, v3_make(0, 0.1f, 0)));
 		story_raise(FLAG_STAIR_HEARD);
 		if (S.found[NOTE_STAIR]) think_once(TH_STAIR, "E-flat. A little flat, even. Not F, Augie.");
 	}
@@ -456,6 +461,7 @@ static void use(int index)
 		break;
 	case IA_CHIMES:
 		audio_ui(UI_CHIMES);
+		listen_event(SND_CHIMES, h->pos);
 		think_once(TH_CHIMES, "They're out of tune. Of course they are.");
 		break;
 	case IA_GATE:
@@ -615,8 +621,10 @@ static void update_sleep(float dt)
 static void update_ending(float dt)
 {
 	if (P.mode != MODE_ENDING) return;
+	float before = S.ending_t;
 	S.ending_t += dt;
 	S.fade = saturatef(S.ending_t / 3.0f);
+	if (before < 2.0f && S.ending_t >= 2.0f) audio_music_cue("channel_end");   /* the motif resolves, at last */
 	if (S.ending_t > ENDING_CREDITS_AT + 4.0f && !P.input_locked && in_take(WPAD_BUTTON_A)) {
 		/* After the credits, A walks back up for one more look. */
 		P.mode = MODE_WALK;
@@ -635,6 +643,7 @@ void game_update(float dt)
 	update_tools(dt);
 	if (P.mode == MODE_NOTEBOOK) notebook_update(dt);
 	radio_update(dt);
+	listen_update(dt);
 
 	bool seated = P.mode == MODE_SIT || ((P.mode == MODE_READ || P.mode == MODE_NOTEBOOK) && P.sit_blend > 0.5f);
 	P.sit_blend = approachf(P.sit_blend, seated ? 1.0f : 0.0f, 5.0f, dt);
@@ -654,6 +663,7 @@ void game_update(float dt)
 	P.day_card += dt;
 	update_places(dt);
 	story_update(dt);
+	director_update(dt);
 	update_sleep(dt);
 	update_ending(dt);
 }

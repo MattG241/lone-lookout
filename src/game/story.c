@@ -8,6 +8,8 @@
 #include "game/story.h"
 #include "game/game.h"
 #include "game/radio.h"
+#include "game/listen.h"
+#include "game/director.h"
 #include "gfx/gfx.h"
 #include "audio/audio.h"
 #include "world/sites.h"
@@ -28,6 +30,7 @@ static struct {
 	float deer_fled;             /* > 0: fleeing, seconds */
 	bool deer_gone;
 	float fawn_seen_t;
+	float bugle_wait;            /* Days 9-11 at dusk: the odd far bugle, unscripted */
 } T;
 
 /* The bulls: where each bugle comes from, and when (seconds after "listen"). */
@@ -58,6 +61,7 @@ void story_new_day(int day)
 	T.deer_fled = 0.0f;
 	T.deer_gone = false;
 	T.fawn_seen_t = 0.0f;
+	T.bugle_wait = 20.0f;
 }
 
 void story_raise(int flag) { dlg_set_flag(flag, true); }
@@ -166,6 +170,7 @@ static void watch_smoke(float dt)
 
 static void play_at(ui_sound_t s, float x, float z, float gain)
 {
+	if (s == UI_ELK) listen_event(SND_ELK, v3_make(x, world_height(x, z) + 2.0f, z));
 	v3 eye = game_eye();
 	float dx = x - eye.x, dz = z - eye.z, d = sqrtf(dx * dx + dz * dz) + 1.0f;
 	float pan = clampf((dx * cosf(P.yaw) + dz * sinf(P.yaw)) / d, -1.0f, 1.0f) * 0.8f;
@@ -174,6 +179,14 @@ static void play_at(ui_sound_t s, float x, float z, float gain)
 
 static void bulls(float dt)
 {
+	/* After Day 8 the bulls are still about at dusk, now and then. */
+	if (T.elk_t < 0.0f && S.day >= 9 && DAY.hour > 18.5f && DAY.hour < 20.5f) {
+		if ((T.bugle_wait -= dt) <= 0.0f) {
+			int k = (int)(DAY.hour * 977.0f) & 3;
+			play_at(UI_ELK, ELK[k][1], ELK[k][2], 0.8f);
+			T.bugle_wait = 70.0f + (float)(((int)(DAY.hour * 7919.0f)) % 90);
+		}
+	}
 	if (T.elk_t < 0.0f) return;
 	T.elk_t += dt;
 	while (T.elk_next < 4 && T.elk_t >= ELK[T.elk_next][0]) {
@@ -276,7 +289,7 @@ void dlg_hook_action(int action, const char *arg)
 		radio_hold_hiss(60.0f);
 		break;
 	case ACT_MUSIC:
-		audio_music_cue(arg);
+		director_story_cue(arg);
 		break;
 	case ACT_SEASON_OVER:
 		T.season_over = true;
@@ -300,4 +313,8 @@ void dlg_hook_token(const char *name, char *out, int n)
 	else snprintf(out, n, "?");
 }
 
-void dlg_hook_call_end(int call) { (void)call; }
+void dlg_hook_call_end(int call)
+{
+	/* After the smoke night, the theme. */
+	if (call == CALL_D5_NIGHT) director_story_cue("channel");
+}

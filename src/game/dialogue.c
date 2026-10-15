@@ -281,6 +281,18 @@ const char *dlg_line(int *speaker)
 	return D.line;
 }
 
+bool dlg_line_id(char *out, int n)
+{
+	if (D.state != DS_LINE || D.call < 0) return false;
+	const dlg_op *o = &DLG_OPS[D.pc];
+	if (strchr(DLG_STRINGS[o->str], '{')) return false;
+	int k = 0;
+	for (int pc = DLG_CALLS[D.call].first; pc < D.pc; pc++)
+		if (DLG_OPS[pc].op == DLG_LINE) k++;
+	snprintf(out, n, "%s_%02d", DLG_CALLS[D.call].id, k + 1);
+	return true;
+}
+
 int dlg_options(const char **texts, int max)
 {
 	int n = D.nopt < max ? D.nopt : max;

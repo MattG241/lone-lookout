@@ -176,10 +176,16 @@ faster by letting time pass.
 
 | Whole game | Real time |
 |---|---|
-| Day 1 (from 15:30: the walk up, the radio check, the first night) | 15–20 min |
+| Day 1 (from 15:30: the walk up, the radio check, the first night) | 12–16 min |
 | Days 2–10 (nine story days) | 4.5–5.3 h at 30–35 min a day |
 | Day 11 (rain, the last call, the gate) | 20–30 min |
 | **Story path** | **≈ 4.5–6 h** (≈ 4 h if every evening is time-lapsed) |
+
+*Measured (Phase 4):* `tests/host/test_story.c` plays the whole season through the real dialogue
+runtime at one-second steps. A story player who does each day's duties and errand, wanders and
+sits in real time, and time-lapses one evening wait a day takes **4.6 h** (days 2–10 about 27 min
+each). Sixty randomised players (missed calls, skipped steps, random choices) take 4.7–5.1 h.
+A player who time-lapses everything and sleeps at seven still reaches the gate, in about 35 min.
 
 The clock is the main dial: the waking day is about 31 minutes of real time, so a day's
 duties and errand fill it naturally rather than racing it. Time-lapse (seated, hold Z) runs at
@@ -775,8 +781,10 @@ layers:
    goes through the radio chain (band-pass, soft saturation, hiss, squelch). It's deliberately
    *not* intelligible. It should sound like overhearing someone through a cheap handset in the
    next room, tuned to sound human and tired, not cute. Subtitles carry the words.
-3. **Ready for real voice acting.** If `sd:/apps/lonelookout/vo/<LINE_ID>.pcm` exists (16-bit mono
-   22,050 Hz), it streams in place of the murmur, through the same radio chain. A cast can record
+3. **Ready for real voice acting.** If `sd:/apps/lonelookout/vo/<LINE_ID>.pcm` exists (raw 16-bit
+   little-endian mono, 22,050 Hz), it plays in place of the murmur, through the same radio chain.
+   `LINE_ID` is the call and the line's number in it (`D7_SEVEN_03`); the build lists them all in
+   `gen/vo_lines.txt`. Lines that read out live values (`{dry}`, `{wind}`…) keep the murmur. A cast can record
    later, or the user can supply licensed TTS, and drop the files in without rebuilding.
 
 **The hearing effect.** During Listen, the left channel is gently low-passed: a diegetic hint of

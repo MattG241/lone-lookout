@@ -274,8 +274,21 @@ static float frand(void) { return rnd() / 65535.0f; }
 
 /* --- The hooks the game would provide --- */
 
+static char *s_manifest;              /* gen/vo_lines.txt */
+static int s_vo_checked, s_vo_bad;
+
 void dlg_hook_line(int speaker, const char *text)
 {
+	/* The id a recording would be looked up by must be in the voice-over manifest. */
+	char id[48], key[64];
+	if (s_manifest && dlg_line_id(id, sizeof(id))) {
+		static const char *WHO[] = { "DOT", "THEO", "CREW" };
+		snprintf(key, sizeof(key), "\n%s\t%s\t", id, WHO[speaker]);
+		s_vo_checked++;
+		if (!strstr(s_manifest, key)) {
+			if (!s_vo_bad++) printf("  no manifest line for %s\n", id);
+		}
+	}
 	SIM.lines++;
 	for (const char *p = text; *p; p++)
 		if (*p == ' ') SIM.words++;
@@ -574,10 +587,22 @@ static void test_random_players(void)
 int main(void)
 {
 	printf("Story tests\n");
+	FILE *f = fopen("gen/vo_lines.txt", "rb");
+	if (f) {
+		static char buf[1 << 20];
+		size_t n = fread(buf + 1, 1, sizeof(buf) - 2, f);
+		buf[0] = '\n';
+		buf[n + 1] = 0;
+		s_manifest = buf;
+		fclose(f);
+	}
 	test_script();
 	test_story_path();
 	test_ignore_everything();
 	test_random_players();
+	CHECK(s_manifest && s_vo_checked > 300 && !s_vo_bad, "voice-over ids: %d checked, %d missing from gen/vo_lines.txt",
+	      s_vo_checked, s_vo_bad);
+	printf("  voice-over ids: %d lines matched gen/vo_lines.txt\n", s_vo_checked);
 	printf("%d checks, %d failed\n", s_checks, s_fails);
 	return s_fails ? 1 : 0;
 }

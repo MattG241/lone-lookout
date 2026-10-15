@@ -9,16 +9,25 @@
  * Sound set: wind (with gusts, stronger up high, muffled indoors), rain,
  * birdsong by day, crickets at night, footsteps per surface (grass, dirt,
  * rock, wood, stairs, needles, ash, scree), radio chirp/key/squelch/hiss,
- * the murmur voices, and a few things in the world: the spoon chimes, the
- * singing stair, the kettle, thunder and the lamp. Music arrives in Phase 4.
+ * the murmur voices (or recorded lines from the SD card), a few things in
+ * the world (the spoon chimes, the singing stair, the kettle, thunder, the
+ * lamp, the elk), the sound log's beds (ambient.c) and the music (music.c).
+ *
+ * Mix (DESIGN.md section 10): ambience ducks -5 dB under the radio and
+ * -6 dB in Listen, where the focused sound comes up +4 dB; music ducks
+ * -9 dB under the radio and -12 dB in Listen. While listening, the left
+ * channel is gently low-passed: Theo's left ear.
  */
 #include <string.h>
 #include <malloc.h>
 #include <gccore.h>
 #include <aesndlib.h>
+#include <ogc/lwp_watchdog.h>
 #include "audio/audio.h"
 #include "audio/dsp.h"
 #include "audio/voice.h"
+#include "audio/music.h"
+#include "audio/ambient.h"
 
 #define BLOCK 512
 #define NBUF 4
@@ -27,10 +36,12 @@
 #define STACK_SIZE (64 * 1024)
 
 /* ---- command queue (game thread -> mixer thread), single producer/consumer ---- */
-typedef enum { C_FOOT, C_UI, C_VOICE, C_VOICE_STOP, C_HISS } cmd_type;
+typedef enum { C_FOOT, C_UI, C_VOICE, C_VOICE_STOP, C_HISS, C_MUSIC, C_MUSIC_STOP, C_PCM } cmd_type;
 typedef struct {
 	u8 type, a;
 	float f0, f1;
+	const s16 *pcm;
+	int pcm_len;
 	char text[200];
 } cmd_t;
 
@@ -39,6 +50,11 @@ static volatile u32 s_cmd_w, s_cmd_r;
 
 /* Scene parameters written by the game thread (word writes are atomic). */
 static volatile float s_wind = 0.5f, s_birds = 1.0f, s_night, s_alt, s_duck, s_rain, s_indoor;
+static volatile float s_emit_gain[SND_COUNT], s_emit_pan[SND_COUNT];
+static volatile int s_focus = -1;
+static volatile bool s_music_on;
+static volatile u32 s_underruns, s_blocks;
+static volatile float s_mix_ms;
 
 /* ---- output ring ---- */
 static s16 s_out[NBUF][BLOCK * 2] ATTRIBUTE_ALIGN(32);
@@ -78,6 +94,8 @@ static struct {
 } s_bird;
 static float s_bird_wait = 3.0f;
 static float s_cricket_phase, s_cricket_t;
+static float s_radio_duck, s_listen;     /* smoothed 0..1 */
+static lp1_t s_ear;
 
 /* ======================================================================== */
 
@@ -93,29 +111,74 @@ static void post(const cmd_t *c)
 
 void audio_footstep(surface_t surf, float intensity, float pan)
 {
-	cmd_t c = { C_FOOT, (u8)surf, intensity, pan, { 0 } };
+	cmd_t c = { C_FOOT, (u8)surf, intensity, pan, 0, 0, { 0 } };
 	post(&c);
 }
 
 void audio_ui(ui_sound_t s)
 {
-	cmd_t c = { C_UI, (u8)s, 1.0f, 0, { 0 } };
+	cmd_t c = { C_UI, (u8)s, 1.0f, 0, 0, 0, { 0 } };
 	post(&c);
 }
 
 void audio_ui_gain(ui_sound_t s, float gain)
 {
-	cmd_t c = { C_UI, (u8)s, gain, 0, { 0 } };
+	cmd_t c = { C_UI, (u8)s, gain, 0, 0, 0, { 0 } };
 	post(&c);
 }
 
 void audio_ui_pan(ui_sound_t s, float gain, float pan)
 {
-	cmd_t c = { C_UI, (u8)s, gain, pan, { 0 } };
+	cmd_t c = { C_UI, (u8)s, gain, pan, 0, 0, { 0 } };
 	post(&c);
 }
 
-void audio_music_cue(const char *piece) { (void)piece; }
+void audio_music_cue(const char *piece)
+{
+	/* "<piece>_end" plays the piece with its coda: the credits. */
+	char id[32];
+	strncpy(id, piece, sizeof(id) - 1);
+	id[sizeof(id) - 1] = 0;
+	size_t n = strlen(id);
+	bool resolve = n > 4 && !strcmp(id + n - 4, "_end");
+	if (resolve) id[n - 4] = 0;
+	int p = music_find(id);
+	if (p < 0) return;
+	cmd_t c = { C_MUSIC, (u8)p, resolve ? 1.0f : 0.0f, 0, 0, 0, { 0 } };
+	post(&c);
+}
+
+void audio_music_stop(float fade_seconds)
+{
+	cmd_t c = { C_MUSIC_STOP, 0, fade_seconds, 0, 0, 0, { 0 } };
+	post(&c);
+}
+
+bool audio_music_playing(void) { return s_music_on; }
+
+void audio_set_emitter(int id, float gain, float pan)
+{
+	if (id < 0 || id >= SND_COUNT) return;
+	s_emit_gain[id] = gain;
+	s_emit_pan[id] = pan;
+}
+
+void audio_set_listen_focus(int id) { s_focus = id; }
+
+void audio_voice_pcm(const s16 *pcm, int len, speaker_t who, bool garbled)
+{
+	cmd_t c = { C_PCM, (u8)who, garbled ? 1.0f : 0.0f, 0, pcm, len, { 0 } };
+	post(&c);
+}
+
+bool audio_voice_busy(void) { return s_vo.active; }
+
+void audio_stats(u32 *underruns, u32 *blocks, float *mix_ms)
+{
+	*underruns = s_underruns;
+	*blocks = s_blocks;
+	*mix_ms = s_mix_ms;
+}
 
 void audio_set_weather(float rain, float indoor)
 {
@@ -130,20 +193,20 @@ void audio_voice_line(const char *text, speaker_t who)
 
 void audio_voice_line_ex(const char *text, speaker_t who, bool garbled)
 {
-	cmd_t c = { C_VOICE, (u8)who, garbled ? 1.0f : 0.0f, 0, { 0 } };
+	cmd_t c = { C_VOICE, (u8)who, garbled ? 1.0f : 0.0f, 0, 0, 0, { 0 } };
 	strncpy(c.text, text, sizeof(c.text) - 1);
 	post(&c);
 }
 
 void audio_voice_stop(void)
 {
-	cmd_t c = { C_VOICE_STOP, 0, 0, 0, { 0 } };
+	cmd_t c = { C_VOICE_STOP, 0, 0, 0, 0, 0, { 0 } };
 	post(&c);
 }
 
 void audio_radio_hiss(bool on)
 {
-	cmd_t c = { C_HISS, on ? 1 : 0, 0, 0, { 0 } };
+	cmd_t c = { C_HISS, on ? 1 : 0, 0, 0, 0, 0, { 0 } };
 	post(&c);
 }
 
@@ -190,7 +253,7 @@ static void handle(const cmd_t *c)
 		s->kind = 100 + c->a;
 		s->gain = c->f0;
 		static const float lens[UI_SOUND_COUNT] = { 0.05f, 0.22f, 0.30f, 0.06f, 0.20f, 2.6f, 1.4f, 3.2f, 5.5f, 0.08f,
-		                                             4.2f, 0.35f, 0.45f, 3.0f };
+		                                             4.2f, 0.35f, 0.45f, 3.0f, 0.55f };
 		s->len = lens[c->a];
 		s->pan = c->f1;
 		s->pitch = 0.97f + 0.06f * noise_unit(&s_rng);
@@ -205,6 +268,16 @@ static void handle(const cmd_t *c)
 		break;
 	case C_HISS:
 		s_hiss_target = c->a ? 1.0f : 0.0f;
+		break;
+	case C_MUSIC:
+		music_play(c->a, c->f0 > 0.5f);
+		break;
+	case C_MUSIC_STOP:
+		music_stop(c->f0);
+		break;
+	case C_PCM:
+		voice_start_pcm(&s_vo, c->pcm, c->pcm_len, (speaker_t)c->a);
+		s_vo.garble = c->f0 > 0.5f;
 		break;
 	}
 }
@@ -333,6 +406,13 @@ static float sfx_sample(sfx_t *s, float dt)
 		out = squeal + water;
 		break;
 	}
+	case 100 + UI_PENCIL: {
+		/* A few quick pencil strokes on paper. */
+		float stroke = fmodf(t * 7.5f, 1.0f);
+		e = stroke < 0.7f ? sinf(3.14159265f * stroke / 0.7f) : 0.0f;
+		out = svf_bp(&s->f1, n, svf_coef(3600.0f + 900.0f * sinf(t * 40.0f), 1.6f)) * e * 0.22f;
+		break;
+	}
 	case 100 + UI_LAMP:
 		out = n * expf(-t * 300.0f) * 0.25f + svf_bp(&s->f1, n, svf_coef(3000.0f, 1.0f)) * expf(-t * 60.0f) * 0.2f;
 		break;
@@ -435,7 +515,11 @@ static void mix_block(s16 *dst)
 	svf_coef_t ndc = svf_coef(5200.0f, 0.6f);
 	svf_coef_t hsc = svf_coef(1700.0f, 0.5f);
 	s_hiss_level += (s_hiss_target - s_hiss_level) * 0.2f;
-	float duck = 1.0f - 0.4f * s_duck;
+	/* Ducking, smoothed per block (~100 ms). */
+	float radio_on = (s_hiss_target > 0.5f || s_vo.active) ? 1.0f : 0.0f;
+	s_radio_duck += (radio_on - s_radio_duck) * 0.15f;
+	s_listen += (s_duck - s_listen) * 0.2f;
+	float duck = (1.0f - 0.44f * s_radio_duck) * (1.0f - 0.5f * s_listen);
 	float indoor = s_indoor, rain = s_rain;
 	wind *= 1.0f - 0.55f * indoor;
 	svf_coef_t rc = svf_coef(indoor > 0.5f ? 2600.0f : 5200.0f, 0.5f);
@@ -499,9 +583,25 @@ static void mix_block(s16 *dst)
 		R[i] = r;
 	}
 
+	/* The sound log's beds: the focused one comes up while listening. */
+	float eg[SND_COUNT], ep[SND_COUNT];
+	int focus = s_focus;
+	for (int k = 0; k < SND_COUNT; k++) {
+		float lk = k == focus ? 1.0f + 0.58f * s_listen : 1.0f - 0.5f * s_listen;
+		eg[k] = s_emit_gain[k] * lk * (1.0f - 0.44f * s_radio_duck);
+		ep[k] = s_emit_pan[k];
+	}
+	ambient_render(L, R, BLOCK, eg, ep, s_wind);
+
+	music_render(L, R, BLOCK, (1.0f - 0.645f * s_radio_duck) * (1.0f - 0.75f * s_listen));
+	s_music_on = music_active();
+
 	voice_render(&s_vo, L, R, BLOCK);
 
+	/* Theo's left ear, while he listens. */
+	float ear_c = lp1_coef(14000.0f - 11500.0f * s_listen);
 	for (int i = 0; i < BLOCK; i++) {
+		if (s_listen > 0.01f) L[i] = lp1(&s_ear, L[i], ear_c);
 		float l = soft_clip(L[i] * 1.4f) * 0.9f, r = soft_clip(R[i] * 1.4f) * 0.9f;
 		dst[i * 2 + 0] = (s16)(l * 32000.0f);
 		dst[i * 2 + 1] = (s16)(r * 32000.0f);
@@ -525,6 +625,7 @@ static void voice_callback(AESNDPB *pb, u32 state)
 	} else {
 		AESND_SetVoiceBuffer(pb, s_silence, sizeof(s_silence));   /* underrun: a gap, not a crash */
 		s_hist[0] = -1;
+		s_underruns++;
 	}
 	LWP_ThreadSignal(s_wake);
 }
@@ -534,7 +635,10 @@ static void *mixer_thread(void *arg)
 	(void)arg;
 	for (;;) {
 		while (s_state[s_fill] == 0) {
+			u64 t0 = gettime();
 			mix_block(s_out[s_fill]);
+			s_mix_ms = s_mix_ms * 0.95f + 0.05f * (float)ticks_to_microsecs(gettime() - t0) * 0.001f;
+			s_blocks++;
 			DCFlushRange(s_out[s_fill], sizeof(s_out[s_fill]));
 			s_state[s_fill] = 1;
 			s_fill = (s_fill + 1) % NBUF;
@@ -546,6 +650,8 @@ static void *mixer_thread(void *arg)
 
 void audio_init(void)
 {
+	music_init(0x5EED1234u);
+	ambient_init();
 	AESND_Init();
 	memset(s_silence, 0, sizeof(s_silence));
 	DCFlushRange(s_silence, sizeof(s_silence));

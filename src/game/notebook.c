@@ -14,6 +14,7 @@
 #include "game/game.h"
 #include "game/radio.h"
 #include "game/story.h"
+#include "game/listen.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
@@ -46,6 +47,16 @@ void notebook_update(float dt)
 			P.mode = MODE_READ;
 			P.reading = S.notebook_sel;
 			audio_ui(UI_PAGE);
+		}
+	}
+	if (S.notebook_page == NB_SOUNDS) {
+		if (in_take(WPAD_BUTTON_UP)) {
+			S.sound_sel = (S.sound_sel + SND_COUNT - 1) % SND_COUNT;
+			audio_ui(UI_TICK);
+		}
+		if (in_take(WPAD_BUTTON_DOWN)) {
+			S.sound_sel = (S.sound_sel + 1) % SND_COUNT;
+			audio_ui(UI_TICK);
 		}
 	}
 	(void)dt;
@@ -221,14 +232,39 @@ static void radio_page(float x, float y, float w, float h, float a)
 	}
 }
 
+/* The sound log: twelve lines, and what Theo wrote about the one picked out. */
 static void sounds_page(float x, float y, float w, float h, float a)
 {
-	GXColor ink = gx_col(rgb_from(UI_INK), 0.55f * a);
-	const char *msg = "Sounds worth keeping.";
-	const char *sub = "(Nothing written here yet.)";
+	GXColor ink = gx_col(rgb_from(UI_INK), 0.9f * a), faint = gx_col(rgb_from(UI_INK), 0.35f * a);
+	float list_h = h - 92.0f, lh = list_h / SND_COUNT;
+	mat_vcolor();
+	gfx_blend_alpha();
+	ui_rect(x + 10, y + 6 + S.sound_sel * lh, w - 20, lh - 2, gx_col(rgb_make(0.85f, 0.80f, 0.66f), 0.7f * a));
 	text_begin();
-	text_draw(FONT_L, x + (w - text_width(FONT_L, msg, -1)) * 0.5f, y + h * 0.42f, msg, -1, ink);
-	text_draw(FONT_S, x + (w - text_width(FONT_S, sub, -1)) * 0.5f, y + h * 0.42f + 34.0f, sub, -1, ink);
+	for (int i = 0; i < SND_COUNT; i++) {
+		char line[80];
+		float ly = y + 6 + i * lh + lh * 0.74f;
+		if (S.sound_day[i]) {
+			snprintf(line, sizeof(line), "S%02d  %s", i + 1, sound_name(i));
+			text_draw(FONT_S, x + 24, ly, line, -1, ink);
+			snprintf(line, sizeof(line), "Day %d", S.sound_day[i]);
+			text_draw(FONT_S, x + w - 30 - text_width(FONT_S, line, -1), ly, line, -1, faint);
+		} else {
+			snprintf(line, sizeof(line), "S%02d  . . .", i + 1);
+			text_draw(FONT_S, x + 24, ly, line, -1, faint);
+		}
+	}
+	/* The picked-out entry, in full, under a pencil rule. */
+	mat_vcolor();
+	ui_rect(x + 24, y + list_h + 12, w - 48, 1.5f, faint);
+	const char *note = S.sound_day[S.sound_sel] ? sound_note(S.sound_sel)
+	                   : (sounds_logged() ? "Not yet. Hold C and keep still." : "Sounds worth keeping. Hold C to listen.");
+	int st[3], ln[3];
+	int n = text_wrap(FONT_S, note, w - 60.0f, st, ln, 3);
+	text_begin();
+	for (int i = 0; i < n; i++)
+		text_draw(FONT_S, x + 30, y + list_h + 40 + i * text_line_height(FONT_S) * 0.9f, note + st[i], ln[i],
+		          S.sound_day[S.sound_sel] ? ink : faint);
 }
 
 void notebook_draw(void)

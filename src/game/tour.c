@@ -13,6 +13,7 @@
 #include "game/radio.h"
 #include "game/notebook.h"
 #include "game/story.h"
+#include "game/listen.h"
 #include "world/world.h"
 #include "world/sites.h"
 
@@ -23,7 +24,7 @@
 
 typedef enum {
 	SHOT_PLAIN, SHOT_DAY_CARD, SHOT_CHOICES, SHOT_SEAT, SHOT_LAMP, SHOT_NOTEBOOK, SHOT_BINOCULARS, SHOT_FINDER,
-	SHOT_READ, SHOT_ENDING,
+	SHOT_READ, SHOT_ENDING, SHOT_LISTEN,
 } shot_kind;
 
 typedef struct {
@@ -58,6 +59,9 @@ static const shot_t SHOTS[] = {
 	  0, 0, 0, 0, CALL_D4_AM + 1 },
 	{ "notebook_radio", 4, 10.5f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2.0f, SHOT_NOTEBOOK, NB_RADIO,
 	  0, 0, 0, 0, CALL_D4_AM + 1 },
+	{ "notebook_sounds", 4, 10.6f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2.0f, SHOT_NOTEBOOK, NB_SOUNDS },
+	{ "listen_burn", 4, 8.4f, 380.0f, 384.0f, 1.62f, TAG_SNAG_X, 4.0f, TAG_SNAG_Z, SHOT_LISTEN, 0 },
+	{ "listen_meadow", 2, 12.5f, 120.0f, 330.0f, 1.62f, GAUGE_X, 1.0f, GAUGE_Z - 20.0f, SHOT_LISTEN, 0 },
 	{ "notebook_map", 3, 16.0f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2.0f, SHOT_NOTEBOOK, NB_MAP },
 	{ "binoculars", 1, 17.6f, TX + 2.5f, TZ - 2.5f, 1.62f, 398.0f, 2.0f, 112.0f, SHOT_BINOCULARS, 0 },
 	{ "fire_finder", 5, 15.4f, TX + 0.2f, TZ + 0.85f, 1.62f, TX, 1.0f, TZ - 3.0f, SHOT_FINDER, 0 },
@@ -133,6 +137,13 @@ static void begin_shot(const shot_t *s)
 	story_new_day(S.day);
 	if (s->play1) play_through(s->play1 - 1);
 	if (s->kind == SHOT_NOTEBOOK) S.obs_am = true;
+	listen_debug_force(s->kind == SHOT_LISTEN);
+	if (s->kind == SHOT_NOTEBOOK && s->arg == NB_SOUNDS) {
+		static const int LOGGED[] = { SND_CREEK, SND_GRASSHOPPERS, SND_SANDPIPER, SND_WOODPECKER, SND_STAIR };
+		memset(S.sound_day, 0, sizeof(S.sound_day));
+		for (int i = 0; i < 5; i++) S.sound_day[LOGGED[i]] = (u8)(2 + i / 2);
+		S.sound_sel = SND_WOODPECKER;
+	}
 
 	int n;
 	const interactable_t *ia = world_interactables(&n);

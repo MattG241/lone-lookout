@@ -9,6 +9,7 @@
 #include "world/world.h"
 #include "game/daycycle.h"
 #include "game/days.h"
+#include "audio/ambient.h"
 
 typedef enum {
 	MODE_WALK,
@@ -72,7 +73,8 @@ typedef struct {
 	float sleep_t;                   /* MODE_SLEEP timer */
 	float fade;                      /* 0..1 to black */
 	bool season_dirty;               /* main loop: rebuild the season's colours */
-	int notebook_page, notebook_sel;
+	int notebook_page, notebook_sel, sound_sel;
+	u8 sound_day[SND_COUNT];         /* the sound log: the day each was written down, 0 if not yet */
 	float ending_t;                  /* MODE_ENDING timer */
 	bool ended;                      /* the credits have rolled once */
 } story_t;
@@ -92,6 +94,7 @@ extern options_t OPT;
 void game_init(void);
 void game_update(float dt);
 v3 game_eye(void);
+v3 game_reticle_dir(void);               /* world-space ray through the reticle */
 float game_fov(void);
 bool game_radio_allowed(void);           /* B may raise the radio now */
 void game_think(const char *text);       /* show one of Theo's thoughts */

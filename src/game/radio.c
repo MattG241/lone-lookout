@@ -11,6 +11,7 @@
 #include "game/game.h"
 #include "game/story.h"
 #include "audio/audio.h"
+#include "audio/vo.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/text.h"
@@ -29,6 +30,7 @@ static struct {
 	char sub_text[400];
 	int sub_who;
 	float hold_hiss;          /* Day 6: the carrier stays open after Dot falls asleep */
+	bool vo_wait;             /* waiting on a recorded line from the SD card */
 } R;
 
 static radio_log_entry s_log[RADIO_LOG_MAX];
@@ -68,15 +70,45 @@ bool radio_in_call(void) { dlg_state s = dlg_get_state(); return s == DS_LINE ||
 bool radio_wants_pointer(void) { return dlg_get_state() == DS_CHOICE; }
 void radio_hold_hiss(float seconds) { R.hold_hiss = seconds; }
 
-/* A line starts: voice it, log it, time it. */
+static bool garbled(int speaker) { return dlg_current_garbled() && speaker != SPEAKER_THEO; }
+
+static void murmur(void)
+{
+	R.line_len = R.t + voice_line_seconds(R.sub_text, (speaker_t)R.sub_who) + 0.8f;
+	audio_voice_line_ex(R.sub_text, (speaker_t)R.sub_who, garbled(R.sub_who));
+}
+
+/* A line starts: voice it (a recording if the card has one), log it, time it. */
 void dlg_hook_line(int speaker, const char *text)
 {
 	strncpy(R.sub_text, text, sizeof(R.sub_text) - 1);
 	R.sub_who = speaker;
 	R.t = 0.0f;
-	R.line_len = voice_line_seconds(text, (speaker_t)speaker) + 0.8f;
-	audio_voice_line_ex(text, (speaker_t)speaker, dlg_current_garbled() && speaker != SPEAKER_THEO);
+	char id[48];
+	R.vo_wait = vo_available() && dlg_line_id(id, sizeof(id));
+	if (R.vo_wait) {
+		vo_request(id);
+		R.line_len = 1e9f;
+	} else {
+		murmur();
+	}
 	if (!P.input_locked) log_line(speaker, text);
+}
+
+/* The recording arrived, or there isn't one (or the card is slow): start speaking. */
+static void vo_check(void)
+{
+	const s16 *pcm;
+	int len;
+	vo_status st = vo_poll(&pcm, &len);
+	if (st == VO_READY) {
+		audio_voice_pcm(pcm, len, (speaker_t)R.sub_who, garbled(R.sub_who));
+		R.line_len = R.t + len / 22050.0f + 0.6f;
+		R.vo_wait = false;
+	} else if (st != VO_PENDING || R.t > 0.6f) {
+		murmur();
+		R.vo_wait = false;
+	}
 }
 
 void radio_call_basin(void)
@@ -148,6 +180,7 @@ void radio_update(float dt)
 		}
 		break;
 	case DS_LINE:
+		if (R.vo_wait) vo_check();
 		if (R.t > R.line_len || (!P.input_locked && R.t > 0.35f && in_down(WPAD_BUTTON_A))) {
 			if (R.t <= R.line_len) audio_voice_stop();
 			dlg_next();

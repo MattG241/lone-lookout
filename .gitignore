@@ -2,12 +2,15 @@
 build/
 build_shots/
 build_walktest/
+build_soak/
 gen/
 dist/
 *.dol
 *.elf
 *.map
 tests/host/run_tests
+tests/host/run_story
+tests/host/run_audio
 
 # Python
 __pycache__/
@@ -17,4 +20,3 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
-tests/host/run_story

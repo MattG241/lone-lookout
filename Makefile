@@ -3,6 +3,10 @@
 #
 #   make            generate assets (Python) and build lonelookout.dol
 #   make SHOTS=1    build the screenshot-tour variant (scripted camera, no input)
+#   make WALKTEST=1 build the scripted-input variant (walks, answers the radio, pages the notebook)
+#   make SOAK=1     build the audio soak variant (Day 11, music, calls and Listen on a loop;
+#                   presents one frame every 10 s with the mixer stats -- tools/capture/soak.sh)
+#   make test       host tests: the world, the story playthroughs, the music
 #   make package    dist/apps/lonelookout/{boot.dol,meta.xml,icon.png}
 #   make run        send to a Wii running the Homebrew Channel (wiiload)
 #   make clean
@@ -43,6 +47,11 @@ DEFINES		+=	-DLL_INPUT_SCRIPT=1
 TARGET		:=	lonelookout_walktest
 BUILD		:=	build_walktest
 endif
+ifeq ($(SOAK),1)
+DEFINES		+=	-DLL_INPUT_SCRIPT=1 -DLL_SOAK=1
+TARGET		:=	lonelookout_soak
+BUILD		:=	build_soak
+endif
 
 LIBS	:=	-lfat -laesnd -lwiiuse -lbte -logc -lm
 LIBDIRS	:=
@@ -55,8 +64,8 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 # so the wildcard below always sees the freshly generated .bin files.
 #---------------------------------------------------------------------------------
 .DEFAULT_GOAL	:=	all
-ASSET_DEPS	:=	$(wildcard tools/assets/*.py tools/font/*.py tools/worldgen/*.py tools/dialogue/*.py \
-				data/palette/*.json data/dialogue/*.lls)
+ASSET_DEPS	:=	$(wildcard tools/assets/*.py tools/font/*.py tools/worldgen/*.py tools/dialogue/*.py tools/music/*.py \
+				data/palette/*.json data/dialogue/*.lls data/music/*.txt)
 
 $(GEN)/assets.mk: $(ASSET_DEPS)
 	@echo assets ...
@@ -94,14 +103,18 @@ HOST_TEST_SRC	:=	tests/host/test_world.c tests/host/blobs_host.c src/world/ashen
 					src/world/places.c src/core/noise.c src/audio/voice.c
 
 HOST_STORY_SRC	:=	tests/host/test_story.c src/game/dialogue.c src/audio/voice.c src/core/noise.c
+HOST_AUDIO_SRC	:=	tests/host/test_audio.c src/audio/music.c src/audio/ambient.c
 
 test: $(GEN)/assets.mk
 	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
 		-o tests/host/run_tests $(HOST_TEST_SRC) -lm
 	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
 		-o tests/host/run_story $(HOST_STORY_SRC) -lm
+	@$(HOST_CC) -std=gnu11 -O2 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
+		-o tests/host/run_audio $(HOST_AUDIO_SRC) -lm
 	@./tests/host/run_tests
 	@./tests/host/run_story
+	@./tests/host/run_audio
 
 all: $(BUILD)
 
@@ -111,7 +124,7 @@ $(BUILD):
 
 clean:
 	@echo clean ...
-	@rm -fr build build_shots build_walktest $(GEN) dist tests/host/run_tests tests/host/run_story *.elf *.dol *.map
+	@rm -fr build build_shots build_walktest build_soak $(GEN) dist tests/host/run_tests tests/host/run_story tests/host/run_audio *.elf *.dol *.map
 
 run: $(BUILD)
 	wiiload $(OUTPUT).dol

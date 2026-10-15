@@ -145,6 +145,17 @@ void voice_start(voice_t *v, const char *text, speaker_t who)
 	for (int i = 0; i < 3; i++) v->F[i] = FORMANTS[1][i];
 }
 
+void voice_start_pcm(voice_t *v, const s16 *pcm, int len, speaker_t who)
+{
+	memset(v, 0, sizeof(*v));
+	v->plan.who = who;
+	v->active = true;
+	v->fade = 1.0f;
+	v->rng.s = 0x7654321u + (u32)who * 977u;
+	v->pcm = pcm;
+	v->pcm_len = len;
+}
+
 void voice_stop(voice_t *v)
 {
 	if (v->active) v->stopping = true;
@@ -162,6 +173,20 @@ void voice_render(voice_t *v, float *L, float *R, int frames)
 
 	for (int s = 0; s < frames; s++) {
 		v->t += dt;
+		float out;
+		if (v->pcm) {
+			/* A recorded line: resample 22,050 -> 32,000 Hz, then the same handset chain. */
+			int i0 = (int)v->pcm_pos;
+			if (i0 + 1 >= v->pcm_len || (v->stopping && v->fade <= 0.0f)) {
+				v->active = false;
+				return;
+			}
+			if (v->stopping) v->fade -= dt * 25.0f;
+			float fr = v->pcm_pos - i0;
+			out = (v->pcm[i0] + (v->pcm[i0 + 1] - v->pcm[i0]) * fr) * (1.0f / 32768.0f) * 0.8f * v->fade;
+			v->pcm_pos += VO_RATE / SR;
+			goto chain;
+		}
 		while (v->cur < v->plan.n && v->t > v->plan.syl[v->cur].start + v->plan.syl[v->cur].dur)
 			v->cur++;
 		if ((v->cur >= v->plan.n && v->t > v->plan.total) || (v->stopping && v->fade <= 0.0f)) {
@@ -214,9 +239,11 @@ void voice_render(voice_t *v, float *L, float *R, int frames)
 			default: voiced *= 0.6f + 0.4f * (1.0f - ce); break;
 			}
 		}
-		float out = (voiced + cons) * sp->gain * v->fade;
+		out = (voiced + cons) * sp->gain * v->fade;
 
+	chain:
 		if (v->garble) {
+			float nz = noise_white(&v->rng);
 			/* The signal drops out in ragged 90 ms chunks, with crackle in the gaps. */
 			u32 chunk = (u32)(v->t * 11.0f);
 			if ((hash2((s32)chunk, 7, 991u) & 255) < 95) out = out * 0.04f + nz * 0.06f;

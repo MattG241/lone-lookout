@@ -24,6 +24,7 @@ typedef enum {
 	UI_STONE,            /* a stone set on the cairn */
 	UI_SHUTTER,          /* a wooden shutter swung to */
 	UI_VALVE,            /* the cistern valve, and water running out */
+	UI_PENCIL,           /* a sound written into the notebook */
 	UI_SOUND_COUNT
 } ui_sound_t;
 
@@ -32,14 +33,26 @@ void audio_footstep(surface_t surf, float intensity, float pan);
 void audio_ui(ui_sound_t s);
 void audio_ui_gain(ui_sound_t s, float gain);
 void audio_ui_pan(ui_sound_t s, float gain, float pan);     /* pan -1 left .. 1 right */
-/* Music: start a piece by name ("channel", "settling", "tarn", "ash", "seven", "rain"). */
+/* Music: start a piece by name ("channel", "settling", "tarn", "ash", "seven", "rain");
+ * "<name>_end" plays it with its coda. A piece already playing fades out first. */
 void audio_music_cue(const char *piece);
+void audio_music_stop(float fade_seconds);
+bool audio_music_playing(void);                           /* playing or ringing out */
+/* The sound log's beds (ambient.h: sound_id): this frame's gain (0 silent) and pan. */
+void audio_set_emitter(int id, float gain, float pan);
+void audio_set_listen_focus(int id);                       /* the sound Listen is on, or -1 */
 void audio_voice_line(const char *text, speaker_t who);   /* murmur voice for one line */
 void audio_voice_line_ex(const char *text, speaker_t who, bool garbled);   /* wind eats syllables */
 void audio_voice_stop(void);
+/* A recorded line (16-bit mono, 22,050 Hz) through the handset chain; the
+ * samples must stay valid until audio_voice_busy() goes false. */
+void audio_voice_pcm(const s16 *pcm, int len, speaker_t who, bool garbled);
+bool audio_voice_busy(void);
+/* Mixer health: buffers the DSP found unready, blocks mixed, average ms per block. */
+void audio_stats(u32 *underruns, u32 *blocks, float *mix_ms);
 void audio_radio_hiss(bool on);                            /* carrier hiss while the handset is up */
-/* Per-frame scene parameters (0..1). */
-void audio_set_scene(float wind, float birds, float night, float altitude, float listen_duck);
+/* Per-frame scene parameters (0..1); listen is how far into Listen the player is. */
+void audio_set_scene(float wind, float birds, float night, float altitude, float listen);
 /* Rain on the land (0..1) and how enclosed the listener is (0 outdoors, 1 in a room). */
 void audio_set_weather(float rain, float indoor);
 

@@ -55,6 +55,20 @@ static void scripted(u32 f)
 		if (book == 120 || book == 180) IN.held |= WPAD_BUTTON_RIGHT;
 		if (book == 300) { IN.held |= WPAD_BUTTON_B; stage = 5; }
 	}
+#ifdef LL_SOAK
+	/* The soak keeps everything busy for an hour: a stroll every half
+	 * minute, Listen every forty seconds, a call to Basin every minute. */
+	if (stage == 5) {
+		u32 t = f % 3600;
+		if (t >= 300 && t < 600) IN.stick_y = 0.8f;
+		if (t >= 600 && t < 700) IN.ir_x = 0.9f;
+		if (t >= 1800 && t < 2100) IN.stick_y = -0.6f;
+		if ((f % 2400) < 600) IN.held |= WPAD_NUNCHUK_BUTTON_C;
+		if (t == 3000 && !radio_busy()) IN.held |= WPAD_BUTTON_B;
+		if (radio_in_call() && !radio_wants_pointer() && (f % 300) == 0) IN.held |= WPAD_BUTTON_A;
+		if (ringing && ring_frames == 120) IN.held |= WPAD_BUTTON_B;
+	}
+#endif
 	IN.down |= IN.held & ~prev;
 	IN.up |= prev & ~IN.held;
 }
