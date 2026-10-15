@@ -1,0 +1,44 @@
+{
+  "_comment": "Soft Paper Peaks colour script. Single source of truth for the day/night cycle: the concept renderer reads it today, and the Phase 3 build step converts it to src/gen/palette.h. Times are in-game hours. 'sun' is the key light colour (the moon at night). key_side: -1 = light from frame-left / east, +1 = from frame-right / west (as seen from the Cinder Ridge overlook looking SW).",
+  "keyframes": [
+    {"name": "Dawn",        "time": 6.0,  "sky_top": "#6E7BA6", "sky_horizon": "#EBB9A2", "fog": "#CDB3B5", "sun": "#F7CDA2", "shadow": "#5C5E88", "ambient": "#8E8BA8", "key_strength": 0.45, "key_side": -1.0, "sun_elev": 2,   "fog_density": 0.78, "window_glow": 0.6},
+    {"name": "Morning",     "time": 9.0,  "sky_top": "#8DAAC6", "sky_horizon": "#EAE2CF", "fog": "#CDD4CF", "sun": "#F7E6C4", "shadow": "#6D8098", "ambient": "#A9B3B8", "key_strength": 0.75, "key_side": -0.8, "sun_elev": 28,  "fog_density": 0.52, "window_glow": 0.0},
+    {"name": "Midday",      "time": 13.0, "sky_top": "#7CA3C2", "sky_horizon": "#DDE5E1", "fog": "#C9D3D0", "sun": "#FBF1DA", "shadow": "#7A8B93", "ambient": "#B6BEBD", "key_strength": 0.80, "key_side": -0.2, "sun_elev": 58,  "fog_density": 0.42, "window_glow": 0.0},
+    {"name": "Golden hour", "time": 18.5, "sky_top": "#8A9BBA", "sky_horizon": "#F3C690", "fog": "#E2B88F", "sun": "#F9C27A", "shadow": "#6A5D7F", "ambient": "#A8968F", "key_strength": 0.85, "key_side": 1.0,  "sun_elev": 8,   "fog_density": 0.62, "window_glow": 0.25},
+    {"name": "Dusk",        "time": 20.0, "sky_top": "#3D4970", "sky_horizon": "#D98C78", "fog": "#9A7E93", "sun": "#E98E6A", "shadow": "#3A3A5E", "ambient": "#6E627A", "key_strength": 0.35, "key_side": 1.0,  "sun_elev": -2,  "fog_density": 0.70, "window_glow": 0.85},
+    {"name": "Night",       "time": 22.5, "sky_top": "#121A31", "sky_horizon": "#2D3A5B", "fog": "#25304F", "sun": "#C8D2E6", "shadow": "#0F1529", "ambient": "#3A4462", "key_strength": 0.22, "key_side": -0.5, "sun_elev": -20, "fog_density": 0.80, "window_glow": 1.0}
+  ],
+  "albedo": {
+    "pine":          "#5A6D5B",
+    "pine_dark":     "#435346",
+    "grass_summer":  "#A9A766",
+    "grass_autumn":  "#BCA477",
+    "aspen_summer":  "#9CB27A",
+    "aspen_autumn":  "#D9B65A",
+    "rock":          "#8F8A83",
+    "ash_scree":     "#B3ACA2",
+    "burn_snag":     "#8C847D",
+    "burn_ground":   "#6E6359",
+    "water":         "#6E8EA0",
+    "trail":         "#A88D6C",
+    "tower_wood":    "#7A5E48",
+    "larkspur":      "#7D7BB3",
+    "yarrow":        "#EDE4CC",
+    "window_light":  "#F2B56B"
+  },
+  "ui": {
+    "paper":         "#EFE6D4",
+    "ink":           "#2E2A2A",
+    "subtitle":      "#F3EBDD",
+    "speaker_dot":   "#F2C892",
+    "speaker_theo":  "#CFDCE6"
+  },
+  "grade": {
+    "lift": "#E8DFCF",
+    "lift_amount": 0.06,
+    "tint": "#FFF6EA",
+    "grain": 0.018,
+    "vignette": 0.22,
+    "softness": 0.22
+  }
+}
