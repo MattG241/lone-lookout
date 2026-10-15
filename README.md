@@ -5,9 +5,10 @@ end of a fire season as the lookout on Kestrel Knob in the fictional **Ashen Pea
 listen, sit, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states.
 Eleven in-game days, with a story path of about 4–6 hours.
 
-![Cinder Ridge at golden hour (Dolphin capture)](docs/screenshots/phase3/ridge_vista.png)
+![Day 7: the bench call at seven (Dolphin capture)](docs/screenshots/phase4/bench_call_day7.png)
 
-*Above: Augie's bench on Cinder Ridge at golden hour, Phase 3, running in Dolphin at native 640 × 480.*
+*Above: Day 7 at seven o'clock on Augie's bench, in the haze; Dot asks Theo to describe the
+sunset. Phase 4, running in Dolphin at native 640 × 480.*
 
 ## Status
 
