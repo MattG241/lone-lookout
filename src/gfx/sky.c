@@ -210,7 +210,7 @@ static const ring_def RINGS[3] = {
 	{ 560.0f, 4.5f, -60.0f, 3.0f, 2, 0.30f, ALB_PINE_DARK, 0.71f },
 };
 
-void backdrop_draw(const daylight *d)
+static void draw_rings(const daylight *d, int first, int last)
 {
 	gfx_model_follow_eye();
 	gfx_depth(false, false);
@@ -221,7 +221,7 @@ void backdrop_draw(const daylight *d)
 	const int SEG = 48;
 	const float layer_v = 1.0f / 3.0f;
 
-	for (int ri = 0; ri < 3; ri++) {
+	for (int ri = first; ri <= last; ri++) {
 		const ring_def *R = &RINGS[ri];
 		rgbf alb = rgb_from(R->albedo);
 		/* Rough lighting: distant ranges catch the key light dimly. */
@@ -264,3 +264,7 @@ void backdrop_draw(const daylight *d)
 	}
 	gfx_blend_none();
 }
+
+void backdrop_draw(const daylight *d) { draw_rings(d, 0, 2); }
+void backdrop_draw_far(const daylight *d) { draw_rings(d, 0, 0); }
+void backdrop_draw_near(const daylight *d) { draw_rings(d, 1, 2); }

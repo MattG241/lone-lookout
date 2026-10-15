@@ -12,10 +12,11 @@
 #include "gfx/gfx.h"
 #include "gfx/mesh.h"
 #include "game/story.h"
+#include "core/noise.h"
 
 static dlist_t s_deer;
 
-#define SMOKE_PUFFS 18
+#define SMOKE_PUFFS 36
 
 /* A deer standing at the origin, facing north (-z), shoulder ~1 m. */
 static void build_deer(void)
@@ -83,8 +84,9 @@ void smoke_draw(const daylight *d)
 	float height, alpha;
 	if (!story_smoke(&base, &height, &alpha)) return;
 	float t = G.frame / 60.0f;
-	rgbf lit = rgb_mul(rgb_make(0.95f, 0.94f, 0.92f), rgb_add(d->ambient, rgb_scale(d->sun, d->key_strength * 0.6f)));
-	rgbf col = rgb_lerp(lit, d->fog, 0.2f);
+	/* Grey-brown and dense low down, paler where it spreads; dimmed only by night. */
+	float lum = 1.0f - 0.55f * d->night;
+	rgbf low = rgb_scale(rgb_make(0.56f, 0.53f, 0.50f), lum), high = rgb_scale(rgb_make(0.80f, 0.79f, 0.77f), lum);
 	v3 r = G.right, u = G.up;
 
 	gfx_model_identity();
@@ -93,25 +95,37 @@ void smoke_draw(const daylight *d)
 	gfx_blend_alpha();
 	mat_vcolor_tex(&T_GLOW, true, false);
 	vdesc_pct();
-	GX_Begin(GX_QUADS, VF_3D, SMOKE_PUFFS * 4);
+	GX_Begin(GX_QUADS, VF_3D, SMOKE_PUFFS * 3 * 4);
 	for (int i = 0; i < SMOKE_PUFFS; i++) {
-		/* Each puff climbs the column and loops; the top leans off downwind (east). */
+		/* Each puff climbs the column and loops; higher up the wind leans it east
+		 * and it spreads. */
 		float k = fmodf((i + t * 0.08f) / SMOKE_PUFFS, 1.0f);
-		float y = base.y + k * height;
-		float lean = k * k * height * 0.4f;
-		float wob = sinf(i * 2.3f + t * 0.2f) * (5.0f + 14.0f * k);
-		v3 c = v3_make(base.x + lean + wob, y, base.z + wob * 0.4f);
-		float size = 22.0f + 70.0f * k;
-		GXColor gc = gx_col(rgb_lerp(col, d->fog, 0.25f * k), alpha * 0.58f * (1.0f - 0.7f * k) * saturatef(k * 6.0f + 0.2f));
-		v3 rs = v3_scale(r, size), us = v3_scale(u, size);
-		GX_Position3f32(c.x - rs.x + us.x, c.y - rs.y + us.y, c.z - rs.z + us.z);
-		GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 0);
-		GX_Position3f32(c.x + rs.x + us.x, c.y + rs.y + us.y, c.z + rs.z + us.z);
-		GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(1, 0);
-		GX_Position3f32(c.x + rs.x - us.x, c.y + rs.y - us.y, c.z + rs.z - us.z);
-		GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(1, 1);
-		GX_Position3f32(c.x - rs.x - us.x, c.y - rs.y - us.y, c.z - rs.z - us.z);
-		GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 1);
+		float y = base.y + k * height * (1.0f - 0.12f * k * k);
+		float lean = k * k * height * 0.35f;
+		float wob = sinf(i * 2.3f + t * 0.2f) * (6.0f + 16.0f * k);
+		float size = 22.0f + 60.0f * k;
+		float a0 = alpha * 0.55f * (1.0f - 0.3f * k) * saturatef(k * 6.0f + 0.2f);
+		/* A lumpy cluster of three, the side away from the light a shade darker. */
+		for (int j = 0; j < 3; j++) {
+			u32 h = hash32((u32)(i * 3 + j) * 2654435761u + 7u);
+			float ox = (((h & 255) / 255.0f) - 0.5f) * size * 1.3f;
+			float oy = ((((h >> 8) & 255) / 255.0f) - 0.5f) * size * 0.9f;
+			float sz = size * (0.7f + 0.4f * ((h >> 16) & 255) / 255.0f);
+			v3 c = v3_make(base.x + lean + wob + ox, y + oy, base.z + (wob + ox) * 0.5f);
+			float shade = 0.82f + 0.18f * saturatef(0.5f + ox / size);
+			rgbf col = rgb_scale(rgb_lerp(low, high, sqrtf(k)), shade);
+			col = rgb_lerp(col, d->fog, 0.1f + 0.15f * k);
+			GXColor gc = gx_col(col, a0);
+			v3 rs = v3_scale(r, sz), us = v3_scale(u, sz);
+			GX_Position3f32(c.x - rs.x + us.x, c.y - rs.y + us.y, c.z - rs.z + us.z);
+			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 0);
+			GX_Position3f32(c.x + rs.x + us.x, c.y + rs.y + us.y, c.z + rs.z + us.z);
+			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(1, 0);
+			GX_Position3f32(c.x + rs.x - us.x, c.y + rs.y - us.y, c.z + rs.z - us.z);
+			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(1, 1);
+			GX_Position3f32(c.x - rs.x - us.x, c.y - rs.y - us.y, c.z - rs.z - us.z);
+			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 1);
+		}
 	}
 	GX_End();
 	gfx_blend_none();

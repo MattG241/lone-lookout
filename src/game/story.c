@@ -118,10 +118,10 @@ bool story_smoke(v3 *base, float *height, float *alpha)
 	if (S.day != 5 || DAY.hour < SMOKE_FROM || DAY.hour > 22.0f) return false;
 	float b = DEG2RAD(SMOKE_BEARING);
 	/* The base is behind the eastern rim (14 degrees up from the deck); the column
-	 * climbs well clear of it, to about 27 degrees. */
+	 * climbs well clear of it, to about 28 degrees. */
 	*base = v3_make(TOWER_X + sinf(b) * SMOKE_DIST, 120.0f, TOWER_Z - cosf(b) * SMOKE_DIST);
 	float age = DAY.hour - SMOKE_FROM;
-	*height = 120.0f + 300.0f * saturatef(age / 0.6f);
+	*height = 160.0f + 360.0f * saturatef(age / 0.6f);
 	/* The crew has it by dark: it thins after a report (or Prospect's). */
 	float fade = dlg_flag(FLAG_SMOKE_REPORTED) || dlg_flag(FLAG_SMOKE_MISSED) ? 1.0f - saturatef((DAY.hour - 19.0f) / 2.0f) : 1.0f;
 	*alpha = saturatef(age / 0.15f) * fade;

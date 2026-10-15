@@ -41,8 +41,9 @@ static void draw_scene(const daylight *d)
 	bool indoor = world_indoor(v3_make(eye.x, eye.y - 1.5f, eye.z)) != INDOOR_NONE;
 
 	sky_draw(d, WX.cloud);
-	backdrop_draw(d);
-	smoke_draw(d);
+	backdrop_draw_far(d);
+	smoke_draw(d);                         /* 900 m out: between the far and near ranges */
+	backdrop_draw_near(d);
 
 	gfx_fog(d);
 	G.stat_chunks = terrain_draw(d);

@@ -177,10 +177,11 @@ void gfx_end(void)
 	GX_SetColorUpdate(GX_TRUE);
 #ifdef LL_SOAK
 	/* The audio soak only draws and shows one frame every 10 s, so an hour of
-	 * frame dumps is a few hundred images, each with the mixer stats. */
+	 * frame dumps is a few hundred images, each with the mixer stats. Hidden
+	 * frames draw nothing and copy nothing (tens of thousands of unshown XFB
+	 * copies piled up in Dolphin until its software Vulkan driver crashed). */
 	if (G.frame % 600 != 0) {
-		GX_SetCopyClear((GXColor){ 0, 0, 0, 255 }, GX_MAX_Z24);
-		GX_CopyDisp(G.xfb[G.fb], GX_TRUE);   /* clears the EFB; the XFB isn't shown */
+		if (G.frame % 600 == 599) GX_CopyDisp(G.xfb[G.fb], GX_TRUE);   /* clear the EFB for the next shown frame */
 		GX_DrawDone();
 		G.work_ms = ticks_to_microsecs(gettime() - s_frame_start) * 0.001f;
 		update_pacing();
