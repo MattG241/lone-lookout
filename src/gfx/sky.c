@@ -227,6 +227,10 @@ void backdrop_draw(const daylight *d)
 		/* Rough lighting: distant ranges catch the key light dimly. */
 		rgbf lit = rgb_mul(alb, rgb_add(d->ambient, rgb_scale(d->sun, d->key_strength * 0.45f)));
 		float haze = saturatef(R->haze * (0.6f + 0.6f * d->fog_density));
+		/* Never clearer than the far edge of the real terrain in front of it, or in thick
+		 * haze the fogged-out rim shows as a pale cut-out against darker ranges behind. */
+		float end = 470.0f / clampf(d->fog_density, 0.25f, 1.6f), k = (340.0f + 0.1f * R->radius) / end;
+		haze = fmaxf(haze, 1.0f - exp2f(-8.0f * k * k));
 		rgbf top = rgb_lerp(lit, d->fog, haze);
 		rgbf bot = rgb_lerp(lit, d->fog, saturatef(haze + 0.35f));
 		/* Texture intensity is centred on 0.5 and doubled in the TEV. */

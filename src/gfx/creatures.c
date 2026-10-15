@@ -83,8 +83,8 @@ void smoke_draw(const daylight *d)
 	float height, alpha;
 	if (!story_smoke(&base, &height, &alpha)) return;
 	float t = G.frame / 60.0f;
-	rgbf lit = rgb_mul(rgb_make(0.86f, 0.85f, 0.83f), rgb_add(d->ambient, rgb_scale(d->sun, d->key_strength * 0.6f)));
-	rgbf col = rgb_lerp(lit, d->fog, 0.3f);
+	rgbf lit = rgb_mul(rgb_make(0.95f, 0.94f, 0.92f), rgb_add(d->ambient, rgb_scale(d->sun, d->key_strength * 0.6f)));
+	rgbf col = rgb_lerp(lit, d->fog, 0.2f);
 	v3 r = G.right, u = G.up;
 
 	gfx_model_identity();
@@ -98,11 +98,11 @@ void smoke_draw(const daylight *d)
 		/* Each puff climbs the column and loops; the top leans off downwind (east). */
 		float k = fmodf((i + t * 0.08f) / SMOKE_PUFFS, 1.0f);
 		float y = base.y + k * height;
-		float lean = k * k * height * 0.45f;
-		float wob = sinf(i * 2.3f + t * 0.2f) * (4.0f + 10.0f * k);
+		float lean = k * k * height * 0.4f;
+		float wob = sinf(i * 2.3f + t * 0.2f) * (5.0f + 14.0f * k);
 		v3 c = v3_make(base.x + lean + wob, y, base.z + wob * 0.4f);
-		float size = 14.0f + 42.0f * k;
-		GXColor gc = gx_col(rgb_lerp(col, d->fog, 0.25f * k), alpha * 0.42f * (1.0f - 0.75f * k) * saturatef(k * 6.0f + 0.2f));
+		float size = 22.0f + 70.0f * k;
+		GXColor gc = gx_col(rgb_lerp(col, d->fog, 0.25f * k), alpha * 0.58f * (1.0f - 0.7f * k) * saturatef(k * 6.0f + 0.2f));
 		v3 rs = v3_scale(r, size), us = v3_scale(u, size);
 		GX_Position3f32(c.x - rs.x + us.x, c.y - rs.y + us.y, c.z - rs.z + us.z);
 		GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 0);

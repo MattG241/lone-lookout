@@ -52,7 +52,7 @@ static const shot_t SHOTS[] = {
 	{ "cab_night", 1, 22.9f, TX + 0.3f, TZ + 1.55f, 1.62f, TX - 1.3f, 0.7f, TZ - 0.9f, SHOT_LAMP, 0 },
 	{ "tower_at_night", 1, 23.1f, 263.0f, 296.0f, 1.62f, TX, 10.0f, TZ, SHOT_LAMP, 0 },
 	{ "tarn_dawn", 2, 6.4f, 0, 0, 0, 104.0f, 4.0f, 200.0f, SHOT_SEAT, 3 },
-	{ "fawns_day2", 2, 7.2f, 152.0f, 322.0f, 1.62f, 132.0f, 0.9f, 297.0f, SHOT_PLAIN, 0 },
+	{ "fawns_day2", 2, 7.2f, 150.0f, 320.0f, 1.62f, 132.0f, 0.7f, 298.0f, SHOT_BINOCULARS, 0 },
 	{ "burn_morning", 2, 8.6f, 372.0f, 394.0f, 1.62f, 404.0f, 3.0f, 358.0f, SHOT_PLAIN, 0 },
 	{ "cabin_afternoon", 3, 15.2f, 254.0f, 447.0f, 1.62f, 243.0f, 1.6f, 434.0f, SHOT_PLAIN, 0 },
 	{ "notebook_today", 4, 10.4f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2.0f, SHOT_NOTEBOOK, NB_TODAY,
@@ -66,7 +66,7 @@ static const shot_t SHOTS[] = {
 	{ "binoculars", 1, 17.6f, TX + 2.5f, TZ - 2.5f, 1.62f, 398.0f, 2.0f, 112.0f, SHOT_BINOCULARS, 0 },
 	{ "fire_finder", 5, 15.4f, TX + 0.2f, TZ + 0.85f, 1.62f, TX, 1.0f, TZ - 3.0f, SHOT_FINDER, 0 },
 	{ "storm_day5", 5, 15.8f, TX + 2.5f, TZ + 2.5f, 1.62f, 400.0f, 20.0f, 330.0f, SHOT_PLAIN, 0 },
-	{ "smoke_day5", 5, 17.3f, TX + 2.6f, TZ + 0.6f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 101.0f, 3.0f },
+	{ "smoke_day5", 5, 17.3f, TX + 2.6f, TZ + 0.6f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 101.0f, 13.0f },
 	{ "smoke_finder_day5", 5, 17.4f, TX + 0.2f, TZ + 0.85f, 1.62f, 0, 0, 0, SHOT_FINDER, 0, 0, 0, 104.0f, -8.0f },
 	{ "bench_call_day7", 7, 19.05f, 0, 0, 0, TX, 8.0f, TZ, SHOT_SEAT, 4, CALL_D7_SEVEN + 1, 3 },
 	{ "rain_day11", 11, 14.0f, 0, 0, 0, 250.0f, 1.5f, 470.0f, SHOT_SEAT, 6 },
@@ -86,6 +86,8 @@ static float top_ground(float x, float z) { return world_ground(x, z, 1e9f, NULL
 /* Play a call straight through, taking the first card at every choice. */
 static void play_through(int call)
 {
+	bool locked = P.input_locked;
+	P.input_locked = false;                  /* so the lines go into the radio log */
 	dlg_force_call(call);
 	for (int guard = 0; guard < 400 && dlg_get_state() != DS_IDLE; guard++) {
 		switch (dlg_get_state()) {
@@ -94,6 +96,7 @@ static void play_through(int call)
 		default: dlg_close(); break;
 		}
 	}
+	P.input_locked = locked;
 }
 
 static void look_at(v3 eye, float lx, float ly, float lz)

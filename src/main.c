@@ -127,6 +127,9 @@ int main(int argc, char **argv)
 		ramp_update(&d);
 
 		gfx_begin(black ? rgb_make(0, 0, 0) : d.fog);
+#ifdef LL_SOAK
+		black = G.frame % 600 != 0;            /* the soak only draws the frames it shows */
+#endif
 		if (!black)
 			draw_scene(&d);
 		gfx_end();

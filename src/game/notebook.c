@@ -70,7 +70,7 @@ static void check_box(float x, float y, bool done, float a)
 	GXColor pen = gx_col(rgb_from(UI_INK), 0.75f * a), red = gx_col(rgb_make(0.55f, 0.18f, 0.14f), 0.9f * a);
 	mat_vcolor();
 	vdesc_2d(false);
-	const float s = 15.0f;
+	const float s = 13.0f;
 	GX_Begin(GX_LINESTRIP, VF_2D, 5);
 	GX_Position2f32(x, y); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
 	GX_Position2f32(x + s, y + 0.6f); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
@@ -80,8 +80,8 @@ static void check_box(float x, float y, bool done, float a)
 	GX_End();
 	if (!done) return;
 	GX_Begin(GX_LINESTRIP, VF_2D, 3);
-	GX_Position2f32(x + 2.0f, y + 7.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
-	GX_Position2f32(x + 6.5f, y + 13.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
+	GX_Position2f32(x + 2.0f, y + 6.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
+	GX_Position2f32(x + 5.5f, y + 11.5f); GX_Color4u8(red.r, red.g, red.b, red.a);
 	GX_Position2f32(x + s + 3.0f, y - 4.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
 	GX_End();
 }
@@ -91,13 +91,13 @@ static float duty(float x, float y, float w, const char *text, bool done, float 
 {
 	GXColor ink = gx_col(rgb_from(UI_INK), (done ? 0.5f : 0.9f) * a);
 	int st[3], ln[3];
-	int n = text_wrap(FONT_L, text, w - 40.0f, st, ln, 3);
-	float lh = text_line_height(FONT_L) * 0.9f;
+	int n = text_wrap(FONT_S, text, w - 34.0f, st, ln, 3);
+	float lh = text_line_height(FONT_S);
 	gfx_blend_alpha();
-	check_box(x, y - 15.0f, done, a);
+	check_box(x, y - 12.0f, done, a);
 	text_begin();
-	for (int i = 0; i < n; i++) text_draw(FONT_L, x + 32.0f, y + i * lh, text + st[i], ln[i], ink);
-	return y + n * lh + 18.0f;
+	for (int i = 0; i < n; i++) text_draw(FONT_S, x + 28.0f, y + i * lh, text + st[i], ln[i], ink);
+	return y + n * lh + 16.0f;
 }
 
 /* Basin's forecast, as Theo wrote it down at the morning call. */
@@ -123,7 +123,7 @@ static void today_page(float x, float y, float w, float h, float a)
 	text_begin();
 	text_draw(FONT_L, x + 30.0f, y + 40.0f, head, -1, ink);
 	text_draw(FONT_S, x + 30.0f, y + 66.0f, FORECAST[di->weather], -1, faint);
-	float ly = y + 128.0f;
+	float ly = y + 116.0f;
 	if (S.day < NUM_DAYS || !story_flag(FLAG_SEASON_OVER)) {
 		ly = duty(x + 30.0f, ly, w - 60.0f, "Morning readings at the instrument shelter, before noon.", S.obs_am, a);
 		ly = duty(x + 30.0f, ly, w - 60.0f, "Evening readings, after five. Call them in.", S.obs_pm, a);
@@ -290,11 +290,13 @@ void notebook_draw(void)
 		text_draw(FONT_L, tx, y - 9, TABS[i], -1, gx_col(rgb_from(UI_INK), (on ? 0.95f : 0.5f) * a));
 		tx += tw + 28.0f;
 	}
-	/* The day, top right. */
-	char day[48];
-	snprintf(day, sizeof(day), "Day %d, %s", S.day, day_info(S.day)->date);
-	text_begin();
-	text_draw(FONT_S, x + w - 24 - text_width(FONT_S, day, -1), y - 8, day, -1, gx_col(rgb_from(UI_INK), 0.6f * a));
+	/* The day, pencilled in the bottom corner (the Today page has it in its heading). */
+	if (S.notebook_page != NB_TODAY) {
+		char day[48];
+		snprintf(day, sizeof(day), "Day %d, %s", S.day, day_info(S.day)->date);
+		text_begin();
+		text_draw(FONT_S, x + 22, y + h - 8, day, -1, gx_col(rgb_from(UI_INK), 0.45f * a));
+	}
 
 	float px = x + 14, py = y + 12, pw = w - 28, ph = h - 24;
 	switch (S.notebook_page) {

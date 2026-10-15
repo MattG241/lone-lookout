@@ -176,8 +176,8 @@ void gfx_end(void)
 	GX_SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
 	GX_SetColorUpdate(GX_TRUE);
 #ifdef LL_SOAK
-	/* The audio soak draws every frame but only shows one every 10 s, so an
-	 * hour of frame dumps is a few hundred images, each with the mixer stats. */
+	/* The audio soak only draws and shows one frame every 10 s, so an hour of
+	 * frame dumps is a few hundred images, each with the mixer stats. */
 	if (G.frame % 600 != 0) {
 		GX_SetCopyClear((GXColor){ 0, 0, 0, 255 }, GX_MAX_Z24);
 		GX_CopyDisp(G.xfb[G.fb], GX_TRUE);   /* clears the EFB; the XFB isn't shown */

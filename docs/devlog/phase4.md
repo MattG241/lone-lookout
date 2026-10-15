@@ -30,8 +30,37 @@ native 640 × 480 (Dolphin 2609, Vulkan, copy filter on, forced 4:3). Run
 
 ## Screenshots
 
-*(see below)*
+*(pending recapture)*
 
 ## How it was verified
 
-*(see below)*
+- **Builds:** `make`, `make SHOTS=1`, `make WALKTEST=1` and `make SOAK=1` are clean with
+  `-Wall -Wextra` (zero warnings).
+- **`make test`** now runs three host programs against the same C the Wii runs:
+  - *World* (`test_world.c`, 5,140 checks): unchanged from Phase 3, plus the new props.
+  - *Story* (`test_story.c`, 4,026 checks):
+    - **Script structure.** Every op of all 70 calls is reachable, every path ends, every jump
+      stays in its call, every option fits a card, every `{token}` is known, and the fallback
+      check-in is always available.
+    - **The story path reaches the ending in 4.64 h.** A player who does each day's duties and
+      errand, wanders and sits in real time and time-lapses one evening wait a day. All 49 story
+      calls play, including the smoke report, the relay, the bench at seven, the bull count and the
+      last call. Day 1 takes 12 min; days 2–10 about 27 min each; Day 11 24 min.
+    - **Ignoring everything reaches the ending.** Never answering, never reading, time-lapsing
+      every day on the stool and sleeping at seven: no call plays, and the gate still opens on the
+      last evening (about 35 min).
+    - **Sixty randomised seasons all reach the ending** (4.7–5.1 h). They use random answer delays
+      (some slower than the ring), one in seven who never answer, random choices and a quarter of
+      every day's steps skipped. No line ever goes out with a raw `{token}`.
+    - **Voice-over IDs:** every line spoken in those runs (13,187) has its ID in `gen/vo_lines.txt`.
+  - *Audio* (`test_audio.c`, 68 checks):
+    - Every instrument is in tune to within 10 cents (autocorrelation pitch of a held note).
+    - Each piece renders start to finish with no NaNs, no clipping (peaks 0.26–0.75), sensible
+      loudness (RMS 0.05–0.09) and the right length. The rendered files have no sample-to-sample
+      jumps (clicks).
+    - The ten beds render cleanly. Cost: music about 2.5 ms per second of audio on the host, a few
+      percent of a Wii core at a conservative 20× ratio. Two denormal stalls (decaying reverb and
+      filter tails) were found and fixed this way.
+- **Dolphin:**
+  - The screenshot tour drives the real game code for every shot below.
+  - **Audio soak:** see below.
