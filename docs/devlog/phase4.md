@@ -30,7 +30,38 @@ native 640 × 480 (Dolphin 2609, Vulkan, copy filter on, forced 4:3). Run
 
 ## Screenshots
 
-*(pending recapture)*
+**Day 7, seven o'clock.** On Augie's bench, in the orange haze from fires to the south, Dot asks
+Theo to describe the sunset she has heard seven thousand times and never seen.
+![The bench call at seven](../screenshots/phase4/bench_call_day7.png)
+
+**Day 5, 17:20.** A thin column of smoke rises out past the burn after the dry lightning, seen
+from the catwalk. Theo takes its bearing in the fire finder (104) and calls it in.
+![Smoke on Harrow Ridge](../screenshots/phase4/smoke_day5.png)
+
+**The notebook.** *Today* keeps the duties: the forecast, the two readings and the day's errand,
+ticked in red pencil. *Radio* is everything said on the radio. *Sounds* is the sound log, with
+what Theo wrote about the sound picked out.
+
+| | |
+|---|---|
+| ![Today](../screenshots/phase4/notebook_today.png) Day 4: Augie's round | ![Radio](../screenshots/phase4/notebook_radio.png) The morning call, in the log |
+| ![Sounds](../screenshots/phase4/notebook_sounds.png) Five sounds written down | ![Map](../screenshots/phase4/notebook_map.png) Augie's map |
+
+**Listen.** Holding C: the edges darken, the world quietens and the sounds Theo can hear get
+labels. The focused one (underlined) fills in as he stays on it.
+
+| | |
+|---|---|
+| ![Listen in the burn](../screenshots/phase4/listen_burn.png) The burn: wind in the snags, a woodpecker | ![Listen in the meadow](../screenshots/phase4/listen_meadow.png) The meadow at midday: grasshoppers, the creek |
+
+**Day 11.** The first rain in seven weeks, from the cabin porch and from the catwalk; and the
+closing card through the gate (its lines depend on what Theo told Dot).
+
+| | |
+|---|---|
+| ![Rain from the porch](../screenshots/phase4/rain_day11.png) Rain from the porch | ![Rain from the deck](../screenshots/phase4/rain_deck_day11.png) Rain from the catwalk |
+| ![Ending card](../screenshots/phase4/ending_card.png) Through the gate | ![Fawns](../screenshots/phase4/fawns_day2.png) Day 2: the doe and twins, through the binoculars |
+| ![Finder](../screenshots/phase4/smoke_finder_day5.png) The fire finder on the smoke's bearing | ![Radio choices](../screenshots/phase4/radio_choices.png) Day 1: the radio check |
 
 ## How it was verified
 
