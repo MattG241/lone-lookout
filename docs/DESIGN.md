@@ -274,21 +274,24 @@ A. Pell's notebook" once you find his map under the cot.*
   **The '98 Burn** covers the SE slope. **Pell's Cabin** sits in the south near the trailhead.
 - Beyond the rim, four painted "backdrop rings" of distant ranges (out to ~3 km) make the bowl
   feel like part of a much bigger country.
-- Trails total **1.75 km** in one big loop with three short spurs. You can never get stuck down a
-  dead end.
+- Trails total **1.48 km** in one big loop with three short spurs. You can never get stuck down a
+  dead end. Every trail is graded into the hillside (a smoothed bed, ≤ 20° along most of its
+  length, ≤ 28° on the scramble up to the ridge), so walking never hits a sudden steep step.
 
 ### The six areas
 
 | # | Area | Elevation* | Character | Sit spot | Best time |
 |---|---|---|---|---|---|
-| 1 | **Kestrel Lookout** | 2,320 m | A 9 m timber tower with four flights of stairs, a catwalk and a 4 × 4 m glazed cab. Fire finder in the middle, cot, iron stove and kettle, radio table, lamp, logbook, Augie's shelf, and a wooden **lightning stool** with glass-insulator feet. A woodpile and cistern at the base. | Lightning stool; catwalk | Any; night with the lamp on |
+| 1 | **Kestrel Lookout** | 2,257 m | A 9 m timber tower with four flights of stairs, a catwalk and a 4 × 4 m glazed cab. Fire finder in the middle, cot, iron stove and kettle, radio table, lamp, logbook, Augie's shelf, and a wooden **lightning stool** with glass-insulator feet. A woodpile and cistern at the base. | Lightning stool; catwalk | Any; night with the lamp on |
 | 2 | **Larkspur Meadow** | 2,214 m | A flat meadow of dry grass and purple larkspur. The creek meanders through, an old grey drift fence is half fallen, and aspens ring the edge. A doe and twin fawns graze at dawn. | Fallen log | Dawn, dusk (elk, Day 5+) |
-| 3 | **Mirror Tarn** | 2,205 m | A small alpine lake (~110 m) with still water that reflects the ridge and the distant ranges. There's a weathered dock with Augie's tin box, and an open shoreline of sedge and boulders. | End of the dock | Morning calm; night frogs |
-| 4 | **Cinder Ridge Overlook** | 2,345 m | The highest point you can walk to. Dark cinder and pale ash scree (where the range gets its name), wind-bent whitebark pines, and Augie's carved bench. You can see everything from here. | Augie's bench | Golden hour ("SIT HERE AT SEVEN") |
-| 5 | **The '98 Burn** | 2,220 m | A slope that burned 27 years ago: silver standing snags, pink fireweed, and dense knee-high lodgepole saplings growing back. Augie watched it burn from the tower. | A fallen snag | Morning (woodpecker), windy afternoons |
-| 6 | **Pell's Cabin & Trailhead** | 2,216 m | A one-room 1950s survey cabin, Augie's "second office": a porch step, spoon wind-chimes, the pressed-flower book and the drawer with the old letter. A path runs south to the road gate and the bear-proof supply box. | Porch step | Afternoon |
+| 3 | **Mirror Tarn** | 2,205 m (water) | A small alpine lake (~110 m) with still water that reflects the ridge and the distant ranges. There's a weathered dock with Augie's tin box, and an open shoreline of sedge and boulders. | End of the dock | Morning calm; night frogs |
+| 4 | **Cinder Ridge Overlook** | 2,287 m | The highest point you can walk to. Dark cinder and pale ash scree (where the range gets its name), wind-bent whitebark pines, and Augie's carved bench. You can see everything from here. | Augie's bench | Golden hour ("SIT HERE AT SEVEN") |
+| 5 | **The '98 Burn** | 2,221 m | A slope that burned 27 years ago: silver standing snags, pink fireweed, and dense knee-high lodgepole saplings growing back. Augie watched it burn from the tower. | A fallen snag | Morning (woodpecker), windy afternoons |
+| 6 | **Pell's Cabin & Trailhead** | 2,215 m | A one-room 1950s survey cabin, Augie's "second office": a porch step, spoon wind-chimes, the pressed-flower book and the drawer with the old letter. A path runs south to the road gate and the bear-proof supply box. | Porch step | Afternoon |
 
 \* Elevations are computed by the world generator (`--summary`); in-game they appear only on the notebook map.
+Phase 3 lowered the knob and the ridge from the Phase 1 sketch (which had 70° trail sections) so
+that every area is reachable on foot.
 
 **Minor landmarks:** the cold spring (a pipe spring with a tin cup), the drift fence, the tarn
 dock and Augie's bench.
@@ -297,25 +300,26 @@ dock and Augie's bench.
 
 | Route | Distance | Climb | Stroll |
 |---|---|---|---|
-| Tower → Meadow | 215 m | (descent) | 1.6 min |
-| Meadow → Tarn | 164 m | 5 m | 1.2 min |
-| Tarn → Ridge (switchbacks) | 310 m | 141 m | 2.3 min |
-| Ridge → Tower | 307 m | 97 m (descent mostly) | 2.3 min |
-| Tower → Cabin | 239 m | — | 1.8 min |
-| Cabin → Burn | 152 m | 9 m | 1.2 min |
-| Burn → Tower | 209 m | 93 m | 1.6 min |
-| Cabin → Trailhead gate | 65 m | 18 m | 0.5 min |
+| Tower → Meadow | 167 m | (43 m descent) | 1.3 min |
+| Meadow → Tarn (and along the shore) | 214 m | (9 m descent) | 1.6 min |
+| Tarn → Ridge (across the ridge's south-west face) | 260 m | 81 m | 2.0 min |
+| Ridge → Tower | 188 m | 12 m (42 m descent) | 1.4 min |
+| Tower → Cabin | 186 m | (43 m descent) | 1.4 min |
+| Cabin → Burn | 151 m | 7 m | 1.1 min |
+| Burn → Tower | 171 m | 38 m | 1.3 min |
+| Cabin → Trailhead gate | 59 m | 20 m | 0.4 min |
 
-The north loop (Tower → Meadow → Tarn → Ridge → Tower) is about 7.5 minutes. The south loop
-(Tower → Cabin → Burn → Tower) is about 4.5 minutes.
+The north loop (Tower → Meadow → Tarn → Ridge → Tower) is about 6.5 minutes. The south loop
+(Tower → Cabin → Burn → Tower) is about 4 minutes. *(Computed from the baked trail profiles.)*
 
 ### Boundaries
 
-The bowl's rim is the edge of the world. Slopes steeper than **38°** can't be walked: the player
-slides gently back along the slope and never hits an invisible wall in open country. At the two
-notches (the creek gorge to the SW and the road gate to the S) a one-time thought subtitle
-explains it, e.g. *"That's the district line. Dot would kill me."* The gate is the exit for the
-ending.
+The bowl's rim is the edge of the world. Slopes steeper than **38°** can't be entered (nor left
+except downhill), so the player slides along the slope instead of hitting an invisible wall in
+open country. The creek gorge to the SW is too steep to enter. The road out to the S is closed
+by the gate, and a one-time thought subtitle explains it: *"That's the district line. Dot would
+kill me."* The rim and the deep tarn have their own one-time thoughts. The gate is the exit for
+the ending.
 
 ---
 
@@ -793,18 +797,25 @@ The large headroom is deliberate: it's room for fixes, not for features.
 
 ### World representation
 
-- **Terrain.** 129² vertices: `s16` positions with 3 fractional bits (0.125 m precision), `s8`
-  normals, RGBA8 colours (alpha = vegetation weight for the season tint). It's split into
-  **8 × 8 chunks of 16 × 16 cells** (512 tris each), one display list per chunk of triangle
-  strips, frustum- and distance-culled. A separate `u8` surface-ID grid drives footsteps.
-- **Foliage.** ~1,100 trees and ~3,000 tufts, placed offline from the worldgen masks with
-  Poisson-disk spacing and stored per chunk. Each type has two LOD display lists, and each
-  instance has a model matrix carrying its wind shear.
-- **Collision.** The player is a capsule (r 0.3 m, eye height 1.62 m). Ground comes from bilinear
-  heightmap sampling, with the 38° slope limit pushing back along the gradient. Tree trunks are
-  cylinders (near chunks only) and props are footprints. A hand-authored **walkmesh** covers the
-  tower (stairs as ramps with step snapping, cab, catwalk) and the cabin.
-- **Areas & triggers.** Circles and boxes from `tools/worldgen` drive music, the notebook and
+- **Terrain.** 129² vertices baked by `tools/worldgen/bake_world.py`: big-endian `f32` heights
+  and two RGBA8 colour sets (late summer and early autumn). It's split into **8 × 8 chunks of
+  16 × 16 cells** (512 tris each), one display list per chunk of triangle strips, frustum-culled,
+  with skirts on the map's edge. The season changes once a day, so the lists are simply
+  re-recorded with blended colours behind the day card. A `u8` surface grid (grass, needles, ash,
+  scree, rock, dirt) drives footsteps; trails are dirt by distance to their polylines. Trails and
+  the creek are draped ribbons on top; the tarn is a per-frame Fresnel-coloured water grid.
+- **Foliage.** ~1,860 trees and ~6,600 tufts, placed offline from the worldgen masks with
+  Poisson-disk spacing (plus sparse unreachable stands on the rim). Chunks within 70 m draw each
+  tree with its own wind-sheared model matrix. Further out, each chunk's trees are one
+  pre-transformed static display list. Tufts draw within ~60 m.
+- **Collision.** The player is a circle (r 0.28 m, eye height 1.62 m). Ground is interpolated
+  across the same triangles the renderer draws, with the 38° slope limit. Buildings are
+  **walk patches**: rectangles with a height plane (the deck, the four stair flights as ramps,
+  landings, the cabin floor and porch, the dock). Three general rules replace most railings:
+  never walk off a structure where the drop is over 1 m, never walk into one between knee and
+  head height, and never enter a slope over 38°. Walls with door gaps, posts, boxes and tree
+  trunks push the player out.
+- **Areas & triggers.** Circles from `tools/worldgen` drive place-name cards, the notebook and
   radio triggers.
 
 ### Dialogue data

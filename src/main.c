@@ -13,7 +13,10 @@
 #include "gfx/sky.h"
 #include "gfx/terrain.h"
 #include "gfx/foliage.h"
+#include "gfx/paths.h"
+#include "gfx/water.h"
 #include "gfx/props.h"
+#include "gfx/weather_fx.h"
 #include "game/game.h"
 #include "game/hud.h"
 #include "game/tour.h"
@@ -31,19 +34,34 @@ static void draw_scene(const daylight *d)
 {
 	v3 eye = game_eye();
 	gfx_camera(eye, P.yaw, P.pitch, P.roll, game_fov());
+	bool indoor = world_indoor(v3_make(eye.x, eye.y - 1.5f, eye.z)) != INDOOR_NONE;
 
-	sky_draw(d);
+	sky_draw(d, WX.cloud);
 	backdrop_draw(d);
 
 	gfx_fog(d);
-	terrain_draw(d);
-	props_draw(d);
+	G.stat_chunks = terrain_draw(d);
+	paths_draw(d);
+	props_state ps = { S.lamp, S.binoculars };
+	props_draw(d, &ps);
 	terrain_draw_tufts(d);
-	foliage_draw(d, 1.0f);
+	G.stat_trees = foliage_draw(d, WX.wind * 1.6f);
+	water_draw(d);
+	rain_draw(d, WX.rain, WX.wind, indoor);
 	gfx_fog_off();
 
 	gfx_post(d, 0.0f);
 	hud_draw();
+}
+
+/* A new day's season: re-record the coloured lists while the GPU is idle. */
+static void apply_season(void)
+{
+	GX_DrawDone();
+	float s = game_season();
+	terrain_set_season(s);
+	foliage_set_season(s);
+	S.season_dirty = false;
 }
 
 int main(int argc, char **argv)
@@ -54,14 +72,17 @@ int main(int argc, char **argv)
 	WPAD_SetPowerButtonCallback(on_wpad_power);
 
 	world_init();
-	terrain_build();
-	foliage_build();
+	game_init();
+	DAY.hour = 15.5f;                      /* Day 1: arrive at the trailhead mid-afternoon */
+	DAY.rate = 1.0f;
+	terrain_build(game_season());
+	foliage_build(game_season());
+	paths_build();
+	water_build();
 	props_build();
 	sky_init();
 	audio_init();
-
-	daycycle_init(17.6f);
-	game_init();
+	S.season_dirty = false;
 	clock_init();
 
 	while (!s_power_off) {
@@ -75,12 +96,18 @@ int main(int argc, char **argv)
 			game_update(SIM_DT);
 			input_consume();
 		}
+		if (S.season_dirty) apply_season();
 
 		daylight d;
 		daycycle_eval(&d);
-		audio_set_scene(0.55f + 0.25f * (P.pos.y - world_height(P.pos.x, P.pos.z) > 4.0f),
-		                (1.0f - d.night) * (d.hour > 5.0f && d.hour < 20.5f ? 1.0f : 0.0f),
-		                d.night, saturatef((P.pos.y - world_pad_height()) / 10.0f), 0.0f);
+		weather_apply(&d);
+		indoor_t in = world_indoor(P.pos);
+		float above = P.pos.y - world_height(P.pos.x, P.pos.z);
+		float birds = (1.0f - d.night) * (d.hour > 5.0f && d.hour < 20.5f ? 1.0f : 0.0f) * (1.0f - WX.rain) *
+		              (1.0f - 0.7f * WX.storm);
+		audio_set_scene(saturatef(WX.wind * (0.8f + 0.3f * (above > 4.0f))), birds, d.night,
+		                saturatef((P.pos.y - 60.0f) / 50.0f + (above > 4.0f ? 0.3f : 0.0f)), 0.0f);
+		audio_set_weather(WX.rain, in != INDOOR_NONE ? 1.0f : 0.0f);
 		ramp_update(&d);
 
 		gfx_begin(black ? rgb_make(0, 0, 0) : d.fog);

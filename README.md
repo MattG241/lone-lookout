@@ -4,9 +4,9 @@ A quiet first-person exploration game for the **Nintendo Wii** (Homebrew Channel
 end of a fire season as the lookout on Kestrel Knob in the fictional **Ashen Peaks**: walk, look,
 listen, sit, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states.
 
-![Golden hour in the Phase 2 prototype (Dolphin capture)](docs/screenshots/phase2/golden_tower_silhouette.png)
+![Cinder Ridge at golden hour (Dolphin capture)](docs/screenshots/phase3/ridge_vista.png)
 
-*Above: the Phase 2 prototype running in Dolphin, at native 640 × 480.*
+*Above: Augie's bench on Cinder Ridge at golden hour, Phase 3, running in Dolphin at native 640 × 480.*
 
 ## Status
 
@@ -14,8 +14,8 @@ listen, sit, and talk on the radio with Dot at Basin Station. No combat, no time
 |---|---|---|
 | 1 · Concept & design | ✅ | [`docs/DESIGN.md`](docs/DESIGN.md) |
 | 2 · Prototype (walk/look, radio v0, test area) | ✅ | [`docs/devlog/phase2.md`](docs/devlog/phase2.md) |
-| 3 · World building | ⏳ next | |
-| 4 · Narrative & audio | | |
+| 3 · World building (the full map, interiors, days, weather, notebook) | ✅ | [`docs/devlog/phase3.md`](docs/devlog/phase3.md) |
+| 4 · Narrative & audio | ⏳ next | |
 | 5 · Polish & Dolphin testing | | |
 
 ## Building
@@ -49,26 +49,31 @@ Homebrew Channel. (Or `make run` to send it over the network with `wiiload`.)
   The game uses the copy filter for its soft look.
 - *Graphics*: native (1×) internal resolution looks closest to hardware.
 
-## Controls (prototype)
+## Controls
 
 | Input | Action |
 |---|---|
 | Nunchuk stick | Walk (hold **Z** to stride) |
 | Pointer | Look: turns only near the screen edges, eases to a stop if the pointer is lost |
-| **A** | Interact (*Read*, *Sit*), pick a radio choice, stand up |
-| **B** | Answer the radio, or call Basin yourself |
+| **A** | Interact (*Read*, *Sit*, *Sleep*, *Light*, *Brew*, *Sight*…), pick a radio choice, stand up |
+| **B** | Answer the radio, or call Basin yourself · close the notebook or a note |
 | Seated, hold **Z** | Let time pass |
-| D-pad ←/→ | Snap turn 30° (smooth turn without a Nunchuk) |
-| D-pad ↑/↓ | Move between choice cards (walk without a Nunchuk) |
+| D-pad ↑ | Binoculars (once you've taken them from the hook by the cab door) |
+| D-pad ↓ | Notebook: ←/→ turn pages, ↑/↓ and **A** to reread a note |
+| D-pad ←/→ | Snap turn 30° |
+| Without a Nunchuk | D-pad ↑/↓ walk, ←/→ turn, **1** binoculars, **2** notebook |
 | Hold **1 + 2** | Developer overlay (frame time, position, state) |
 | **HOME** | Back to the Homebrew Channel |
+
+You arrive at the trailhead on Day 1 at 15:30. The tower is up the trail to the north. The cot
+lets you sleep from 19:00, and each morning is a new day.
 
 ## Development builds
 
 | Command | What it is |
 |---|---|
 | `make SHOTS=1` | `lonelookout_shots.dol`: a scripted screenshot tour (fixed camera poses, no input) |
-| `make WALKTEST=1` | `lonelookout_walktest.dol`: synthetic Remote + Nunchuk input that walks, turns and answers the radio, for automated checks in Dolphin |
+| `make WALKTEST=1` | `lonelookout_walktest.dol`: synthetic Remote + Nunchuk input that walks, turns, answers the radio, calls Basin and pages through the notebook, for automated checks in Dolphin |
 | `tools/capture/capture_shots.sh <dir>` | Builds the tour, runs it in headless Dolphin and keeps one frame per shot |
 
 ## Repository layout
@@ -76,7 +81,7 @@ Homebrew Channel. (Or `make run` to send it over the network with `wiiload`.)
 ```
 src/        game code (C99, libogc): core/ gfx/ input/ world/ game/ audio/
 tools/      Python generators: assets/ (textures, icon), font/ (Lookout Hand),
-            worldgen/ (the Ashen Peaks map), concept/ (design renders), capture/
+            worldgen/ (the Ashen Peaks map and its baker), concept/ (design renders), capture/
 data/       palette/ (colour script); dialogue and music arrive in Phase 4
 docs/       DESIGN.md, devlog/, screenshots/, concept/
 tests/host/ host-side tests of pure game logic

@@ -30,5 +30,12 @@ void input_poll(void);
 static inline void input_consume(void) { IN.down = IN.up = 0; }
 static inline bool in_down(u32 mask) { return (IN.down & mask) != 0; }
 static inline bool in_held(u32 mask) { return (IN.held & mask) != 0; }
+/* A press that one handler acts on, so no later handler in the same step sees it. */
+static inline bool in_take(u32 mask)
+{
+	bool d = (IN.down & mask) != 0;
+	IN.down &= ~mask;
+	return d;
+}
 
 #endif

@@ -14,10 +14,13 @@
 #define DOME_RINGS 9
 #define DOME_R 1200.0f
 #define NUM_STARS 260
+#define NUM_CLOUDS 22
 
 static v3 s_dome_dir[DOME_RINGS + 1][DOME_SEG + 1];
 static v3 s_star_dir[NUM_STARS];
 static float s_star_mag[NUM_STARS];
+static v3 s_cloud_dir[NUM_CLOUDS];
+static float s_cloud_size[NUM_CLOUDS], s_cloud_level[NUM_CLOUDS];
 
 void sky_init(void)
 {
@@ -40,6 +43,56 @@ void sky_init(void)
 		float m = rng_float(&rng);
 		s_star_mag[i] = m * m * m;
 	}
+	for (int i = 0; i < NUM_CLOUDS; i++) {
+		float az = rng_float(&rng) * LL_TAU;
+		float el = DEG2RAD(rng_range(&rng, 6.0f, 32.0f));
+		s_cloud_dir[i] = v3_make(cosf(az) * cosf(el), sinf(el), sinf(az) * cosf(el));
+		s_cloud_size[i] = rng_range(&rng, 60.0f, 130.0f);
+		s_cloud_level[i] = rng_float(&rng);   /* which cloud amounts show this one */
+	}
+}
+
+/* Soft paper-cut clouds: stretched glow sprites, lit warm on the sun side. */
+static void draw_clouds(const daylight *d, float cloud)
+{
+	float amount = 0.12f + cloud;
+	mat_vcolor_tex(&T_GLOW, true, false);
+	vdesc_pct();
+	gfx_blend_alpha();
+	float drift = G.frame * 0.00004f;
+	for (int i = 0; i < NUM_CLOUDS; i++) {
+		if (s_cloud_level[i] > amount) continue;
+		float fade = saturatef((amount - s_cloud_level[i]) * 4.0f);
+		float ca = cosf(drift), sa = sinf(drift);
+		v3 dir = s_cloud_dir[i];
+		dir = v3_make(dir.x * ca - dir.z * sa, dir.y, dir.x * sa + dir.z * ca);
+		float lit = saturatef(v3_dot(dir, d->sun_dir) * 0.5f + 0.5f);
+		rgbf base = rgb_lerp(d->sky_horizon, rgb_make(0.97f, 0.96f, 0.95f), 0.45f * (1.0f - d->night));
+		base = rgb_lerp(base, rgb_scale(d->fog, 0.85f), cloud * 0.5f);
+		rgbf col = rgb_add(rgb_scale(base, 0.85f + 0.15f * lit), rgb_scale(d->sun, 0.25f * lit * d->sun_vis));
+		col = rgb_scale(col, 1.0f - 0.65f * d->night);
+		GXColor gc = gx_col(col, (0.35f + 0.4f * cloud) * fade);
+		v3 c = v3_scale(dir, 950.0f);
+		/* Horizontal stretch: along the sky's tangent, not the camera's tilt. */
+		v3 t = v3_norm(v3_make(-dir.z, 0.0f, dir.x));
+		v3 u = v3_norm(v3_cross(dir, t));
+		for (int k = -1; k <= 1; k++) {
+			float sz = s_cloud_size[i] * (k ? 0.7f : 1.0f);
+			v3 cc = v3_add(c, v3_add(v3_scale(t, k * sz * 1.1f), v3_scale(u, (k ? -0.15f : 0.1f) * sz)));
+			v3 r = v3_scale(t, sz * 1.8f), up = v3_scale(u, sz * 0.55f);
+			GX_Begin(GX_QUADS, VF_3D, 4);
+			GX_Position3f32(cc.x - r.x + up.x, cc.y - r.y + up.y, cc.z - r.z + up.z);
+			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 0);
+			GX_Position3f32(cc.x + r.x + up.x, cc.y + r.y + up.y, cc.z + r.z + up.z);
+			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(1, 0);
+			GX_Position3f32(cc.x + r.x - up.x, cc.y + r.y - up.y, cc.z + r.z - up.z);
+			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(1, 1);
+			GX_Position3f32(cc.x - r.x - up.x, cc.y - r.y - up.y, cc.z - r.z - up.z);
+			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 1);
+			GX_End();
+		}
+	}
+	gfx_blend_none();
 }
 
 static rgbf sky_color(const daylight *d, v3 dir)
@@ -80,7 +133,7 @@ static void draw_glow(v3 dir, float dist, float size, rgbf col, float alpha)
 	GX_End();
 }
 
-void sky_draw(const daylight *d)
+void sky_draw(const daylight *d, float cloud)
 {
 	gfx_model_follow_eye();
 	gfx_depth(false, false);
@@ -131,8 +184,9 @@ void sky_draw(const daylight *d)
 		draw_glow(d->sun_dir, 900.0f, 190.0f, d->sun, d->sun_vis * 0.35f);
 	}
 	if (d->night > 0.0f)
-		draw_glow(d->moon_dir, 900.0f, 26.0f, rgb_make(0.86f, 0.89f, 0.95f), d->night);
+		draw_glow(d->moon_dir, 900.0f, 26.0f, rgb_make(0.86f, 0.89f, 0.95f), d->night * (1.0f - cloud * 0.8f));
 	gfx_blend_none();
+	draw_clouds(d, cloud);
 }
 
 /* ------------------------------------------------------------------------ */

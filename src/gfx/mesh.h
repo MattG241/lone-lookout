@@ -21,6 +21,9 @@ typedef struct {
 
 typedef void (*vdesc_fn)(void);
 bool dl_begin(dlist_t *d, u32 cap_bytes, vdesc_fn vdesc);
+/* Record again into the list's existing buffer (same or smaller contents).
+ * The GPU must be idle (GX_DrawDone) -- used for the seasonal recolour. */
+bool dl_rebegin(dlist_t *d, vdesc_fn vdesc);
 bool dl_end(dlist_t *d);             /* false if the list overflowed */
 void dl_draw(const dlist_t *d);
 
@@ -46,10 +49,15 @@ static inline void emit_pnct(v3 p, v3 n, u32 rgba, float s, float t)
 	GX_TexCoord2f32(s, t);
 }
 
-/* Solid primitives for POS NRM CLR0 lists. Each emits its own GX_Begin. */
+/* Solid primitives for POS NRM CLR0 lists. Each emits its own GX_Begin.
+ * Faces wind counter-clockwise seen from outside. */
 #define MESH_BOX_BYTES (3 + 24 * 28)
 void mesh_box(v3 c, v3 half, u32 col);
+void mesh_box_yaw(v3 c, v3 half, float yaw, u32 col);  /* rotated about y (bearing) */
 void mesh_beam(v3 a, v3 b, float w, float t, u32 col);  /* w across, t "up" */
 void mesh_tri(v3 a, v3 b, v3 c, u32 col);               /* flat-shaded triangle */
+void mesh_quad(v3 a, v3 b, v3 c, v3 d, u32 col);        /* flat-shaded quad */
+/* An n-sided prism (log, post, pipe) from a to b; caps in col_end. */
+void mesh_prism(v3 a, v3 b, float r, int sides, u32 col, u32 col_end);
 
 #endif

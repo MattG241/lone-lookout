@@ -5,7 +5,7 @@
 # Builds the scripted screenshot tour (make SHOTS=1), runs it in headless
 # Dolphin with PNG frame dumping, and keeps one settled frame per shot.
 #
-#   DOLPHIN=/path/to/dolphin-emu-nogui tools/capture/capture_shots.sh docs/screenshots/phase2
+#   DOLPHIN=/path/to/dolphin-emu-nogui tools/capture/capture_shots.sh docs/screenshots/phase3
 #
 # Notes:
 #  - Dolphin's "Disable Copy Filter" enhancement is ON by default; the game's
@@ -17,7 +17,7 @@ set -euo pipefail
 
 DOLPHIN=${DOLPHIN:-dolphin-emu-nogui}
 OUT=${1:-docs/screenshots/latest}
-RUN_SECONDS=${RUN_SECONDS:-75}
+RUN_SECONDS=${RUN_SECONDS:-280}
 USERDIR=$(mktemp -d)
 trap 'rm -rf "$USERDIR"' EXIT
 
@@ -28,6 +28,8 @@ timeout "$RUN_SECONDS" "$DOLPHIN" -u "$USERDIR" -p headless -v Vulkan \
 	-C GFX.Settings.AspectRatio=2 -C SYSCONF.IPL.AR=0 \
 	-e "$PWD/lonelookout_shots.dol" >/dev/null 2>&1 || true
 
+# Shot names, in the order of SHOTS[] in src/game/tour.c.
 python3 tools/capture/split_shots.py "$USERDIR/Dump/Frames" "$OUT" \
-	noon_test_area golden_from_deck golden_tower_silhouette radio_choices \
-	read_prompt note_open sit_timelapse night
+	trailhead_day1 tower_from_trail meadow_afternoon ridge_vista from_the_deck cab_night \
+	tower_at_night tarn_dawn burn_morning cabin_afternoon notebook_map binoculars fire_finder \
+	storm_day4 haze_day5 rain_day7 radio_choices note_bench

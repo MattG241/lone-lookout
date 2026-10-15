@@ -6,9 +6,11 @@
  * hands over a buffer that is already mixed and wakes the thread -- no
  * synthesis ever runs in interrupt context.
  *
- * Phase 2 sound set: wind (with gusts, stronger up high), birdsong by day,
- * crickets at night, footsteps per surface, radio chirp/key/squelch/hiss and
- * the murmur voices. Music arrives in Phase 4.
+ * Sound set: wind (with gusts, stronger up high, muffled indoors), rain,
+ * birdsong by day, crickets at night, footsteps per surface (grass, dirt,
+ * rock, wood, stairs, needles, ash, scree), radio chirp/key/squelch/hiss,
+ * the murmur voices, and a few things in the world: the spoon chimes, the
+ * singing stair, the kettle, thunder and the lamp. Music arrives in Phase 4.
  */
 #include <string.h>
 #include <malloc.h>
@@ -36,7 +38,7 @@ static cmd_t s_cmds[CMD_RING];
 static volatile u32 s_cmd_w, s_cmd_r;
 
 /* Scene parameters written by the game thread (word writes are atomic). */
-static volatile float s_wind = 0.5f, s_birds = 1.0f, s_night, s_alt, s_duck;
+static volatile float s_wind = 0.5f, s_birds = 1.0f, s_night, s_alt, s_duck, s_rain, s_indoor;
 
 /* ---- output ring ---- */
 static s16 s_out[NBUF][BLOCK * 2] ATTRIBUTE_ALIGN(32);
@@ -64,7 +66,8 @@ typedef struct {
 static sfx_t s_sfx[MAX_SFX];
 static voice_t s_vo;
 static noise_t s_rng = { 0xC0FFEEu };
-static svf_t s_wind_f[2], s_whistle_f, s_hiss_f, s_needle_f;
+static svf_t s_wind_f[2], s_whistle_f, s_hiss_f, s_needle_f, s_rain_f[2];
+static lp1_t s_muffle[2];
 static float s_gust, s_gust_target, s_gust_timer;
 static float s_hiss_level, s_hiss_target;
 static struct {
@@ -96,8 +99,20 @@ void audio_footstep(surface_t surf, float intensity, float pan)
 
 void audio_ui(ui_sound_t s)
 {
-	cmd_t c = { C_UI, (u8)s, 0, 0, { 0 } };
+	cmd_t c = { C_UI, (u8)s, 1.0f, 0, { 0 } };
 	post(&c);
+}
+
+void audio_ui_gain(ui_sound_t s, float gain)
+{
+	cmd_t c = { C_UI, (u8)s, gain, 0, { 0 } };
+	post(&c);
+}
+
+void audio_set_weather(float rain, float indoor)
+{
+	s_rain = rain;
+	s_indoor = indoor;
 }
 
 void audio_voice_line(const char *text, speaker_t who)
@@ -151,17 +166,19 @@ static void handle(const cmd_t *c)
 		s->kind = c->a;
 		s->gain = c->f0;
 		s->pan = c->f1;
-		s->len = (c->a == SURF_WOOD || c->a == SURF_STAIR) ? 0.16f : 0.11f;
+		s->len = (c->a == SURF_WOOD || c->a == SURF_STAIR) ? 0.16f : (c->a == SURF_SCREE ? 0.16f : 0.11f);
 		s->pitch = 0.9f + 0.2f * noise_unit(&s_rng);
 		break;
 	}
 	case C_UI: {
 		sfx_t *s = sfx_alloc();
 		if (!s) break;
+		if (c->a >= UI_SOUND_COUNT) break;
 		s->kind = 100 + c->a;
-		s->gain = 1.0f;
-		static const float lens[] = { 0.05f, 0.22f, 0.30f, 0.06f, 0.20f };
+		s->gain = c->f0;
+		static const float lens[UI_SOUND_COUNT] = { 0.05f, 0.22f, 0.30f, 0.06f, 0.20f, 2.6f, 1.4f, 3.2f, 5.5f, 0.08f };
 		s->len = lens[c->a];
+		s->pitch = 0.97f + 0.06f * noise_unit(&s_rng);
 		break;
 	}
 	case C_VOICE:
@@ -209,6 +226,68 @@ static float sfx_sample(sfx_t *s, float dt)
 		out = thump * 0.9f + click + body * 0.6f;
 		break;
 	}
+	case SURF_NEEDLES:
+		/* Soft and muffled: a duff of needles over dirt. */
+		e = expf(-t * 34.0f) * (1.0f - expf(-t * 500.0f));
+		out = (svf_bp(&s->f1, n, svf_coef(1150.0f * s->pitch, 0.7f)) * 0.8f +
+		       svf_bp(&s->f2, n, svf_coef(3000.0f * s->pitch, 1.0f)) * 0.15f) * e;
+		break;
+	case SURF_ASH:
+		/* Powdery: low, breathy, almost nothing. */
+		e = expf(-t * 26.0f) * (1.0f - expf(-t * 300.0f));
+		out = svf_bp(&s->f1, n, svf_coef(620.0f * s->pitch, 0.6f)) * e * 0.8f;
+		break;
+	case SURF_SCREE: {
+		/* Gravel: a crunch and a few stones settling after. */
+		e = expf(-t * 40.0f);
+		float clicks = noise_unit(&s->rng) > 0.993f - 0.01f * expf(-t * 20.0f) ? n * 2.5f : 0.0f;
+		out = svf_bp(&s->f1, n, svf_coef(2800.0f * s->pitch, 1.2f)) * e +
+		      svf_bp(&s->f2, clicks, svf_coef(4200.0f, 2.0f)) * 0.5f;
+		break;
+	}
+	case 100 + UI_CHIMES: {
+		/* Five bent spoons: inharmonic partials, each a little out of tune. */
+		static const float f[5] = { 1318.0f, 1489.0f, 1702.0f, 1911.0f, 2219.0f };
+		float acc = 0.0f;
+		for (int k = 0; k < 5; k++) {
+			float st = t - k * 0.11f - 0.03f * (k & 1);
+			if (st < 0.0f) continue;
+			float ph = st * f[k] * s->pitch;
+			acc += (sinf(6.2831853f * ph) + 0.3f * sinf(6.2831853f * ph * 2.76f)) * expf(-st * (2.2f + k * 0.4f));
+		}
+		out = acc * 0.06f;
+		break;
+	}
+	case 100 + UI_STAIR_NOTE: {
+		/* A tread that rings when stepped on: E-flat (311 Hz), a shade flat. */
+		float f0 = 306.0f;
+		e = expf(-t * 3.2f) * (1.0f - expf(-t * 300.0f));
+		s->p0 += f0 / SR;
+		s->p1 += f0 * 2.71f / SR;
+		out = (sinf(6.2831853f * s->p0) + 0.35f * sinf(6.2831853f * s->p1) * expf(-t * 6.0f)) * e * 0.16f;
+		out += n * expf(-t * 80.0f) * 0.08f;
+		break;
+	}
+	case 100 + UI_KETTLE: {
+		/* Breath first, then the whistle climbs and wavers. */
+		float rise = smoothstepf(0.3f, 1.6f, t), fade = 1.0f - smoothstepf(2.6f, 3.2f, t);
+		float f = 1800.0f + 700.0f * rise + 30.0f * sinf(t * 31.0f);
+		s->p0 += f / SR;
+		float breath = svf_bp(&s->f1, n, svf_coef(f, 2.0f)) * (1.0f - rise * 0.6f);
+		out = (sinf(6.2831853f * s->p0) * rise * 0.7f + breath * 0.8f) * fade * 0.07f;
+		break;
+	}
+	case 100 + UI_THUNDER: {
+		/* Distant thunder: a crack (if close), then a long rolling rumble. */
+		float roll = expf(-t * 0.9f) * (1.0f - expf(-t * 8.0f)) * (0.7f + 0.3f * sinf(t * 5.3f) * sinf(t * 2.1f));
+		float low = svf_run(&s->f1, n, svf_coef(70.0f + 50.0f * s->gain, 0.9f), 0, 0);
+		float mid = svf_bp(&s->f2, n, svf_coef(240.0f, 0.6f)) * expf(-t * 3.0f) * s->gain;
+		out = (low * 2.2f + mid * 0.6f) * roll * 0.8f;
+		break;
+	}
+	case 100 + UI_LAMP:
+		out = n * expf(-t * 300.0f) * 0.25f + svf_bp(&s->f1, n, svf_coef(3000.0f, 1.0f)) * expf(-t * 60.0f) * 0.2f;
+		break;
 	case 100 + UI_TICK:
 		s->p0 += 1150.0f / SR;
 		out = sinf(6.2831853f * s->p0) * expf(-t * 120.0f) * 0.35f + n * expf(-t * 900.0f) * 0.1f;
@@ -309,6 +388,10 @@ static void mix_block(s16 *dst)
 	svf_coef_t hsc = svf_coef(1700.0f, 0.5f);
 	s_hiss_level += (s_hiss_target - s_hiss_level) * 0.2f;
 	float duck = 1.0f - 0.4f * s_duck;
+	float indoor = s_indoor, rain = s_rain;
+	wind *= 1.0f - 0.55f * indoor;
+	svf_coef_t rc = svf_coef(indoor > 0.5f ? 2600.0f : 5200.0f, 0.5f);
+	float muffle_c = lp1_coef(9000.0f - 7800.0f * indoor);
 
 	if (!s_bird.on && s_birds > 0.05f) {
 		s_bird_wait -= BLOCK * dt;
@@ -327,6 +410,15 @@ static void mix_block(s16 *dst)
 		hiss *= 0.05f * s_gust * s_gust;
 		float l = (w0 * 0.55f + whistle + hiss) * wind * duck;
 		float r = (w1 * 0.55f + whistle * 0.7f + hiss) * wind * duck;
+		/* Rain: a soft bed outdoors; on a roof (indoors), brighter ticks. */
+		l = lp1(&s_muffle[0], l, muffle_c);
+		r = lp1(&s_muffle[1], r, muffle_c);
+		if (rain > 0.01f) {
+			float rl = svf_bp(&s_rain_f[0], noise_white(&s_rng), rc), rr = svf_bp(&s_rain_f[1], noise_white(&s_rng), rc);
+			float drop = noise_unit(&s_rng) > 0.9985f - 0.002f * indoor ? noise_white(&s_rng) * (0.25f + 0.5f * indoor) : 0.0f;
+			l += (rl * 0.09f + drop) * rain * duck;
+			r += (rr * 0.09f + drop * 0.7f) * rain * duck;
+		}
 
 		float b = bird_sample(dt);
 		l += b * (0.5f - 0.5f * s_bird.pan);

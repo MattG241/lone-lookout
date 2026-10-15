@@ -26,8 +26,8 @@ void input_init(void)
  */
 static void scripted(u32 f)
 {
-	static u32 ring_frames, choice_frames, idle_after_call;
-	static int stage;                       /* 0 waiting for ring, 1 in call, 2 call done, 3 check-in sent */
+	static u32 ring_frames, choice_frames, idle_after_call, book;
+	static int stage;   /* 0 waiting for ring, 1 in call, 2 call done, 3 check-in sent, 4 notebook, 5 done */
 	u32 prev = IN.held;
 	IN.connected = true;
 	IN.nunchuk = true;
@@ -48,6 +48,13 @@ static void scripted(u32 f)
 	if (stage == 1 && !radio_busy()) stage = 2;
 	idle_after_call = (stage == 2) ? idle_after_call + 1 : 0;
 	if (stage == 2 && idle_after_call == 90) { IN.held |= WPAD_BUTTON_B; stage = 3; } /* call Basin */
+	if (stage == 3 && !radio_busy()) { stage = 4; book = 0; }
+	if (stage == 4) {                                         /* notebook: open, two pages on, close */
+		book++;
+		if (book == 60) IN.held |= WPAD_BUTTON_DOWN;
+		if (book == 120 || book == 180) IN.held |= WPAD_BUTTON_RIGHT;
+		if (book == 300) { IN.held |= WPAD_BUTTON_B; stage = 5; }
+	}
 	IN.down |= IN.held & ~prev;
 	IN.up |= prev & ~IN.held;
 }

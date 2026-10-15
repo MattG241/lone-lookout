@@ -83,10 +83,29 @@ static struct {
 	bool d1_done;
 } R;
 
+static radio_log_entry s_log[RADIO_LOG_MAX];
+static int s_log_n;
+
+static void log_line(speaker_t who, const char *text)
+{
+	if (s_log_n == RADIO_LOG_MAX) {
+		memmove(s_log, s_log + 1, sizeof(s_log[0]) * (RADIO_LOG_MAX - 1));
+		s_log_n--;
+	}
+	s_log[s_log_n++] = (radio_log_entry){ S.day, who, text };
+}
+
+int radio_log(const radio_log_entry **out)
+{
+	*out = s_log;
+	return s_log_n;
+}
+
 void radio_init(void)
 {
 	memset(&R, 0, sizeof(R));
 	R.hovered = 0;
+	s_log_n = 0;
 }
 
 bool radio_busy(void) { return R.state != R_IDLE; }
@@ -113,6 +132,7 @@ static void start_line(void)
 	R.sub_text = l->text;
 	R.sub_who = l->who;
 	audio_voice_line(l->text, l->who);
+	if (!P.input_locked) log_line(l->who, l->text);
 }
 
 static void enter_node(int n)
@@ -150,6 +170,15 @@ static void finish_line(void)
 	}
 }
 
+void radio_call_basin(void)
+{
+	if (R.state != R_IDLE) return;
+	R.call = CALL_CHECK_IN;
+	audio_ui(UI_KEY_UP);
+	audio_radio_hiss(true);
+	enter_node(0);
+}
+
 /* Choice card layout on the UI canvas. */
 #define CARD_X 48.0f
 #define CARD_W 330.0f
@@ -166,12 +195,8 @@ void radio_update(float dt)
 	switch (R.state) {
 	case R_IDLE:
 		/* B with nothing ringing: call Basin yourself. */
-		if (!P.input_locked && in_down(WPAD_BUTTON_B) && P.mode != MODE_READ) {
-			R.call = CALL_CHECK_IN;
-			audio_ui(UI_KEY_UP);
-			audio_radio_hiss(true);
-			enter_node(0);
-		}
+		if (!P.input_locked && in_down(WPAD_BUTTON_B) && game_radio_allowed())
+			radio_call_basin();
 		break;
 	case R_RINGING:
 		R.ring_t += dt;

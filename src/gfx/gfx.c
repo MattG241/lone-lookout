@@ -15,7 +15,7 @@
 #define GFX_SOLID_CULL GX_CULL_FRONT
 
 gfx_t G;
-GXTexObj T_PAPER, T_GRAIN, T_GLOW, T_FOLIAGE, T_BACKDROP, T_FONT_S, T_FONT_L;
+GXTexObj T_PAPER, T_GRAIN, T_GLOW, T_FOLIAGE, T_BACKDROP, T_FONT_S, T_FONT_L, T_MAP;
 
 static void *s_fifo;
 static GXTexObj s_ramp_obj[2];
@@ -56,6 +56,7 @@ static void init_textures(void)
 	DCFlushRange((void *)tex_backdrop_bin, tex_backdrop_bin_size);
 	DCFlushRange((void *)font_small_bin, font_small_bin_size);
 	DCFlushRange((void *)font_large_bin, font_large_bin_size);
+	DCFlushRange((void *)tex_map_bin, tex_map_bin_size);
 
 	gfx_texobj(&T_PAPER, tex_paper_bin, TEX_PAPER_W, TEX_PAPER_H, TEX_PAPER_FMT, GX_REPEAT, true);
 	gfx_texobj(&T_GRAIN, tex_grain_bin, TEX_GRAIN_W, TEX_GRAIN_H, TEX_GRAIN_FMT, GX_REPEAT, false);
@@ -64,6 +65,7 @@ static void init_textures(void)
 	gfx_texobj(&T_BACKDROP, tex_backdrop_bin, TEX_BACKDROP_W, TEX_BACKDROP_H, TEX_BACKDROP_FMT, GX_REPEAT, true);
 	gfx_texobj(&T_FONT_S, font_small_bin, FONT_SMALL_W, FONT_SMALL_H, FONT_SMALL_FMT, GX_CLAMP, true);
 	gfx_texobj(&T_FONT_L, font_large_bin, FONT_LARGE_W, FONT_LARGE_H, FONT_LARGE_FMT, GX_CLAMP, true);
+	gfx_texobj(&T_MAP, tex_map_bin, TEX_MAP_W, TEX_MAP_H, TEX_MAP_FMT, GX_CLAMP, true);
 
 	/* Light ramp: 64x4 RGBA8, double-buffered so we never rewrite the one
 	 * the GPU may still be sampling. */
@@ -273,6 +275,18 @@ bool gfx_sphere_visible(v3 c, float r)
 	return x <= zc * tw + r * 1.5f && y <= zc * th + r * 1.5f;
 }
 
+bool gfx_project(v3 p, float *sx, float *sy)
+{
+	v3 d = v3_sub(p, G.eye);
+	float z = v3_dot(d, G.fwd);
+	if (z < 0.1f) return false;
+	float th = tanf(DEG2RAD(G.fovy_deg) * 0.5f), tw = th * G.aspect;
+	float x = v3_dot(d, G.right) / (z * tw), y = v3_dot(d, G.up) / (z * th);
+	*sx = (x * 0.5f + 0.5f) * G.ui_w;
+	*sy = (0.5f - y * 0.5f) * G.ui_h;
+	return true;
+}
+
 /* ------------------------------------------------------------------------ */
 /* Vertex descriptors                                                       */
 /* ------------------------------------------------------------------------ */
@@ -436,6 +450,28 @@ void mat_lit_solid(void)
 	GX_SetCullMode(GFX_SOLID_CULL);
 }
 
+void mat_lit_interior(rgbf dim, rgbf lamp)
+{
+	mat_lit_solid();
+	GX_SetNumTevStages(4);
+	GX_SetTevKColor(GX_KCOLOR0, gx_col(dim, 1.0f));
+	GX_SetTevKColor(GX_KCOLOR1, gx_col(lamp, 1.0f));
+	/* Stage 2: daylight through the windows only reaches in so far. */
+	GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLORNULL);
+	GX_SetTevKColorSel(GX_TEVSTAGE2, GX_TEV_KCSEL_K0);
+	GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_CPREV, GX_CC_KONST, GX_CC_ZERO);
+	GX_SetTevColorOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	GX_SetTevAlphaIn(GX_TEVSTAGE2, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
+	GX_SetTevAlphaOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	/* Stage 3: + the lamp, warm on every surface (albedo x K1). */
+	GX_SetTevOrder(GX_TEVSTAGE3, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+	GX_SetTevKColorSel(GX_TEVSTAGE3, GX_TEV_KCSEL_K1);
+	GX_SetTevColorIn(GX_TEVSTAGE3, GX_CC_ZERO, GX_CC_RASC, GX_CC_KONST, GX_CC_CPREV);
+	GX_SetTevColorOp(GX_TEVSTAGE3, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	GX_SetTevAlphaIn(GX_TEVSTAGE3, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
+	GX_SetTevAlphaOp(GX_TEVSTAGE3, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+}
+
 void mat_lit_cutout(void)
 {
 	lit_common();
@@ -516,7 +552,7 @@ void gfx_depth(bool test, bool write)
 void gfx_fog(const daylight *d)
 {
 	/* Perspective exp^2 haze: clear up close, thickening with distance. */
-	float end = 380.0f / clampf(d->fog_density, 0.25f, 1.2f);
+	float end = 470.0f / clampf(d->fog_density, 0.25f, 1.6f);
 	GX_SetFog(GX_FOG_PERSP_EXP2, 0.0f, end, CAM_NEAR, CAM_FAR, gx_col(d->fog, 1.0f));
 }
 

@@ -42,12 +42,13 @@ typedef struct {
 	bool force_half_rate;
 	u32 frame;
 	float work_ms;
+	int stat_chunks, stat_trees;     /* drawn last frame (developer overlay) */
 } gfx_t;
 
 extern gfx_t G;
 
 /* Shared textures */
-extern GXTexObj T_PAPER, T_GRAIN, T_GLOW, T_FOLIAGE, T_BACKDROP, T_FONT_S, T_FONT_L;
+extern GXTexObj T_PAPER, T_GRAIN, T_GLOW, T_FOLIAGE, T_BACKDROP, T_FONT_S, T_FONT_L, T_MAP;
 
 void gfx_init(void);
 void gfx_begin(rgbf clear);
@@ -59,6 +60,8 @@ void gfx_model_identity(void);
 void gfx_model_follow_eye(void);     /* translate to the eye: sky dome, backdrop */
 void gfx_ortho(void);                /* UI canvas, origin top-left */
 bool gfx_sphere_visible(v3 c, float r);
+/* World point to UI canvas coordinates; false if behind the camera. */
+bool gfx_project(v3 p, float *sx, float *sy);
 
 GXColor gx_col(rgbf c, float a);
 void gfx_texobj(GXTexObj *o, const void *data, u16 w, u16 h, u8 fmt, u8 wrap, bool filter);
@@ -78,6 +81,8 @@ void vdesc_pnct_flush(void);
 void ramp_update(const daylight *d);
 void mat_lit_solid(void);            /* ramp x vertex colour x paper tooth */
 void mat_lit_cutout(void);           /* ramp x vertex colour x foliage atlas, alpha-tested */
+/* Interiors: lit as solid, dimmed by 'dim', plus lamp light (vertex colour x lamp). */
+void mat_lit_interior(rgbf dim, rgbf lamp);
 void mat_ramp_light(v3 light_model); /* key-light direction in the current model's space */
 void mat_vcolor(void);               /* vertex colour only */
 void mat_vcolor_tex(GXTexObj *t, bool tex_alpha_only, bool scale2);

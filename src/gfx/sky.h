@@ -7,7 +7,7 @@
 #include "game/daycycle.h"
 
 void sky_init(void);
-void sky_draw(const daylight *d);        /* dome, stars, sun/moon glow */
+void sky_draw(const daylight *d, float cloud);        /* dome, stars, sun/moon glow */
 void backdrop_draw(const daylight *d);   /* distant ridge rings ("theatre flats") */
 
 #endif

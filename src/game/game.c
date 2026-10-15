@@ -1,5 +1,7 @@
 /*
- * game.c -- walking, looking, sitting, reading, and letting time pass.
+ * game.c -- walking, looking, sitting, reading, sleeping, and the small
+ * rituals of the job: the lamp, the kettle, the logbook, the fire finder,
+ * the binoculars and the notebook.
  *
  * Look uses the "comfort box" from DESIGN.md section 5: the pointer moves a
  * soft reticle freely in the middle of the screen; only near the edges does
@@ -10,10 +12,13 @@
 #include <wiiuse/wpad.h>
 #include "game/game.h"
 #include "game/radio.h"
+#include "game/notebook.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/foliage.h"
+#include "gfx/water.h"
+#include "world/sites.h"
 
 #define EYE_HEIGHT 1.62f
 #define WALK_SPEED 2.2f
@@ -25,24 +30,135 @@
 #define PITCH_LIMIT DEG2RAD(60.0f)
 #define REACH 2.6f
 #define STEP_LENGTH 0.72f
+#define FOV_EYE 58.0f
+#define FOV_BINOCULARS 16.0f
+#define SLEEP_FROM 19.0f
+#define SINGING_TREAD (3 * STAIR_STEPS + STAIR_STEPS - 3)   /* third from the top */
 
 player_t P;
+story_t S;
 options_t OPT = { 1.0f, true, true, true };
 
-static const char *NOTES[] = {
-	"To whoever's next: welcome to Kestrel. Kettle sticks \xE2\x80\x94 hit it on the left. "
-	"Radio's on 4. Dot's bark is worse than her bite. Her bite is also pretty bad.\n\xE2\x80\x94 A.P.",
+/* ------------------------------------------------------------------------ */
+/* Texts                                                                    */
+/* ------------------------------------------------------------------------ */
+
+#define EM "\xE2\x80\x94"
+static const char *NOTES[NOTE_COUNT] = {
+	[NOTE_WELCOME] = "To whoever's next: welcome to Kestrel. Kettle sticks " EM " hit it on the left. "
+	                 "Radio's on 4. Dot's bark is worse than her bite. Her bite is also pretty bad.\n" EM " A.P.",
+	[NOTE_STAIR] = "Third stair from the top sings. Always figured F.\nSay good morning to it.\n" EM " A.P.",
+	[NOTE_MAP] = "Under the cot, folded in four: a map of the district in Augie's hand, drawn on the back of "
+	             "a supply form. Every trail, every spring, the good rocks to sit on.\n(Copied into your notebook.)",
+	[NOTE_BIRDS] = "Birds seen from the catwalk, 22 summers:\nraven (always), Clark's nutcracker, varyed thrush, "
+	               "mountain chickadee, nighthawk, rufous hummingbird (rude), golden eagle (once, 2011).",
+	[NOTE_FENCE] = "Doe and twins most mornings. Don't name them.\n(I named them. Sorry.)",
+	[NOTE_SPRING] = "Best water in the district. Rinse the cup. It's a shared cup.\nShared with me.",
+	[NOTE_DOCK] = "Best sitting spot in the district. Thermos is clean.\nMostly.",
+	[NOTE_SNAG] = "Aug 9 1998. Watched this one go from the tower. Took a week to stop smelling it.\nLook down.",
+	[NOTE_BENCH] = "Carved deep into the backrest, the letters gone silver:\nSIT HERE AT SEVEN",
+	[NOTE_FLOWERS] = "A book of pressed flowers. On the first page: Things that came back after '98.\n"
+	                 "Fireweed. Lupine. Larkspur. Paintbrush. Yarrow. A doe, the third summer.",
+	[NOTE_LETTER] = "To the District Ranger: I hereby resign my post at Kestrel, effective the end of this season.\n"
+	                "(Crossed out, in different ink:) Changed my mind. Stayed 14 more. " EM " A.P., 2009",
+	[NOTE_POSTCARD] = "Kestrel " EM " heard there's a piano man up there now. Settle it: is it F?\n" EM " Augie\n"
+	                  "P.S. Tell Dot to go see her sister.",
 };
 
-const char *note_text(int id) { return (id >= 0 && id < 1) ? NOTES[id] : ""; }
+static const char *TITLES[NOTE_COUNT] = {
+	"Welcome to Kestrel", "The singing stair", "Augie's map", "Birds from the catwalk", "The drift fence",
+	"The cold spring", "The tin on the dock", "The tag on the snag", "The bench", "Pressed flowers",
+	"The drawer", "A postcard",
+};
+
+static const char *LOGBOOK[NUM_DAYS] = {
+	"21 Aug. Walked up from the gate, 15:30. Radio check with Basin. Wind light, W. Visibility good. "
+	"Nothing to report.\n" EM " T. Marsh",
+	"22 Aug. Clear and warm. Walked the north loop. Doe and two fawns below the fence. Nothing to report.",
+	"23 Aug. High cloud, breezy. Supply drop at the gate. Radio poor near the tarn. Nothing to report.",
+	"28 Aug. Dry storm from 14:00. Lightning on Harrow Ridge. Smoke reported to Basin.",
+	"3 Sep. Haze from fires to the south all day. Sun red at 19:00. Sat at the bench, as instructed.",
+	"10 Sep. Clear, cold. First aspens turning by the meadow. Basin is closing. Nothing to report.",
+	"15 Sep. Clouding over. Rain by noon " EM " the first in seven weeks. Last page.",
+};
+
+static const char *SUPPLY[NUM_DAYS + 1] = {
+	[3] = "In the box: tinned peaches, batteries, and a paperback with the cover torn off.",
+	[6] = "In the box: batteries, coffee, and a postcard with a lighthouse on it.",
+};
+
+const char *game_text(int id)
+{
+	if (id >= 0 && id < NOTE_COUNT) return NOTES[id];
+	if (id > TEXT_LOGBOOK && id <= TEXT_LOGBOOK + NUM_DAYS) return LOGBOOK[id - TEXT_LOGBOOK - 1];
+	if (id > TEXT_SUPPLY && id <= TEXT_SUPPLY + NUM_DAYS && SUPPLY[id - TEXT_SUPPLY]) return SUPPLY[id - TEXT_SUPPLY];
+	return "";
+}
+
+const char *note_title(int id) { return (id >= 0 && id < NOTE_COUNT) ? TITLES[id] : ""; }
+
+/* One-time thoughts. */
+enum { TH_GATE, TH_WATER, TH_RIM, TH_EARLY, TH_LAST_NIGHT, TH_CHIMES, TH_COFFEE, TH_STAIR, TH_NOT_YET, TH_EMPTY, TH_COUNT };
+
+void game_think(const char *text)
+{
+	S.thought = text;
+	S.thought_t = 0.0f;
+}
+
+static void think_once(int id, const char *text)
+{
+	if (S.thoughts_said & (1u << id)) return;
+	S.thoughts_said |= 1u << id;
+	game_think(text);
+}
+
+static void hint(const char *text)
+{
+	S.hint = text;
+	S.hint_t = 0.0f;
+}
+
+/* ------------------------------------------------------------------------ */
+
+float game_season(void) { return day_info(S.day)->season; }
+
+static void face(float yaw, float pitch)
+{
+	P.yaw = yaw;
+	P.pitch = pitch;
+	P.yaw_rate = P.pitch_rate = P.snap_left = 0.0f;
+}
+
+void game_new_day(int day)
+{
+	S.day = day < 1 ? 1 : (day > NUM_DAYS ? NUM_DAYS : day);
+	S.lamp_on = false;
+	S.kettle_t = -1.0f;
+	S.kettle_today = false;
+	S.areas_today = 0;
+	S.season_dirty = true;
+	DAY.hour = 6.0f;
+	/* Wake beside the cot, looking out of the east windows. */
+	P.pos = v3_make(TOWER_X - 0.7f, world_pad_height() + TOWER_DECK_Y, TOWER_Z - 0.6f);
+	face(BEARING(95.0f), DEG2RAD(-2.0f));
+	P.mode = MODE_WALK;
+	P.sit_blend = 0.0f;
+	P.day_card = 0.0f;
+	P.vel = v3_make(0, 0, 0);
+}
 
 void game_init(void)
 {
 	memset(&P, 0, sizeof(P));
-	P.pos = v3_make(5.0f, 0.0f, 24.0f);
+	memset(&S, 0, sizeof(S));
+	S.day = 1;
+	S.kettle_t = -1.0f;
+	S.area = -1;
+	S.last_tread = -1;
+	P.pos = v3_make(START_X, 0.0f, START_Z);
 	P.pos.y = world_ground(P.pos.x, P.pos.z, 1e9f, &P.surface);
-	P.yaw = DEG2RAD(-6.0f);
-	P.pitch = DEG2RAD(4.0f);
+	face(START_YAW, DEG2RAD(4.0f));
 	P.hover = -1;
 	P.reading = -1;
 	P.mode = MODE_WALK;
@@ -61,7 +177,16 @@ v3 game_eye(void)
 	return stand;
 }
 
-float game_fov(void) { return 58.0f; }
+float game_fov(void)
+{
+	float z = P.zoom * P.zoom * (3.0f - 2.0f * P.zoom);
+	return lerpf(FOV_EYE, FOV_BINOCULARS, z);
+}
+
+bool game_radio_allowed(void)
+{
+	return P.mode == MODE_WALK || P.mode == MODE_SIT;
+}
 
 /* Ray through the reticle, in world space. */
 static v3 reticle_dir(void)
@@ -74,6 +199,15 @@ static v3 reticle_dir(void)
 	return v3_norm(d);
 }
 
+static bool ia_available(const interactable_t *ia)
+{
+	switch (ia->kind) {
+	case IA_BINOCULARS: return !S.binoculars;
+	case IA_NOTE: return ia->id != NOTE_POSTCARD;
+	default: return true;
+	}
+}
+
 static void update_hover(void)
 {
 	int n;
@@ -81,9 +215,11 @@ static void update_hover(void)
 	v3 eye = game_eye(), dir = reticle_dir();
 	float best = 1e9f;
 	P.hover = -1;
-	if (P.mode == MODE_READ) return;
+	if (P.mode != MODE_WALK && P.mode != MODE_SIT) return;
+	if (P.zoom > 0.1f) return;
 	for (int i = 0; i < n; i++) {
 		if (P.mode == MODE_SIT && i == P.sit_id) continue;
+		if (!ia_available(&ia[i])) continue;
 		v3 to = v3_sub(ia[i].pos, eye);
 		float dist = v3_len(to);
 		if (dist > REACH + ia[i].radius) continue;
@@ -100,13 +236,16 @@ static void update_hover(void)
 
 static void update_look(float dt)
 {
-	bool look = !radio_wants_pointer() && P.mode != MODE_READ && !P.input_locked;
+	bool look = !radio_wants_pointer() && (P.mode == MODE_WALK || P.mode == MODE_SIT || P.mode == MODE_FINDER) &&
+	            !P.input_locked;
+	float sens = OPT.look_sens * (game_fov() / FOV_EYE);
 	float t_yaw = 0.0f, t_pitch = 0.0f;
 	float rx = 0.0f, ry = 0.0f;
 	if (look && IN.ir_valid) {
 		float ax = fabsf(IN.ir_x), ay = fabsf(IN.ir_y);
-		t_yaw = signf(IN.ir_x) * smoothstepf(BOX_X, 0.95f, ax) * MAX_YAW_RATE * OPT.look_sens;
-		t_pitch = -signf(IN.ir_y) * smoothstepf(BOX_Y, 0.95f, ay) * MAX_PITCH_RATE * OPT.look_sens;
+		t_yaw = signf(IN.ir_x) * smoothstepf(BOX_X, 0.95f, ax) * MAX_YAW_RATE * sens;
+		t_pitch = -signf(IN.ir_y) * smoothstepf(BOX_Y, 0.95f, ay) * MAX_PITCH_RATE * sens;
+		if (P.mode == MODE_FINDER) t_pitch = 0.0f;
 		rx = clampf(IN.ir_x, -BOX_X, BOX_X);
 		ry = clampf(IN.ir_y, -BOX_Y, BOX_Y);
 	}
@@ -119,13 +258,13 @@ static void update_look(float dt)
 	}
 
 	/* D-pad: snap turn with a Nunchuk, smooth turn without one. */
-	if (look) {
+	if (look && P.mode != MODE_NOTEBOOK) {
 		if (IN.nunchuk && OPT.snap_turn) {
 			if (in_down(WPAD_BUTTON_LEFT)) P.snap_left -= DEG2RAD(30.0f);
 			if (in_down(WPAD_BUTTON_RIGHT)) P.snap_left += DEG2RAD(30.0f);
 		} else if (!IN.nunchuk) {
-			if (in_held(WPAD_BUTTON_LEFT)) P.yaw -= DEG2RAD(60.0f) * dt;
-			if (in_held(WPAD_BUTTON_RIGHT)) P.yaw += DEG2RAD(60.0f) * dt;
+			if (in_held(WPAD_BUTTON_LEFT)) P.yaw -= DEG2RAD(60.0f) * sens * dt;
+			if (in_held(WPAD_BUTTON_RIGHT)) P.yaw += DEG2RAD(60.0f) * sens * dt;
 		}
 	}
 	float snap_step = P.snap_left * (1.0f - expf(-18.0f * dt));
@@ -133,8 +272,9 @@ static void update_look(float dt)
 
 	P.yaw = wrap_anglef(P.yaw + P.yaw_rate * dt + snap_step);
 	P.pitch = clampf(P.pitch + P.pitch_rate * dt, -PITCH_LIMIT, PITCH_LIMIT);
+	if (P.mode == MODE_FINDER) P.pitch = approachf(P.pitch, DEG2RAD(-8.0f), 6.0f, dt);
 
-	if (P.mode == MODE_SIT) {
+	if (P.mode == MODE_SIT || (P.mode == MODE_READ && P.sit_blend > 0.5f)) {
 		/* Seated: look around, but stay roughly facing out from the seat. */
 		int n;
 		const interactable_t *ia = world_interactables(&n);
@@ -146,6 +286,16 @@ static void update_look(float dt)
 	P.roll = approachf(P.roll, DEG2RAD(target_roll), 3.0f, dt);
 }
 
+static void edge_thought(int edge)
+{
+	switch (edge) {
+	case WORLD_EDGE_GATE: think_once(TH_GATE, "That's the district line. Dot would kill me."); break;
+	case WORLD_EDGE_WATER: think_once(TH_WATER, "Too cold for a swim. Too deep, anyway."); break;
+	case WORLD_EDGE_RIM: think_once(TH_RIM, "Too steep. Not worth a broken ankle out here."); break;
+	default: break;
+	}
+}
+
 static void update_walk(float dt)
 {
 	float sx = IN.stick_x, sy = IN.stick_y;
@@ -153,7 +303,7 @@ static void update_walk(float dt)
 		sx = 0.0f;
 		sy = in_held(WPAD_BUTTON_UP) ? 1.0f : (in_held(WPAD_BUTTON_DOWN) ? -1.0f : 0.0f);
 	}
-	if (P.input_locked || P.mode != MODE_WALK || radio_wants_pointer()) sx = sy = 0.0f;
+	if (P.mode != MODE_WALK || radio_wants_pointer() || P.zoom > 0.05f) sx = sy = 0.0f;
 
 	/* Stride needs the Nunchuk's Z; the remote-only scheme keeps B for the radio. */
 	bool stride = IN.nunchuk && in_held(WPAD_NUNCHUK_BUTTON_Z);
@@ -166,7 +316,9 @@ static void update_walk(float dt)
 
 	v3 from = P.pos;
 	v3 to = v3_make(P.pos.x + P.vel.x * dt, P.pos.y, P.pos.z + P.vel.z * dt);
-	to = world_move(from, to, P.pos.y);
+	int edge = 0;
+	to = world_move(from, to, P.pos.y, &edge);
+	if (edge && (fabsf(want.x) + fabsf(want.z)) > 0.5f) edge_thought(edge);
 	float ground = world_ground(to.x, to.z, P.pos.y, &P.surface);
 
 	/* Follow the ground: snap down steps, fall gently off anything taller. */
@@ -190,42 +342,222 @@ static void update_walk(float dt)
 		float pan = ((int)(P.bob_phase / LL_PI) & 1) ? 0.15f : -0.15f;
 		audio_footstep(P.surface, 0.6f + 0.4f * clampf(sp, 0.0f, 1.0f), pan);
 	}
+
+	/* The singing stair. */
+	int tread = world_stair_tread(P.pos);
+	if (tread == SINGING_TREAD && S.last_tread != SINGING_TREAD) {
+		audio_ui(UI_STAIR_NOTE);
+		if (S.found[NOTE_STAIR]) think_once(TH_STAIR, "E-flat. A little flat, even. Not F, Augie.");
+	}
+	S.last_tread = tread;
+}
+
+static void open_text(int id)
+{
+	P.mode = MODE_READ;
+	P.reading = id;
+	audio_ui(UI_PAGE);
+}
+
+static void use(int index)
+{
+	int n;
+	const interactable_t *ia = world_interactables(&n);
+	const interactable_t *h = &ia[index];
+	switch (h->kind) {
+	case IA_NOTE:
+		S.found[h->id] = true;
+		open_text(h->id);
+		if (h->id == NOTE_MAP) hint(IN.nunchuk ? "D-pad down: notebook" : "2: notebook");
+		break;
+	case IA_SIT:
+		if (P.mode != MODE_WALK) break;
+		P.mode = MODE_SIT;
+		P.sit_id = index;
+		P.stand_pos = P.pos;
+		P.vel = v3_make(0, 0, 0);
+		audio_ui(UI_TICK);
+		break;
+	case IA_SLEEP:
+		if (S.day >= NUM_DAYS) {
+			think_once(TH_LAST_NIGHT, "Last night. I don't want to sleep through it.");
+		} else if (DAY.hour >= SLEEP_FROM || DAY.hour < 4.0f) {
+			P.mode = MODE_SLEEP;
+			S.sleep_t = 0.0f;
+			audio_ui(UI_TICK);
+		} else {
+			game_think("Too early. Dot would laugh at me.");
+		}
+		break;
+	case IA_LAMP:
+		S.lamp_on = !S.lamp_on;
+		audio_ui(UI_LAMP);
+		break;
+	case IA_KETTLE:
+		if (S.kettle_t < 0.0f) {
+			S.kettle_t = 0.0f;
+			audio_ui(UI_TICK);
+			if (!S.kettle_today) game_think("Hit it on the left side, she said.");
+		}
+		break;
+	case IA_LOGBOOK:
+		open_text(TEXT_LOGBOOK + S.day);
+		break;
+	case IA_FINDER:
+		P.mode = MODE_FINDER;
+		audio_ui(UI_PAGE);
+		break;
+	case IA_HANDSET:
+		radio_call_basin();
+		break;
+	case IA_BINOCULARS:
+		S.binoculars = true;
+		audio_ui(UI_TICK);
+		hint(IN.nunchuk ? "D-pad up: binoculars" : "1: binoculars");
+		break;
+	case IA_SUPPLY:
+		if (S.day == 3 || S.day == 6) {
+			S.supply_opened[S.day] = true;
+			if (S.day == 6) S.found[NOTE_POSTCARD] = true;
+			open_text(TEXT_SUPPLY + S.day);     /* on Day 6, A turns over to the postcard */
+		} else {
+			game_think("Empty. The drops come on Thursdays.");
+		}
+		break;
+	case IA_CHIMES:
+		audio_ui(UI_CHIMES);
+		think_once(TH_CHIMES, "They're out of tune. Of course they are.");
+		break;
+	case IA_GATE:
+		game_think("Not yet. The season isn't over.");
+		break;
+	}
 }
 
 static void update_interact(float dt)
 {
-	int n;
-	const interactable_t *ia = world_interactables(&n);
-
 	if (P.mode == MODE_READ) {
 		P.read_fade = approachf(P.read_fade, 1.0f, 10.0f, dt);
-		if (!P.input_locked && (in_down(WPAD_BUTTON_A) || in_down(WPAD_BUTTON_B))) {
-			P.mode = P.sit_blend > 0.5f ? MODE_SIT : MODE_WALK;
+		bool a = !P.input_locked && in_take(WPAD_BUTTON_A), b = !P.input_locked && in_take(WPAD_BUTTON_B);
+		if (a || b) {
+			/* The supply box on Day 6: the postcard comes after the contents. */
+			if (P.reading == TEXT_SUPPLY + 6 && a) {
+				P.reading = NOTE_POSTCARD;
+				audio_ui(UI_PAGE);
+				return;
+			}
+			P.mode = S.notebook_page == 1 && P.notebook_fade > 0.5f ? MODE_NOTEBOOK
+			         : (P.sit_blend > 0.5f ? MODE_SIT : MODE_WALK);
 			audio_ui(UI_PAGE);
 		}
 		return;
 	}
 	P.read_fade = approachf(P.read_fade, 0.0f, 8.0f, dt);
 
-	if (P.input_locked || radio_in_call()) return;
-	if (!in_down(WPAD_BUTTON_A)) return;
+	if (P.mode == MODE_FINDER) {
+		if (!P.input_locked && (in_take(WPAD_BUTTON_A) | in_take(WPAD_BUTTON_B))) {
+			P.mode = MODE_WALK;
+			audio_ui(UI_PAGE);
+		}
+		return;
+	}
+	if (P.input_locked || radio_in_call() || P.mode == MODE_NOTEBOOK || P.mode == MODE_SLEEP) return;
+	if (!(IN.down & WPAD_BUTTON_A)) return;
+	if (P.hover >= 0 || P.mode == MODE_SIT) in_take(WPAD_BUTTON_A);
 
 	if (P.hover >= 0) {
-		const interactable_t *h = &ia[P.hover];
-		if (h->kind == IA_NOTE) {
-			P.mode = MODE_READ;
-			P.reading = h->id;
-			audio_ui(UI_PAGE);
-		} else if (h->kind == IA_SIT && P.mode == MODE_WALK) {
-			P.mode = MODE_SIT;
-			P.sit_id = P.hover;
-			P.stand_pos = P.pos;
-			P.vel = v3_make(0, 0, 0);
-			audio_ui(UI_TICK);
-		}
+		use(P.hover);
 	} else if (P.mode == MODE_SIT) {
 		P.mode = MODE_WALK;
 		audio_ui(UI_TICK);
+	}
+}
+
+/* D-pad up / 1: binoculars. D-pad down / 2: notebook (B or 2 closes it). */
+static void update_tools(float dt)
+{
+	if (!P.input_locked) {
+		bool other1 = in_held(WPAD_BUTTON_2), other2 = in_held(WPAD_BUTTON_1);   /* 1+2 is the dev overlay */
+		if (P.mode == MODE_NOTEBOOK) {
+			if ((in_take(WPAD_BUTTON_2) && !other1) | in_take(WPAD_BUTTON_B)) {
+				P.mode = P.sit_blend > 0.5f ? MODE_SIT : MODE_WALK;
+				audio_ui(UI_PAGE);
+			}
+		} else if ((P.mode == MODE_WALK || P.mode == MODE_SIT) && !radio_wants_pointer()) {
+			bool bino = (IN.nunchuk && in_take(WPAD_BUTTON_UP)) | (in_take(WPAD_BUTTON_1) && !other2);
+			if (P.binoculars_up && in_take(WPAD_BUTTON_MINUS)) bino = true;
+			if (bino && S.binoculars) {
+				P.binoculars_up = !P.binoculars_up;
+				audio_ui(UI_TICK);
+			}
+			bool book = (IN.nunchuk && in_take(WPAD_BUTTON_DOWN)) | (in_take(WPAD_BUTTON_2) && !other1);
+			if (book) {
+				P.binoculars_up = false;
+				P.mode = MODE_NOTEBOOK;
+				audio_ui(UI_PAGE);
+			}
+		}
+	}
+	if (P.mode != MODE_WALK && P.mode != MODE_SIT) P.binoculars_up = false;
+	P.zoom = approachf(P.zoom, P.binoculars_up ? 1.0f : 0.0f, 7.0f, dt);
+}
+
+static void update_places(float dt)
+{
+	/* Area name cards, the first time each day you arrive somewhere. */
+	int a = world_area_at(P.pos.x, P.pos.z);
+	if (a != S.area) {
+		S.area = a;
+		if (a >= 0 && !(S.areas_today & (1u << a)) && !P.input_locked && P.day_card > 7.0f) {
+			S.areas_today |= 1u << a;
+			S.area_card = a;
+			S.area_card_t = 0.0f;
+		}
+	}
+	S.area_card_t += dt;
+	S.thought_t += dt;
+	S.hint_t += dt;
+
+	/* The Day 1 radio check: on first stepping into the cab, or by 17:00. */
+	if (S.day == 1 && !S.d1_called && !P.input_locked && !radio_busy() && P.mode != MODE_SLEEP) {
+		bool in_cab = world_indoor(P.pos) == INDOOR_CAB;
+#ifdef LL_INPUT_SCRIPT
+		static float s_t;
+		bool late = (s_t += dt) > 20.0f;         /* the scripted test can't walk all the way up */
+#else
+		bool late = DAY.hour >= 17.0f;
+#endif
+		if (in_cab || late) {
+			radio_ring(CALL_D1_RADIO_CHECK);
+			S.d1_called = true;
+		}
+	}
+
+	/* The kettle: a minute on the stove, then the whistle and a cup. */
+	if (S.kettle_t >= 0.0f) {
+		float before = S.kettle_t;
+		S.kettle_t += dt;
+		if (before < 25.0f && S.kettle_t >= 25.0f) audio_ui(UI_KETTLE);
+		if (before < 29.0f && S.kettle_t >= 29.0f) {
+			if (!S.kettle_today) game_think("Coffee. The first good thing of the day.");
+			S.kettle_today = true;
+			S.kettle_t = -1.0f;
+		}
+	}
+	S.lamp = approachf(S.lamp, S.lamp_on ? 1.0f : 0.0f, 12.0f, dt);
+}
+
+static void update_sleep(float dt)
+{
+	if (P.mode != MODE_SLEEP) {
+		S.fade = approachf(S.fade, 0.0f, 1.6f, dt);
+		return;
+	}
+	S.sleep_t += dt;
+	S.fade = saturatef(S.sleep_t / 1.5f);
+	if (S.sleep_t > 2.2f) {
+		game_new_day(S.day + 1);
+		S.fade = 1.0f;
 	}
 }
 
@@ -236,10 +568,15 @@ void game_update(float dt)
 		update_walk(dt);
 	update_hover();
 	update_interact(dt);
+	update_tools(dt);
+	if (P.mode == MODE_NOTEBOOK) notebook_update(dt);
 	radio_update(dt);
 
-	P.sit_blend = approachf(P.sit_blend, P.mode == MODE_SIT || (P.mode == MODE_READ && P.sit_blend > 0.5f) ? 1.0f : 0.0f,
-	                        5.0f, dt);
+	bool seated = P.mode == MODE_SIT || ((P.mode == MODE_READ || P.mode == MODE_NOTEBOOK) && P.sit_blend > 0.5f);
+	P.sit_blend = approachf(P.sit_blend, seated ? 1.0f : 0.0f, 5.0f, dt);
+	P.finder_fade = approachf(P.finder_fade, P.mode == MODE_FINDER ? 1.0f : 0.0f, 8.0f, dt);
+	P.notebook_fade = approachf(P.notebook_fade, P.mode == MODE_NOTEBOOK ||
+	                            (P.mode == MODE_READ && P.notebook_fade > 0.5f) ? 1.0f : 0.0f, 9.0f, dt);
 
 	/* Let time pass: hold Z while seated (stops if the radio rings). */
 	bool lapse = P.mode == MODE_SIT && P.sit_blend > 0.9f && !radio_busy() &&
@@ -247,15 +584,10 @@ void game_update(float dt)
 	DAY.rate = lapse ? DAY_TIMELAPSE_RATE : 1.0f;
 	if (!P.input_locked) P.timelapse = approachf(P.timelapse, lapse ? 1.0f : 0.0f, 4.0f, dt);
 	daycycle_update(dt);
+	weather_update(S.day, DAY.hour, dt);
 	foliage_update(dt);
+	water_update(dt);
 	P.day_card += dt;
-
-	/* The Day 1 radio check comes in a little after you arrive. */
-	static float s_call_timer = 0.0f;
-	static bool s_called = false;
-	s_call_timer += dt;
-	if (!s_called && !P.input_locked && s_call_timer > 20.0f && !radio_busy()) {
-		radio_ring(CALL_D1_RADIO_CHECK);
-		s_called = true;
-	}
+	update_places(dt);
+	update_sleep(dt);
 }

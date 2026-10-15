@@ -3,6 +3,7 @@
  * the tower blockout and other props.
  */
 #include <malloc.h>
+#include <math.h>
 #include <string.h>
 #include "gfx/mesh.h"
 #include "gfx/gfx.h"
@@ -18,6 +19,18 @@ bool dl_begin(dlist_t *d, u32 cap, vdesc_fn vdesc)
 	DCInvalidateRange(d->buf, cap);
 	vdesc();                          /* commit state outside the list */
 	GX_BeginDispList(d->buf, cap);
+	return true;
+}
+
+bool dl_rebegin(dlist_t *d, vdesc_fn vdesc)
+{
+	if (!d->buf) return false;
+	d->len = 0;
+	memset(d->buf, 0, d->cap);
+	DCFlushRange(d->buf, d->cap);
+	DCInvalidateRange(d->buf, d->cap);
+	vdesc();
+	GX_BeginDispList(d->buf, d->cap);
 	return true;
 }
 
@@ -79,6 +92,56 @@ void mesh_beam(v3 a, v3 b, float w, float t, u32 col)
 	v3 up = v3_norm(v3_cross(dir, side));
 	v3 c = v3_scale(v3_add(a, b), 0.5f);
 	box_axes(c, v3_scale(side, w * 0.5f), v3_scale(up, t * 0.5f), v3_scale(dir, len * 0.5f), col);
+}
+
+void mesh_box_yaw(v3 c, v3 h, float yaw, u32 col)
+{
+	/* Bearing convention: +z half axis points along the bearing (north = -z). */
+	float s = sinf(yaw), co = cosf(yaw);
+	v3 ax = v3_make(co * h.x, 0, s * h.x);       /* right of the bearing */
+	v3 az = v3_make(-s * h.z, 0, co * h.z);      /* back along the bearing (keeps the axes right-handed) */
+	box_axes(c, ax, v3_make(0, h.y, 0), az, col);
+}
+
+void mesh_quad(v3 a, v3 b, v3 c, v3 d, u32 col)
+{
+	v3 n = v3_norm(v3_cross(v3_sub(b, a), v3_sub(d, a)));
+	GX_Begin(GX_QUADS, VF_3D, 4);
+	quad(a, b, c, d, n, col);
+	GX_End();
+}
+
+void mesh_prism(v3 a, v3 b, float r, int sides, u32 col, u32 col_end)
+{
+	v3 axis = v3_sub(b, a);
+	float len = v3_len(axis);
+	if (len < 1e-4f || sides < 3) return;
+	v3 dir = v3_scale(axis, 1.0f / len);
+	v3 ref = fabsf(dir.y) > 0.9f ? v3_make(1, 0, 0) : v3_make(0, 1, 0);
+	v3 u = v3_norm(v3_cross(ref, dir));
+	v3 w = v3_cross(dir, u);
+	GX_Begin(GX_QUADS, VF_3D, sides * 4);
+	for (int i = 0; i < sides; i++) {
+		float a0 = LL_TAU * i / sides, a1 = LL_TAU * (i + 1) / sides;
+		v3 o0 = v3_add(v3_scale(u, cosf(a0) * r), v3_scale(w, sinf(a0) * r));
+		v3 o1 = v3_add(v3_scale(u, cosf(a1) * r), v3_scale(w, sinf(a1) * r));
+		v3 n = v3_norm(v3_add(o0, o1));
+		quad(v3_add(a, o0), v3_add(a, o1), v3_add(b, o1), v3_add(b, o0), n, col);
+	}
+	GX_End();
+	/* End caps as fans. */
+	for (int e = 0; e < 2; e++) {
+		v3 c = e ? b : a;
+		v3 n = e ? dir : v3_scale(dir, -1.0f);
+		GX_Begin(GX_TRIANGLEFAN, VF_3D, sides + 2);
+		emit_pnc(c, n, col_end);
+		for (int k = 0; k <= sides; k++) {
+			int i = e ? k : sides - k;
+			float ang = LL_TAU * i / sides;
+			emit_pnc(v3_add(c, v3_add(v3_scale(u, cosf(ang) * r), v3_scale(w, sinf(ang) * r))), n, col_end);
+		}
+		GX_End();
+	}
 }
 
 void mesh_tri(v3 a, v3 b, v3 c, u32 col)

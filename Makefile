@@ -55,7 +55,7 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 # so the wildcard below always sees the freshly generated .bin files.
 #---------------------------------------------------------------------------------
 .DEFAULT_GOAL	:=	all
-ASSET_DEPS	:=	$(wildcard tools/assets/*.py tools/font/*.py data/palette/*.json)
+ASSET_DEPS	:=	$(wildcard tools/assets/*.py tools/font/*.py tools/worldgen/*.py data/palette/*.json)
 
 $(GEN)/assets.mk: $(ASSET_DEPS)
 	@echo assets ...
@@ -89,7 +89,8 @@ export DEFINES
 
 # Host-side tests of pure game logic (system compiler, no Wii toolchain needed).
 HOST_CC		?=	cc
-HOST_TEST_SRC	:=	tests/host/test_world.c src/world/testarea.c src/core/noise.c src/audio/voice.c
+HOST_TEST_SRC	:=	tests/host/test_world.c tests/host/blobs_host.c src/world/ashen.c src/world/walk.c \
+					src/world/places.c src/core/noise.c src/audio/voice.c
 
 test: $(GEN)/assets.mk
 	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
@@ -134,7 +135,7 @@ $(OUTPUT).dol: $(OUTPUT).elf
 $(OUTPUT).elf: $(OFILES)
 
 # C sources include the bin2o headers (via gen/assets.h), so embed data first.
-$(CFILES:.c=.o): $(OFILES_BIN)
+$(filter-out $(OFILES_BIN),$(OFILES)): $(OFILES_BIN)
 
 %.bin.o : %.bin
 	@echo $(notdir $<)
