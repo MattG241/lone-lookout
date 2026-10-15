@@ -69,8 +69,21 @@ More from the tour:
 - **Terrain analysis:** the steepest point on any trail is 35.5° (the ridge scramble); most are
   20–25°. A flood fill from the trailhead reaches every area and only touches the map's edge on
   the road, behind the gate.
-- **Dolphin:** the tour above runs every system on the real map: the day card, seasons across
-  Days 1–11, storm, haze and rain, the interiors, the notebook, the binoculars and the fire finder.
+- **Dolphin, tour:** the tour above runs every system on the real map: the day card, seasons
+  across Days 1–11, storm, haze and rain, the interiors, the notebook, the binoculars and the
+  fire finder.
+- **Dolphin, release build:** `lonelookout.dol` boots straight into Day 1 at the trailhead, with
+  the day card and the tower visible up the trail.
+- **Dolphin, scripted input (`make WALKTEST=1`):** synthetic Remote and Nunchuk data drove the
+  real code on the real map.
+  - Walked 13.2 m up the trail from the trailhead in 6 s.
+  - Turned right to 56° and back with the pointer at the screen edges.
+  - Answered Dot's radio check (B), moved to the second card (D-pad ↓) and chose it (A); her
+    lines followed to "Basin out."
+  - Called Basin for a check-in (B).
+  - Opened the notebook (D-pad ↓), turned to Notes and then Radio (D-pad →). The Radio page logged
+    every line said, including the check-in. Closed it with B.
+  - The clock advanced 37 game minutes in about 75 s of play, as set (2 real minutes per hour).
 
 ## Problems found and fixed along the way
 
@@ -87,6 +100,8 @@ More from the tour:
    and the tarn. Sparse stands of unreachable trees now break them up (about 430 more trees).
 5. **Composition.** The tarn shot first faced straight into the west rim, so the dock seat now
    looks south down the lake.
+6. **A place card at boot.** The "Kestrel Lookout" card showed over the Day 1 card at the
+   trailhead, because the card's state started at zero (the tower's index). It now starts empty.
 
 ## Known gaps (left for Phases 4 and 5)
 

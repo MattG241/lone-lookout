@@ -164,6 +164,8 @@ void game_init(void)
 	S.day = 1;
 	S.kettle_t = -1.0f;
 	S.area = -1;
+	S.area_card = -1;
+	S.area_card_t = 100.0f;
 	S.last_tread = -1;
 	P.pos = v3_make(START_X, 0.0f, START_Z);
 	P.pos.y = world_ground(P.pos.x, P.pos.z, 1e9f, &P.surface);
