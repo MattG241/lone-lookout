@@ -93,5 +93,46 @@ closing card through the gate (its lines depend on what Theo told Dot).
       percent of a Wii core at a conservative 20× ratio. Two denormal stalls (decaying reverb and
       filter tails) were found and fixed this way.
 - **Dolphin:**
-  - The screenshot tour drives the real game code for every shot below.
-  - **Audio soak:** see below.
+  - **Audio soak (`make SOAK=1`, `tools/capture/soak.sh`): 64.5 minutes, 0 underruns.**
+    - The run: Day 11 from 12:20 through the night, in the rain. Music played back to back
+      (all six pieces and the credits coda), a call to Basin every minute (the check-ins plus
+      Day 11's calls), Listen every 40 s, walking and turning, and the tin-roof rain and the
+      other beds.
+    - 241,909 mixed blocks of 512 samples. The DSP never found a buffer unready.
+    - Mixing took 1.1–4.5 ms of each 16 ms block. That is Dolphin's cycle estimate, so it shows
+      headroom, not a hardware measurement.
+    - The soak build draws and presents one frame every 10 s so Dolphin can run the hour
+      unthrottled. The game logic, radio, Listen and audio all run every frame as usual.
+    - Final frame: [`audio_soak.png`](../screenshots/phase4/audio_soak.png).
+  - **Two Dolphin crashes, both in the host, not the game.** The first soak runs died after
+    exactly 17 game minutes. gdb put the fault in `libvulkan_lvp.so`, the software Vulkan
+    driver this container renders with. The soak build had made one unshown EFB→XFB copy every
+    hidden frame, about 63,000 of them by then. It no longer copies anything on hidden frames.
+  - **Walk test (`make WALKTEST=1`):** scripted Remote and Nunchuk input on the real map. It
+    walks up the trail and turns. Dot's first call rings at 17:00 (the *cab, or by 17:00* rule),
+    is answered, the second card is chosen and the right branch plays (*"It's a radio,
+    Kestrel, not a seance."*). The theme plays, with 0 underruns.
+  - **The screenshot tour** drives the real game code for every shot above.
+  - **Rendering fixes found in these captures:**
+    - The Day 5 smoke topped out below the 14° rim and was invisible. It now climbs to 28°,
+      drawn between the far and near backdrop ranges.
+    - In thick haze, rain or night, the fogged 3D rim stood out as a pale cut-out against
+      darker, under-hazed backdrop ranges and a bright horizon band. The backdrop is now never
+      clearer than the terrain edge in front of it, flattens to a silhouette in heavy haze, and
+      the horizon blends into the fog.
+    - Rain pulled the fog toward a fixed light grey, so rainy nights glowed. It now darkens
+      with the hour.
+
+## What's not verified yet (Phase 5)
+
+- **Real hardware.** Nothing has run on a Wii yet. CPU costs come from host timing (music about
+  5 % of a core at a conservative ratio) and Dolphin's cycle estimates.
+- **Listening.** The headless runs have no audio output. The music and the beds were rendered
+  offline by the host tests and checked by analysis (tuning, levels, clicks), not by ear in the
+  game.
+- **The 4–6 h length is a simulation** with the real dialogue runtime and clock and a modelled
+  player. Nobody has sat through it yet.
+- **Voice-over** has only been exercised with no SD card (every line falls back to the murmur).
+  Reading `.pcm` files from a card is untested.
+- Known rough edges for polish: the deer are simple box models, and the font's kerning drops
+  the space in a few word pairs ("Kestrel Lookout").
