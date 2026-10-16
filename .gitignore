@@ -3,6 +3,7 @@ build/
 build_shots/
 build_walktest/
 build_soak/
+build_menutest/
 gen/
 dist/
 *.dol
@@ -11,6 +12,7 @@ dist/
 tests/host/run_tests
 tests/host/run_story
 tests/host/run_audio
+tests/host/run_save
 
 # Python
 __pycache__/

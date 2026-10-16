@@ -4,6 +4,7 @@
 #   make            generate assets (Python) and build lonelookout.dol
 #   make SHOTS=1    build the screenshot-tour variant (scripted camera, no input)
 #   make WALKTEST=1 build the scripted-input variant (walks, answers the radio, pages the notebook)
+#   make MENUTEST=1 build the scripted title, options and save test
 #   make SOAK=1     build the audio soak variant (Day 11, music, calls and Listen on a loop;
 #                   presents one frame every 10 s with the mixer stats -- tools/capture/soak.sh)
 #   make test       host tests: the world, the story playthroughs, the music
@@ -46,6 +47,11 @@ ifeq ($(WALKTEST),1)
 DEFINES		+=	-DLL_INPUT_SCRIPT=1
 TARGET		:=	lonelookout_walktest
 BUILD		:=	build_walktest
+endif
+ifeq ($(MENUTEST),1)
+DEFINES		+=	-DLL_MENU_TEST=1
+TARGET		:=	lonelookout_menutest
+BUILD		:=	build_menutest
 endif
 ifeq ($(SOAK),1)
 DEFINES		+=	-DLL_INPUT_SCRIPT=1 -DLL_SOAK=1
@@ -102,8 +108,9 @@ HOST_CC		?=	cc
 HOST_TEST_SRC	:=	tests/host/test_world.c tests/host/blobs_host.c src/world/ashen.c src/world/walk.c \
 					src/world/places.c src/core/noise.c src/audio/voice.c
 
-HOST_STORY_SRC	:=	tests/host/test_story.c src/game/dialogue.c src/audio/voice.c src/core/noise.c
+HOST_STORY_SRC	:=	tests/host/test_story.c src/game/dialogue.c src/audio/voice.c src/core/noise.c src/core/saveio.c
 HOST_AUDIO_SRC	:=	tests/host/test_audio.c src/audio/music.c src/audio/ambient.c
+HOST_SAVE_SRC	:=	tests/host/test_save.c src/core/saveio.c src/game/dialogue.c
 
 test: $(GEN)/assets.mk
 	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
@@ -112,9 +119,12 @@ test: $(GEN)/assets.mk
 		-o tests/host/run_story $(HOST_STORY_SRC) -lm
 	@$(HOST_CC) -std=gnu11 -O2 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
 		-o tests/host/run_audio $(HOST_AUDIO_SRC) -lm
+	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
+		-o tests/host/run_save $(HOST_SAVE_SRC) -lm
 	@./tests/host/run_tests
 	@./tests/host/run_story
 	@./tests/host/run_audio
+	@./tests/host/run_save
 
 all: $(BUILD)
 
@@ -124,7 +134,7 @@ $(BUILD):
 
 clean:
 	@echo clean ...
-	@rm -fr build build_shots build_walktest build_soak $(GEN) dist tests/host/run_tests tests/host/run_story tests/host/run_audio *.elf *.dol *.map
+	@rm -fr build build_shots build_walktest build_soak build_menutest $(GEN) dist tests/host/run_tests tests/host/run_story tests/host/run_audio tests/host/run_save *.elf *.dol *.map
 
 run: $(BUILD)
 	wiiload $(OUTPUT).dol

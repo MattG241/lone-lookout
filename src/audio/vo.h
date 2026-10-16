@@ -20,5 +20,6 @@ void vo_init(void);                          /* starts the loader; harmless with
 bool vo_available(void);                     /* the vo folder was found */
 void vo_request(const char *line_id);        /* replaces any earlier request */
 vo_status vo_poll(const s16 **pcm, int *len);
+void vo_debug(char *out, int n);             /* a line for the dev overlay */
 
 #endif

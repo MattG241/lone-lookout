@@ -81,15 +81,25 @@ typedef struct {
 
 extern story_t S;
 
-/* Options (Phase 5 adds the menu; defaults per DESIGN.md section 5). */
+/* Options (the Options screen; DESIGN.md sections 5 and 11). Saved with the game. */
 typedef struct {
 	float look_sens;         /* 1.0 = 70 deg/s yaw, 45 deg/s pitch at the screen edge */
+	u8 comfort;              /* comfort box: 0 small, 1 medium, 2 large */
+	bool invert_pitch;
+	bool snap_turn;
 	bool head_sway;
 	bool walk_bob;
-	bool snap_turn;
+	bool compass;            /* a pencilled heading at the top of the screen */
+	bool subs_large;
+	bool subs_backing;       /* a dark band behind subtitles */
+	bool hearing;            /* Theo's left ear, while listening */
+	bool mono;
+	u8 vol_music, vol_ambience, vol_voice;   /* 0..10 */
+	bool lock30;             /* always 30 fps (25 on PAL) */
 } options_t;
 
 extern options_t OPT;
+void options_apply(void);                /* push the audio options to the mixer (game/save.c) */
 
 void game_init(void);
 void game_update(float dt);

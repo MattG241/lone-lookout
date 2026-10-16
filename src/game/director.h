@@ -13,6 +13,7 @@
 void director_init(void);
 void director_update(float dt);
 void director_story_cue(const char *piece);   /* the script and story beats: always plays */
+void director_skip_opening(void);             /* the theme is already playing (from the title) */
 float director_music_share(void);             /* fraction of play time with music so far */
 
 #endif

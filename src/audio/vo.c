@@ -1,8 +1,8 @@
 /*
  * vo.c -- the SD card voice-over loader (see vo.h).
  *
- * One low-priority thread mounts the card (fatInitDefault can take a moment,
- * or fail when there is no card) and then serves one request at a time,
+ * The card is mounted at boot (core/storage.c). One low-priority thread looks
+ * for the vo folder and then serves one request at a time,
  * reading the whole line into one of two buffers. Two, because the mixer may
  * still be finishing one line while the next is read.
  */
@@ -11,8 +11,8 @@
 #include <malloc.h>
 #include <sys/stat.h>
 #include <gccore.h>
-#include <fat.h>
 #include "audio/vo.h"
+#include "core/storage.h"
 
 #define VO_DIR "sd:/apps/lonelookout/vo"
 #define VO_MAX_SECONDS 30
@@ -32,6 +32,7 @@ static volatile u32 s_req_seq, s_done_seq;
 static volatile vo_status s_status;
 static const s16 *volatile s_pcm;
 static volatile int s_len;
+static char s_last[48];               /* the last line asked for, for the dev overlay */
 
 bool vo_available(void) { return s_available; }
 
@@ -62,7 +63,7 @@ static void *loader(void *arg)
 {
 	(void)arg;
 	struct stat st;
-	if (fatInitDefault() && stat(VO_DIR, &st) == 0 && S_ISDIR(st.st_mode)) {
+	if (storage_ok() && stat(VO_DIR, &st) == 0 && S_ISDIR(st.st_mode)) {
 		s_buf[0] = memalign(32, VO_MAX_SAMPLES * 2);
 		s_buf[1] = memalign(32, VO_MAX_SAMPLES * 2);
 		s_available = s_buf[0] && s_buf[1];
@@ -100,6 +101,7 @@ void vo_request(const char *line_id)
 	}
 	strncpy(s_req, line_id, sizeof(s_req) - 1);
 	s_req[sizeof(s_req) - 1] = 0;
+	memcpy(s_last, s_req, sizeof(s_last));
 	s_status = VO_PENDING;
 	s_req_seq++;
 	LWP_ThreadSignal(s_wake);
@@ -113,4 +115,12 @@ vo_status vo_poll(const s16 **pcm, int *len)
 		*len = s_len;
 	}
 	return s_status;
+}
+
+void vo_debug(char *out, int n)
+{
+	static const char *ST[] = { "none", "loading", "ready", "missing" };
+	if (!s_ready_card) snprintf(out, n, "vo: mounting");
+	else if (!s_available) snprintf(out, n, "vo: no vo folder");
+	else snprintf(out, n, "vo: %s %s (%d samples)", s_last[0] ? s_last : "-", ST[s_status], s_status == VO_READY ? s_len : 0);
 }

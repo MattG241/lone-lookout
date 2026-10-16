@@ -33,6 +33,10 @@ bool story_smoke(v3 *base, float *height, float *alpha);
 float story_smoke_bearing(void);             /* degrees from the tower */
 void story_finder_sight(float yaw);          /* A in the fire finder */
 
+/* Saving: the errand, the season's end, readings, the smoke's bearing. */
+void story_save(sw_t *w);
+void story_load(sr_t *r);
+
 /* The doe and twin fawns, mornings in the meadow. */
 #define DEER_COUNT 3
 bool story_deer(int i, v3 *pos, float *facing, float *alpha, float *scale);

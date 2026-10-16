@@ -16,6 +16,9 @@
 #include "game/story.h"
 #include "game/listen.h"
 #include "game/director.h"
+#include "game/menu.h"
+#include "audio/vo.h"
+#include "core/storage.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
@@ -390,7 +393,7 @@ static void draw_dev_overlay(void)
 {
 #if defined(LL_SHOT_TOUR)
 	return;
-#elif !defined(LL_INPUT_SCRIPT)
+#elif !defined(LL_INPUT_SCRIPT) && !defined(LL_MENU_TEST)
 	if (!(in_held(WPAD_BUTTON_1) && in_held(WPAD_BUTTON_2))) return;
 #endif
 	char line[200];
@@ -411,26 +414,52 @@ static void draw_dev_overlay(void)
 	         (unsigned)blocks, (unsigned)under, mix_ms, audio_music_playing() ? "on" : "off",
 	         director_music_share() * 100.0f, sounds_logged());
 	text_draw_soft(FONT_S, 20, 78, line, -1, c, 1.0f);
+	char vo[96];
+	vo_debug(vo, sizeof(vo));
+	snprintf(line, sizeof(line), "sd: %s   %s   options: sens %.1f box %d compass %d subs %d mono %d vol %d/%d/%d",
+	         storage_ok() ? "mounted" : "none", vo, OPT.look_sens, OPT.comfort, OPT.compass, OPT.subs_large, OPT.mono,
+	         OPT.vol_music, OPT.vol_ambience, OPT.vol_voice);
+	text_draw_soft(FONT_S, 20, 102, line, -1, c, 1.0f);
+}
+
+/* The compass (an option): the heading, pencilled at the top of the screen. */
+static void draw_compass(void)
+{
+	if (!OPT.compass || (P.mode != MODE_WALK && P.mode != MODE_SIT) || P.zoom > 0.5f) return;
+	static const char *POINTS[8] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+	int deg = ((int)(RAD2DEG(P.yaw) + 360.5f)) % 360;
+	char s[16];
+	snprintf(s, sizeof(s), "%s  %03d", POINTS[((deg + 22) / 45) % 8], deg);
+	text_begin();
+	centred(FONT_S, 30.0f, s, gx_col(rgb_from(UI_SUBTITLE), 0.75f), 0.75f);
 }
 
 void hud_draw(void)
 {
 	gfx_ortho();
 	gfx_depth(false, false);
-	draw_binoculars();
-	draw_day_card();
-	draw_area_card();
-	draw_reticle();
-	listen_draw();
-	draw_seated_hint();
-	draw_thought();
-	draw_hint();
-	radio_draw();
-	draw_finder();
-	notebook_draw();
-	draw_text_card();
-	draw_fade();
-	draw_ending();
+	if (APP == APP_PLAY) {
+		draw_binoculars();
+		draw_day_card();
+		draw_area_card();
+		if (!menu_active()) draw_reticle();
+		listen_draw();
+		draw_seated_hint();
+		draw_thought();
+		draw_hint();
+		draw_compass();
+		radio_draw();
+		draw_finder();
+		notebook_draw();
+		draw_text_card();
+		draw_fade();
+		draw_ending();
+	}
+	menu_draw();
+#ifdef LL_MENU_TEST
 	draw_dev_overlay();
+#else
+	if (APP == APP_PLAY) draw_dev_overlay();
+#endif
 	gfx_blend_none();
 }

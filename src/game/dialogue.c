@@ -324,6 +324,67 @@ void dlg_close(void)
 	D.quiet = 0.0f;
 }
 
+/* ------------------------------------------------------------------------ */
+/* Saving                                                                   */
+/* ------------------------------------------------------------------------ */
+
+void dlg_save(sw_t *w)
+{
+	int nf = 0;
+	for (int f = 0; f < DLG_NUM_FLAGS; f++) nf += dlg_flag(f);
+	sw_u16(w, (u16)nf);
+	for (int f = 0; f < DLG_NUM_FLAGS; f++)
+		if (dlg_flag(f)) sw_str(w, DLG_FLAG_NAMES[f]);
+	int nc = 0;
+	for (int c = 0; c < DLG_NUM_CALLS; c++) nc += D.done[c] || D.next_try[c] > 0.0f || D.used_day[c] >= 0;
+	sw_u16(w, (u16)nc);
+	for (int c = 0; c < DLG_NUM_CALLS; c++) {
+		if (!(D.done[c] || D.next_try[c] > 0.0f || D.used_day[c] >= 0)) continue;
+		sw_str(w, DLG_CALLS[c].id);
+		sw_u8(w, D.done[c]);
+		sw_f32(w, D.next_try[c]);
+		sw_u8(w, (u8)(D.used_day[c] + 1));
+	}
+}
+
+static int find_flag(const char *name)
+{
+	for (int f = 0; f < DLG_NUM_FLAGS; f++)
+		if (!strcmp(DLG_FLAG_NAMES[f], name)) return f;
+	return -1;
+}
+
+static int find_call(const char *id)
+{
+	for (int c = 0; c < DLG_NUM_CALLS; c++)
+		if (!strcmp(DLG_CALLS[c].id, id)) return c;
+	return -1;
+}
+
+bool dlg_load(sr_t *r)
+{
+	dlg_init();
+	char name[64];
+	int nf = sr_u16(r);
+	for (int i = 0; i < nf && !r->bad; i++) {
+		sr_str(r, name, sizeof(name));
+		dlg_set_flag(find_flag(name), true);       /* names the script no longer has are dropped */
+	}
+	int nc = sr_u16(r);
+	for (int i = 0; i < nc && !r->bad; i++) {
+		sr_str(r, name, sizeof(name));
+		u8 done = sr_u8(r);
+		float next = sr_f32(r);
+		int used = (int)sr_u8(r) - 1;
+		int c = find_call(name);
+		if (c < 0) continue;
+		D.done[c] = done <= 2 ? done : 0;
+		D.next_try[c] = next;
+		D.used_day[c] = (s8)used;
+	}
+	return !r->bad;
+}
+
 void dlg_force_call(int c)
 {
 	dlg_world w = { DLG_CALLS[c].day_min, DLG_CALLS[c].t_from / 60.0f, -1, 0, -1, true };

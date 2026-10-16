@@ -50,6 +50,30 @@ static void log_line(int who, const char *text)
 	s_log_n++;
 }
 
+void radio_log_save(sw_t *w)
+{
+	sw_u8(w, (u8)s_log_n);
+	for (int i = 0; i < s_log_n; i++) {
+		sw_u8(w, (u8)s_log[i].day);
+		sw_u8(w, (u8)s_log[i].who);
+		sw_str(w, s_log_text[i]);
+	}
+}
+
+void radio_log_load(sr_t *r)
+{
+	int n = sr_u8(r);
+	s_log_n = 0;
+	for (int i = 0; i < n && !r->bad; i++) {
+		int day = sr_u8(r), who = sr_u8(r);
+		char text[200];
+		sr_str(r, text, sizeof(text));
+		if (who > SPEAKER_CREW) continue;
+		log_line(who, text);
+		s_log[s_log_n - 1].day = day;
+	}
+}
+
 int radio_log(const radio_log_entry **out)
 {
 	/* Re-point the texts: the entries move when the log scrolls. */
@@ -266,16 +290,24 @@ void radio_draw(void)
 		sc.a = (u8)(255 * R.sub_alpha);
 		GXColor tc = paper;
 		tc.a = (u8)(245 * R.sub_alpha);
+		font_id f = OPT.subs_large ? FONT_L : FONT_S;
+		float lh = text_line_height(f);
 		float x = 48.0f + 26.0f, y = 430.0f;
-		float nx = x + text_width(FONT_S, name, -1) + 8.0f;
+		float nx = x + text_width(f, name, -1) + 8.0f;
 		int starts[4], lens[4];
-		int n = text_wrap(FONT_S, R.sub_text, G.ui_w - nx - 60.0f, starts, lens, 4);
-		float ly = y - (n - 1) * text_line_height(FONT_S);
+		int n = text_wrap(f, R.sub_text, G.ui_w - nx - 60.0f, starts, lens, 4);
+		float ly = y - (n - 1) * lh;
+		if (OPT.subs_backing) {
+			mat_vcolor();
+			gfx_blend_alpha();
+			ui_rect(x - 40.0f, ly - lh * 0.95f, G.ui_w - x - 20.0f, n * lh + lh * 0.5f,
+			        (GXColor){ 10, 10, 14, (u8)(150 * R.sub_alpha) });
+		}
 		draw_radio_glyph(x - 28, ly - 15, 0.0f, tc, sc);
 		text_begin();
-		text_draw_soft(FONT_S, x, ly, name, -1, sc, R.sub_alpha);
+		text_draw_soft(f, x, ly, name, -1, sc, R.sub_alpha);
 		for (int i = 0; i < n; i++)
-			text_draw_soft(FONT_S, nx, ly + i * text_line_height(FONT_S), R.sub_text + starts[i], lens[i], tc, R.sub_alpha);
+			text_draw_soft(f, nx, ly + i * lh, R.sub_text + starts[i], lens[i], tc, R.sub_alpha);
 	}
 
 	/* Choice cards: little paper slips with pencil text. */

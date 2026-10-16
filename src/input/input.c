@@ -74,12 +74,79 @@ static void scripted(u32 f)
 }
 #endif
 
+#ifdef LL_MENU_TEST
+#include "game/menu.h"
+#include "game/game.h"
+/*
+ * The scripted menu and save test (make MENUTEST=1): from the title, take the
+ * first item (New season, or Continue if a season is saved), walk, pause,
+ * turn the compass on in Options, save and return to the title, Continue,
+ * then Save and quit. Each step waits for the screen it needs.
+ */
+typedef struct { int screen; u16 wait; u32 buttons; u16 hold_stick; } mstep;
+#define PLAYING (-1)
+static const mstep MSTEPS[] = {
+	{ MENU_TITLE, 150, WPAD_BUTTON_A, 0 },
+	{ PLAYING, 150, 0, 240 },
+	{ PLAYING, 30, WPAD_BUTTON_HOME, 0 },
+	{ MENU_PAUSE, 60, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_PAUSE, 20, WPAD_BUTTON_A, 0 },
+	{ MENU_OPTIONS, 60, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_OPTIONS, 40, WPAD_BUTTON_A, 0 },                   /* Compass: on */
+	{ MENU_OPTIONS, 60, WPAD_BUTTON_B, 0 },                   /* back (settings saved) */
+	{ MENU_PAUSE, 60, WPAD_BUTTON_DOWN, 0 }, { MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_PAUSE, 40, WPAD_BUTTON_A, 0 },                     /* Save and return to the title */
+	{ MENU_TITLE, 180, WPAD_BUTTON_A, 0 },                    /* Continue */
+	{ PLAYING, 240, WPAD_BUTTON_HOME, 0 },
+	{ MENU_PAUSE, 60, WPAD_BUTTON_DOWN, 0 }, { MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_PAUSE, 60, WPAD_BUTTON_A, 0 },                     /* Save and quit */
+};
+
+static void menu_script(void)
+{
+	static int step, waited, stick;
+	u32 prev = IN.held;
+	IN.connected = true;
+	IN.nunchuk = true;
+	IN.held = 0;
+	IN.stick_x = IN.stick_y = 0.0f;
+	IN.ir_valid = false;
+	if (stick > 0) {
+		stick--;
+		IN.stick_y = 1.0f;
+	} else if (step < (int)(sizeof(MSTEPS) / sizeof(MSTEPS[0]))) {
+		const mstep *s = &MSTEPS[step];
+		int now = APP == APP_PLAY && !menu_active() ? PLAYING : menu_screen();
+		if (now == s->screen) {
+			if (++waited >= s->wait) {
+				IN.held |= s->buttons;
+				stick = s->hold_stick;
+				waited = 0;
+				step++;
+			}
+		} else {
+			waited = 0;
+		}
+	}
+	IN.down |= IN.held & ~prev;
+	IN.up |= prev & ~IN.held;
+}
+#endif
+
 void input_poll(void)
 {
 #ifdef LL_INPUT_SCRIPT
 	static u32 frame;
 	WPAD_ScanPads();
 	scripted(frame++);
+	return;
+#endif
+#ifdef LL_MENU_TEST
+	WPAD_ScanPads();
+	menu_script();
 	return;
 #endif
 	WPAD_ScanPads();

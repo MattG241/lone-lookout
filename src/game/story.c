@@ -23,6 +23,7 @@ static struct {
 	bool errand_done;
 	bool season_over;
 	readings_t am, pm;
+	float am_hour, pm_hour;      /* when they were taken (to rebuild them from a save) */
 	float smoke_seen_t;
 	float sighted_bearing;
 	float elk_t;                 /* < 0 not started */
@@ -77,9 +78,11 @@ void story_readings_taken(bool morning)
 	readings_t r = weather_read(S.day, DAY.hour);
 	if (morning) {
 		T.am = r;
+		T.am_hour = DAY.hour;
 		story_raise(FLAG_OBS_AM);
 	} else {
 		T.pm = r;
+		T.pm_hour = DAY.hour;
 		story_raise(FLAG_OBS_PM);
 	}
 }
@@ -267,6 +270,39 @@ void story_update(float dt)
 	watch_smoke(dt);
 	watch_deer(dt);
 	bulls(dt);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Saving                                                                   */
+/* ------------------------------------------------------------------------ */
+
+static char s_errand[200];
+
+void story_save(sw_t *w)
+{
+	sw_str(w, T.errand ? T.errand : "");
+	sw_u8(w, T.errand_done);
+	sw_u8(w, T.season_over);
+	sw_f32(w, T.sighted_bearing);
+	sw_f32(w, T.am_hour);
+	sw_f32(w, T.pm_hour);
+	sw_u8(w, T.deer_gone);
+}
+
+void story_load(sr_t *r)
+{
+	story_init();
+	sr_str(r, s_errand, sizeof(s_errand));
+	T.errand = s_errand[0] ? s_errand : NULL;
+	T.errand_done = sr_u8(r) != 0;
+	T.season_over = sr_u8(r) != 0;
+	T.sighted_bearing = sr_f32(r);
+	T.am_hour = sr_f32(r);
+	T.pm_hour = sr_f32(r);
+	T.deer_gone = sr_u8(r) != 0;
+	T.am = weather_read(S.day, T.am_hour);
+	T.pm = weather_read(S.day, T.pm_hour);
+	T.bugle_wait = 20.0f;
 }
 
 /* ------------------------------------------------------------------------ */

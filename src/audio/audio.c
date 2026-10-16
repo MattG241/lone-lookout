@@ -55,6 +55,9 @@ static volatile int s_focus = -1;
 static volatile bool s_music_on;
 static volatile u32 s_underruns, s_blocks;
 static volatile float s_mix_ms;
+/* Options: the three volume sliders (music, world, radio), mono, Theo's ear. */
+static volatile float s_vol_music = 0.8f, s_vol_world = 0.8f, s_vol_radio = 0.8f;
+static volatile bool s_mono, s_hearing = true;
 
 /* ---- output ring ---- */
 static s16 s_out[NBUF][BLOCK * 2] ATTRIBUTE_ALIGN(32);
@@ -172,6 +175,16 @@ void audio_voice_pcm(const s16 *pcm, int len, speaker_t who, bool garbled)
 }
 
 bool audio_voice_busy(void) { return s_vo.active; }
+
+void audio_set_options(float music, float world, float radio, bool mono, bool hearing)
+{
+	/* Sliders map to a gentle curve: half way is about -10 dB. */
+	s_vol_music = music * music;
+	s_vol_world = world * world;
+	s_vol_radio = radio * radio;
+	s_mono = mono;
+	s_hearing = hearing;
+}
 
 void audio_stats(u32 *underruns, u32 *blocks, float *mix_ms)
 {
@@ -493,7 +506,8 @@ static float bird_sample(float dt)
 
 static void mix_block(s16 *dst)
 {
-	static float L[BLOCK], R[BLOCK];
+	static float L[BLOCK], R[BLOCK], VL[BLOCK], VR[BLOCK];
+	const float vw = s_vol_world, vr = s_vol_radio;
 	const float dt = 1.0f / SR;
 
 	while (s_cmd_r != s_cmd_w) {
@@ -566,18 +580,20 @@ static void mix_block(s16 *dst)
 			r += cr;
 		}
 
-		if (s_hiss_level > 0.001f) {
-			float hs = svf_bp(&s_hiss_f, noise_white(&s_rng), hsc) * 0.022f * s_hiss_level;
-			if (noise_unit(&s_rng) > 0.9993f) hs += noise_white(&s_rng) * 0.15f * s_hiss_level;
-			l += hs;
-			r += hs;
-		}
-
 		for (int k = 0; k < MAX_SFX; k++) {
 			if (!s_sfx[k].on) continue;
 			float v = sfx_sample(&s_sfx[k], dt) * s_sfx[k].gain * 0.5f;
 			l += v * (1.0f - s_sfx[k].pan);
 			r += v * (1.0f + s_sfx[k].pan);
+		}
+		l *= vw;
+		r *= vw;
+
+		if (s_hiss_level > 0.001f) {
+			float hs = svf_bp(&s_hiss_f, noise_white(&s_rng), hsc) * 0.022f * s_hiss_level;
+			if (noise_unit(&s_rng) > 0.9993f) hs += noise_white(&s_rng) * 0.15f * s_hiss_level;
+			l += hs * vr;
+			r += hs * vr;
 		}
 		L[i] = l;
 		R[i] = r;
@@ -588,20 +604,26 @@ static void mix_block(s16 *dst)
 	int focus = s_focus;
 	for (int k = 0; k < SND_COUNT; k++) {
 		float lk = k == focus ? 1.0f + 0.58f * s_listen : 1.0f - 0.5f * s_listen;
-		eg[k] = s_emit_gain[k] * lk * (1.0f - 0.44f * s_radio_duck);
+		eg[k] = s_emit_gain[k] * lk * (1.0f - 0.44f * s_radio_duck) * vw;
 		ep[k] = s_emit_pan[k];
 	}
 	ambient_render(L, R, BLOCK, eg, ep, s_wind);
 
-	music_render(L, R, BLOCK, (1.0f - 0.645f * s_radio_duck) * (1.0f - 0.75f * s_listen));
+	music_render(L, R, BLOCK, (1.0f - 0.645f * s_radio_duck) * (1.0f - 0.75f * s_listen) * s_vol_music);
 	s_music_on = music_active();
 
-	voice_render(&s_vo, L, R, BLOCK);
+	memset(VL, 0, sizeof(VL));
+	memset(VR, 0, sizeof(VR));
+	voice_render(&s_vo, VL, VR, BLOCK);
 
-	/* Theo's left ear, while he listens. */
+	/* Theo's left ear, while he listens; then mono, if asked for. */
 	float ear_c = lp1_coef(14000.0f - 11500.0f * s_listen);
+	bool ear = s_hearing && s_listen > 0.01f, mono = s_mono;
 	for (int i = 0; i < BLOCK; i++) {
-		if (s_listen > 0.01f) L[i] = lp1(&s_ear, L[i], ear_c);
+		L[i] += VL[i] * vr;
+		R[i] += VR[i] * vr;
+		if (ear) L[i] = lp1(&s_ear, L[i], ear_c);
+		if (mono) L[i] = R[i] = 0.5f * (L[i] + R[i]);
 		float l = soft_clip(L[i] * 1.4f) * 0.9f, r = soft_clip(R[i] * 1.4f) * 0.9f;
 		dst[i * 2 + 0] = (s16)(l * 32000.0f);
 		dst[i * 2 + 1] = (s16)(r * 32000.0f);

@@ -13,6 +13,7 @@
 
 #include <gctypes.h>
 #include <stdbool.h>
+#include "core/saveio.h"
 
 typedef enum { DLG_LINE, DLG_CHOICE, DLG_OPTION, DLG_GOTO, DLG_BRANCH, DLG_SET, DLG_CLEAR, DLG_DO, DLG_END } dlg_opcode;
 
@@ -88,6 +89,11 @@ void dlg_hook_line(int speaker, const char *text);     /* a line starts: voice i
 void dlg_hook_action(int action, const char *arg);     /* "do" statements */
 void dlg_hook_token(const char *name, char *out, int n);
 void dlg_hook_call_end(int call);
+
+/* Saving: the script's state (flags, calls played or missed, retry times,
+ * check-ins used) by name, so a save survives the script being edited. */
+void dlg_save(sw_t *w);
+bool dlg_load(sr_t *r);
 
 /* Script data accessors (for tests and the notebook). */
 int dlg_num_calls(void);

@@ -27,6 +27,8 @@ typedef struct {
 	const char *text;
 } radio_log_entry;
 int radio_log(const radio_log_entry **out);           /* oldest first */
+void radio_log_save(sw_t *w);
+void radio_log_load(sr_t *r);                          /* after radio_init */
 
 /* Screenshot tour: start a call and skip ahead a number of lines. */
 void radio_debug_call(int call, int lines);

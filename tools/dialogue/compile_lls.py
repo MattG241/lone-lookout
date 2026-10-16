@@ -317,6 +317,11 @@ class Compiler:
                 o.get("str", o.get("arg", 0)), o.get("target", 0), 0))
         data_h.append("};")
         data_h.append("")
+        data_h.append("static const char *const DLG_FLAG_NAMES[DLG_NUM_FLAGS] = {")
+        for name, i in sorted(self.flags.items(), key=lambda kv: kv[1]):
+            data_h.append(f"\t{cstr(name)},")
+        data_h.append("};")
+        data_h.append("")
         data_h.append("static const dlg_call DLG_CALLS[DLG_NUM_CALLS] = {")
         for c in self.calls:
             needs = (c["needs_c"] + [0, 0, 0, 0])[:4]

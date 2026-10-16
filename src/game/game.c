@@ -16,6 +16,7 @@
 #include "game/story.h"
 #include "game/listen.h"
 #include "game/director.h"
+#include "game/save.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
@@ -26,8 +27,8 @@
 #define EYE_HEIGHT 1.62f
 #define WALK_SPEED 2.2f
 #define STRIDE_SPEED 3.4f
-#define BOX_X 0.55f
-#define BOX_Y 0.50f
+/* The comfort box (small, medium, large): inside it the pointer moves the reticle only. */
+static const float BOX_X[3] = { 0.40f, 0.55f, 0.68f }, BOX_Y[3] = { 0.36f, 0.50f, 0.62f };
 #define MAX_YAW_RATE DEG2RAD(70.0f)
 #define MAX_PITCH_RATE DEG2RAD(45.0f)
 #define PITCH_LIMIT DEG2RAD(60.0f)
@@ -42,7 +43,10 @@
 
 player_t P;
 story_t S;
-options_t OPT = { 1.0f, true, true, true };
+options_t OPT = {
+	.look_sens = 1.0f, .comfort = 1, .snap_turn = true, .head_sway = true, .walk_bob = true,
+	.hearing = true, .vol_music = 8, .vol_ambience = 8, .vol_voice = 8,
+};
 
 /* ------------------------------------------------------------------------ */
 /* Texts                                                                    */
@@ -263,13 +267,15 @@ static void update_look(float dt)
 	float sens = OPT.look_sens * (game_fov() / FOV_EYE);
 	float t_yaw = 0.0f, t_pitch = 0.0f;
 	float rx = 0.0f, ry = 0.0f;
+	const float bx = BOX_X[OPT.comfort % 3], by = BOX_Y[OPT.comfort % 3];
 	if (look && IN.ir_valid) {
 		float ax = fabsf(IN.ir_x), ay = fabsf(IN.ir_y);
-		t_yaw = signf(IN.ir_x) * smoothstepf(BOX_X, 0.95f, ax) * MAX_YAW_RATE * sens;
-		t_pitch = -signf(IN.ir_y) * smoothstepf(BOX_Y, 0.95f, ay) * MAX_PITCH_RATE * sens;
+		t_yaw = signf(IN.ir_x) * smoothstepf(bx, 0.95f, ax) * MAX_YAW_RATE * sens;
+		t_pitch = -signf(IN.ir_y) * smoothstepf(by, 0.95f, ay) * MAX_PITCH_RATE * sens;
+		if (OPT.invert_pitch) t_pitch = -t_pitch;
 		if (P.mode == MODE_FINDER) t_pitch = 0.0f;
-		rx = clampf(IN.ir_x, -BOX_X, BOX_X);
-		ry = clampf(IN.ir_y, -BOX_Y, BOX_Y);
+		rx = clampf(IN.ir_x, -bx, bx);
+		ry = clampf(IN.ir_y, -by, by);
 	}
 	/* IR lost (or look suspended): turning eases to a stop over ~0.25 s. */
 	P.yaw_rate = approachf(P.yaw_rate, t_yaw, IN.ir_valid ? 14.0f : 12.0f, dt);
@@ -614,6 +620,7 @@ static void update_sleep(float dt)
 	if (S.sleep_t > 2.2f) {
 		game_new_day(S.day + 1);
 		S.fade = 1.0f;
+		if (!P.input_locked) save_game();     /* each morning is kept */
 	}
 }
 

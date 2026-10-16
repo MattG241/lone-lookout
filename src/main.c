@@ -27,6 +27,9 @@
 #include "input/input.h"
 #include "audio/audio.h"
 #include "audio/vo.h"
+#include "core/storage.h"
+#include "game/save.h"
+#include "game/menu.h"
 #include "world/world.h"
 
 static volatile bool s_power_off;
@@ -79,6 +82,7 @@ int main(int argc, char **argv)
 	WPAD_SetPowerButtonCallback(on_wpad_power);
 
 	world_init();
+	storage_init();                        /* the SD card, for the save and recorded voices */
 	game_init();
 	DAY.hour = 15.5f;                      /* Day 1: arrive at the trailhead mid-afternoon */
 #ifdef LL_INPUT_SCRIPT
@@ -98,21 +102,35 @@ int main(int argc, char **argv)
 	creatures_build();
 	sky_init();
 	audio_init();
+	save_init();                           /* settings, and whether there's a season to continue */
 	vo_init();
+#if !defined(LL_SHOT_TOUR) && !defined(LL_INPUT_SCRIPT)
+	title_enter();
+#endif
 	S.season_dirty = false;
 	clock_init();
 
 	while (!s_power_off) {
 		input_poll();
+#if defined(LL_SHOT_TOUR) || defined(LL_INPUT_SCRIPT)
 		if (in_held(WPAD_BUTTON_HOME))
 			break;
+#else
+		/* HOME or + pauses (time stops); the menus have their own way out. */
+		if (APP == APP_PLAY && !menu_active() && (in_down(WPAD_BUTTON_HOME) || in_down(WPAD_BUTTON_PLUS)))
+			menu_pause();
+		G.force_half_rate = OPT.lock30;
+#endif
 
 		bool black = tour_frame();
 		int steps = clock_steps();
 		for (int i = 0; i < steps; i++) {
-			game_update(SIM_DT);
+			if (menu_active()) menu_update(SIM_DT);
+			if (APP == APP_TITLE) title_update(SIM_DT);
+			else if (!menu_active()) game_update(SIM_DT);
 			input_consume();
 		}
+		if (menu_quit_requested()) break;
 		if (S.season_dirty) apply_season();
 
 		daylight d;

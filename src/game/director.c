@@ -22,6 +22,8 @@ void director_init(void)
 	D.last_hour = -1.0f;
 }
 
+void director_skip_opening(void) { D.opened = true; }
+
 float director_music_share(void) { return D.total_t > 0.0f ? D.music_t / D.total_t : 0.0f; }
 
 void director_story_cue(const char *piece)
@@ -85,10 +87,10 @@ void director_update(float dt)
 	D.last_hour = h;
 	if (!awake) return;
 
-	/* Day 1: the main theme as Theo sets off up the trail. */
+	/* Day 1: the main theme as Theo sets off up the trail (not when continuing). */
 	if (!D.opened) {
 		D.opened = true;
-		director_story_cue("channel");
+		if (S.day == 1 && h < 16.5f && !playing) director_story_cue("channel");
 		return;
 	}
 	bool outdoors = world_indoor(P.pos) == INDOOR_NONE;

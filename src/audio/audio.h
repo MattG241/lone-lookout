@@ -48,6 +48,9 @@ void audio_voice_stop(void);
  * samples must stay valid until audio_voice_busy() goes false. */
 void audio_voice_pcm(const s16 *pcm, int len, speaker_t who, bool garbled);
 bool audio_voice_busy(void);
+/* Options: volumes 0..1 (music; the world's sounds; the radio), mono, and the
+ * left-ear effect while listening. */
+void audio_set_options(float music, float world, float radio, bool mono, bool hearing);
 /* Mixer health: buffers the DSP found unready, blocks mixed, average ms per block. */
 void audio_stats(u32 *underruns, u32 *blocks, float *mix_ms);
 void audio_radio_hiss(bool on);                            /* carrier hiss while the handset is up */
