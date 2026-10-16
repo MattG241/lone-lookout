@@ -1,0 +1,93 @@
+# Day 10 — First Frost. 13 September. Frost and morning mist, then clear and cold.
+# The closing checklist. Packing up Augie's cabin. Dot hasn't decided about Calder.
+
+call D10_AM
+  day 10
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Tell me there's frost.
+choice
+  > "There's frost on the meadow. White all over." -> frost
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_am set gave_readings -> read
+node frost
+THEO Basin, Kestrel. There's frost on the whole meadow. It's white all over, down to the creek.
+DOT  ...I've always wanted to see that.
+goto plan
+node read
+THEO Basin, Kestrel. Dry bulb {dry}, wet {wet}. Humidity {rh}. Wind {wind}. Fuel stick {fuel}. Frost on the meadow.
+DOT  Copy. Fuel stick's finally wet. That's the season, nearly.
+node plan
+DOT  Last truck brought a list. It's in my capitals, so you know I mean it.
+DOT  Shutters on the cabin. Drain the cistern at the tower. Leave the logbook for whoever's next.
+do errand Closing chores: put the shutters up on Pell's Cabin and drain the cistern at the tower.
+
+call D10_CABIN
+  day 10
+  where cabin
+  after D10_AM
+DOT  Kestrel, Basin. You're at the cabin.
+THEO I'm packing his things. There isn't much.
+DOT  Tell me what's there.
+THEO The flower book. A drawer with a letter he never sent. Spoons on a string. A jar of buttons.
+DOT  ...Take nothing. It's his.
+DOT  ...Except the flower book. Would you bring me the flower book?
+choice
+  > "I'll bring it." set flower_book -> bring
+  > "I'll leave it for him." -> leave
+node bring
+THEO I'll bring it.
+DOT  Thank you. I'll give it back to him. I'll — I'll give it back. Basin out.
+end
+node leave
+THEO I'll leave it for him. It belongs here.
+DOT  You're right. You're right. Basin out.
+
+call D10_CHORES
+  day 10
+  needs shutters_done, cistern_done
+DOT  Kestrel, Basin. Shutters? Cistern?
+THEO Shutters up. Cistern drained. The tower sounds hollow now.
+DOT  That's the season put away. Nearly.
+do errand_done
+DOT  Basin out.
+
+call D10_EVE
+  day 10
+  time 16:30-18:30
+  retry 20:00
+  kind report
+DOT  Kestrel, Basin. Last-but-one evening readings.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_pm set gave_readings -> read
+  > "I didn't go out." -> no
+node read
+THEO Basin, Kestrel. Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}.
+DOT  Copy. Barometer's dropping down here. Something's coming. Basin out.
+end
+node no
+THEO I didn't go out.
+DOT  Barometer's dropping down here anyway. Something's coming. Basin out.
+
+call D10_NIGHT
+  day 10
+  time 21:00-26:00
+DOT  Kestrel, Basin.
+THEO Dot.
+DOT  You're going to ask me about Calder.
+THEO I wasn't going to.
+DOT  You were. You've got a way of not asking that's louder than asking.
+DOT  I haven't decided. Ask me tomorrow. ...No. Don't.
+choice
+  > "I won't." -> wont
+  > "Ruth's piano's waiting either way." if offered_tuning -> piano
+  > [say nothing] -> quiet
+node wont
+THEO I won't.
+DOT  Goodnight, Theo.
+end
+node piano
+THEO Ruth's piano is waiting either way.
+DOT  ...Goodnight, Theo.
+end
+node quiet
+DOT  Goodnight, Theo.

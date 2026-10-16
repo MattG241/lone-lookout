@@ -1,0 +1,142 @@
+# Day 5 — Dry Lightning. 28 August. Dry thunderstorm 14:00–17:30. A lightning smoke on
+# Harrow Ridge at about 16:30, bearing 104 from Kestrel. That night: the ear.
+
+call D5_AM
+  day 5
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Three days of nothing. Congratulations, you're a professional. Readings?
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_am set gave_readings -> read
+  > "Hang on." -> hang
+node read
+THEO Basin, Kestrel. Dry bulb {dry}, wet {wet}. Humidity {rh}. Wind {wind}. Fuel stick {fuel}.
+DOT  Copy. That fuel stick's the driest it's been all summer.
+goto plan
+node hang
+THEO Hang on. I'll get them.
+DOT  Don't bother. I know what they say. They say dry.
+node plan
+DOT  Dry storms building this afternoon. Lots of lightning, not a drop of rain. That's the bad kind.
+DOT  Eyes open from two o'clock. If you see smoke, sight it in the finder and call me. That's the job. That's the whole job. Basin out.
+do errand Fire watch: dry lightning from 14:00. If you see smoke, sight it in the fire finder and call Basin.
+
+call D5_STORM
+  day 5
+  time 14:10-15:30
+  kind small
+DOT  Kestrel, Basin. That's the first strike on my board. Count the seconds between flash and thunder.
+THEO And then?
+DOT  And then divide by five, and that's how many miles away it is, and then you feel very clever. Basin out.
+
+call D5_REPORT
+  day 5
+  needs smoke_sighted, !smoke_reported
+  kind initiated
+THEO Basin, Kestrel. Smoke report.
+DOT  Go ahead, Kestrel.
+THEO Bearing {bearing}. About nine miles. Thin white smoke, single tree. Harrow Ridge.
+DOT  Copy. Bearing {bearing}, about nine, single tree, Harrow Ridge.
+DOT  ...Crew's rolling. Nice catch, Kestrel.
+set smoke_reported
+do errand_done
+choice
+  > "Is that it?" -> it
+  > "My hands are shaking." -> hands
+  > [say nothing] -> quiet
+node it
+THEO Is that it?
+DOT  That's it. Somebody else gets to run up a hill now. You get to sit. Basin out.
+end
+node hands
+THEO My hands are shaking.
+DOT  Everybody's hands shake, the first one. Augie's shook on his last one. Basin out.
+end
+node quiet
+DOT  Basin out.
+
+call D5_BINOC
+  day 5
+  needs smoke_seen, !smoke_sighted
+  kind initiated
+THEO Basin, Kestrel. I've got smoke. East-southeast, I think. A thin white column.
+DOT  Give me a bearing, Kestrel.
+THEO It's... east-ish.
+DOT  The finder. The big round thing in the middle of your room. Point it, read me the number. Basin standing by.
+
+call D5_PROSPECT
+  day 5
+  time 18:00-21:00
+  needs !smoke_reported
+DOT  Kestrel, Basin. Prospect Lookout just called in a smoke on Harrow Ridge. You seeing it?
+choice
+  > "I missed it." -> missed
+  > "I see it now." -> now
+node missed
+THEO I missed it. I was — I missed it.
+DOT  That's what there are two of you for. Prospect's got it, crew's rolling. No harm done.
+goto out
+node now
+THEO I see it now. Bearing about one-oh-four.
+DOT  Copy. Prospect beat you to it, but the bearings cross nicely. That's how we find them.
+node out
+set smoke_missed
+do errand_done
+DOT  Basin out.
+
+call D5_EVE
+  day 5
+  time 17:40-19:00
+  retry 20:30
+  kind report
+DOT  Kestrel, Basin. Storm's moving off east. Evening readings when you can.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_pm set gave_readings -> read
+  > "Later." -> later
+node read
+THEO Basin, Kestrel. Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}.
+DOT  Copy. Air's tired. So am I. Basin out.
+end
+node later
+THEO Later, Basin.
+DOT  Copy. Basin out.
+
+call D5_NIGHT
+  day 5
+  time 21:00-26:00
+DOT  Kestrel, Basin. Crew's got your smoke in a box. One tree. Out by morning.
+THEO Basin, Kestrel. Good.
+branch told_ear_early -> early
+DOT  Can I ask you something?
+THEO Go ahead.
+DOT  You say "say again" a lot, for a man who tunes pianos.
+choice
+  > Tell her. set told_ear -> tell
+  > "Radios are bad." set deflected_ear -> radios
+  > [say nothing] -> quiet
+node early
+DOT  Your ear. The left one. Is it getting worse?
+choice
+  > "No. It's the same." set told_ear -> same
+  > "I don't know. That's the problem." set told_ear -> tell
+  > [say nothing] -> quiet
+node same
+THEO No. It's the same. It's been the same since February.
+DOT  February.
+node tell
+THEO ...My left ear went quiet in February. I woke up and it was just... gone. Mostly.
+THEO They say it might come back. They say "give it time." I've tuned pianos by ear for nineteen years.
+DOT  And you came up a mountain.
+THEO I wanted somewhere nobody would ask me how it was.
+DOT  ...And then I asked.
+THEO And then you asked.
+DOT  Okay. Thank you for telling me. I won't ask again. You'll tell me when you want to.
+THEO I'll tell you.
+DOT  Goodnight, Theo.
+end
+node radios
+THEO Radios are bad.
+DOT  Mm. Radios are bad. Goodnight, Kestrel.
+end
+node quiet
+DOT  ...Okay. I'm here. That's all. Basin out.

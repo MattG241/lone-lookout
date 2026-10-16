@@ -1,0 +1,126 @@
+# Day 9 — Last Season. 10 September. Clear and cold; the first gold aspens.
+# A postcard from Augie. Basin is closing. Ruth's piano. From today, Dot never says "over".
+
+call D9_AM
+  day 9
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Readings.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_am set gave_readings -> read
+  > "There's frost on the railing." -> frost
+node read
+THEO Basin, Kestrel. Dry bulb {dry}, wet {wet}. Humidity {rh}. Wind {wind}. Fuel stick {fuel}.
+DOT  Copy.
+goto plan
+node frost
+THEO Basin, Kestrel. There's frost on the railing. Just a little.
+DOT  First of the year. The aspens'll go now. Watch them.
+node plan
+DOT  Supply run today. Hal's leaving it early. Augie sent you something.
+DOT  No, I didn't read it. ...I read it.
+do errand Fetch the supply box from the trailhead. Augie sent something.
+
+call D9_POSTCARD
+  day 9
+  needs note_postcard
+DOT  Kestrel, Basin. Well?
+THEO "Is it F?"
+DOT  He's been asking me that for twenty-two years. I don't know what it means. Do you?
+choice
+  > "Tell Augie it's E-flat. A little flat." if stair_heard set stair_is_eflat -> eflat
+  > "Tell him it's F." -> f
+  > "I haven't listened properly." -> notyet
+node eflat
+THEO Tell Augie it's E-flat. A little flat, even.
+DOT  Ha! Ha. Oh, he'll be furious. He'll be delighted. Twenty-two years.
+goto ps
+node f
+THEO Tell him it's F.
+DOT  ...Liar. I can hear you smiling. I'll tell him.
+goto ps
+node notyet
+THEO I haven't listened properly. The third stair. I'll listen.
+DOT  You'd better. He'll call me about it.
+node ps
+DOT  And the rest of it?
+choice
+  > "He says you should go and see your sister." set ps_told -> tell
+  > "Just a P.S. Nothing." -> nothing
+node tell
+THEO There's a P.S. He says you should go and see your sister.
+DOT  ...
+DOT  Copy. Basin out.
+goto done
+node nothing
+THEO Just a P.S. Nothing important.
+DOT  Kestrel. I read it. ...Thank you. Basin out.
+node done
+do errand_done
+
+call D9_EVE
+  day 9
+  time 16:30-17:50
+  retry 18:00
+  kind report
+DOT  Kestrel, Basin. Evening readings.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_pm set gave_readings -> read
+  > "Cold. That's the reading." -> cold
+node read
+THEO Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}.
+DOT  Copy. Basin out.
+end
+node cold
+THEO Cold. That's the reading.
+DOT  You're learning. Basin out.
+
+call D9_PM
+  day 9
+  time 18:00-20:30
+  retry 22:00
+DOT  Kestrel, Basin. I need to tell you something and I need you to not make it a thing.
+THEO Go ahead.
+DOT  They're automating Basin. Relay towers on the ridges, a desk in Calder with a computer on it. This is the last season anyone sits in this chair.
+THEO ...How long have you known?
+DOT  Since April. I haven't told anybody. You're the first. Don't make it a thing.
+choice
+  > "What will you do?" -> what
+  > "I'm sorry." -> sorry
+  > [say nothing] -> quiet
+node what
+THEO What will you do?
+goto piano
+node sorry
+THEO I'm sorry, Dot.
+DOT  Don't be sorry. It's a chair.
+goto piano
+node quiet
+DOT  ...Thank you for not saying anything. You're the only one who'd know how.
+node piano
+DOT  Ruth has our mother's upright. Nobody's played it since 2009. It probably sounds like a drawer full of forks.
+choice
+  > "I could tune it." set offered_tuning -> tune
+  > "Pianos forgive a lot." -> forgive
+  > [say nothing] -> silent
+node tune
+THEO I could tune it.
+DOT  ...You'd come all the way to Calder to tune a piano nobody plays?
+THEO Somebody might play it, if it was in tune.
+DOT  ...Goodnight, Theo.
+end
+node forgive
+THEO Pianos forgive a lot. More than people think. They want to be in tune.
+DOT  ...Goodnight, Theo.
+end
+node silent
+DOT  ...Goodnight, Theo.
+
+call D9_NIGHT
+  day 9
+  time 21:30-26:00
+  after D9_PM
+  kind small
+DOT  Theo.
+THEO Dot?
+DOT  ...Thanks. Basin out.

@@ -1,9 +1,22 @@
-# Build outputs (Phase 2+)
+# Build outputs
 build/
+build_shots/
+build_walktest/
+build_soak/
+build_menutest/
+build_perf/
+build_remotetest/
+build_soakridge/
+gen/
 dist/
+voices/
 *.dol
 *.elf
 *.map
+tests/host/run_tests
+tests/host/run_story
+tests/host/run_audio
+tests/host/run_save
 
 # Python
 __pycache__/

@@ -1,0 +1,106 @@
+# Day 4 — Field Notes. 25 August. Breezy. Errand: Augie's month-end round —
+# the rain gauge in the meadow, the spring, a stone for the cairn. Dot starts asking
+# what the mountain sounds like, and the sound log becomes something they share.
+
+call D4_AM
+  day 4
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Morning. Readings? Over.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_am set gave_readings -> read
+  > "Not yet. Coffee first." -> coffee
+node read
+THEO Basin, Kestrel. Dry bulb {dry}, wet {wet}. Humidity {rh}. Wind {wind}. Fuel stick {fuel}.
+DOT  Copy all. You're getting fast at that.
+goto plan
+node coffee
+THEO Basin, Kestrel. Not yet. Coffee first.
+DOT  Hit it on the left. I'll write "breezy."
+node plan
+DOT  End of the month, Kestrel. Augie did a round. Rain gauge down in the meadow, the spring, and a stone on the cairn up on the ridge.
+DOT  Don't ask me about the stone. I asked him once and he talked for forty minutes.
+choice
+  > "What's the rain gauge for? It hasn't rained." -> gauge
+  > "I'll do the round." -> round
+node gauge
+THEO What's the rain gauge for? It hasn't rained in weeks.
+DOT  It's for writing down zero. Somebody has to. Over.
+node round
+do errand Augie's round: the rain gauge in the meadow, the spring, and a stone for the cairn.
+DOT  Basin out.
+
+call D4_GAUGE
+  day 4
+  needs gauge_read
+  after D4_AM
+  kind small
+DOT  Kestrel, Basin. What's the gauge say?
+THEO Zero.
+DOT  Zero. Again. Write it down anyway.
+THEO Why?
+DOT  Because one day it won't be, and you'll want to know how long it was. Basin out.
+
+call D4_SOUND
+  day 4-11
+  needs sound_logged
+DOT  Kestrel, Basin. Can I ask you a strange one?
+THEO Go ahead.
+DOT  What does it sound like up there? No, really. Describe it. I've been on this desk nineteen years and I've only ever heard it through your microphone.
+choice
+  > "Like a room after the party." -> party
+  > "Like a piano with the lid down." -> lid
+  > "It sounds like nothing. Then it doesn't." -> nothing
+node party
+THEO Like a room after the party's gone home. Things still settling.
+DOT  Huh.
+goto more
+node lid
+THEO Like a piano with the lid down. You can tell there's something in there.
+DOT  Huh.
+goto more
+node nothing
+THEO It sounds like nothing. Then you wait, and it doesn't.
+DOT  Huh.
+node more
+DOT  Keep doing that. Write them down. When you call in, tell me one. Augie never did. He said I wouldn't get it.
+DOT  Basin out.
+
+call D4_CAIRN
+  day 4
+  needs cairn_stone
+  after D4_AM
+DOT  Kestrel, Basin. You up on the ridge?
+THEO I put a stone on the cairn. It felt silly.
+DOT  He said every stone was a season. Count them.
+choice
+  > Count them. -> count
+  > "I'd rather not know." -> rather
+node count
+THEO ...Twenty-two. Twenty-three, now.
+DOT  ...Twenty-three. Okay. That's the round. Thank you, Kestrel.
+goto out
+node rather
+THEO I'd rather not know.
+DOT  There are twenty-two. Twenty-three, now. Sorry. I counted for you.
+node out
+do errand_done
+DOT  Basin out.
+
+call D4_EVE
+  day 4
+  time 16:30-18:00
+  retry 20:00
+  kind report
+DOT  Kestrel, Basin. Evening readings, and one sound.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_pm set gave_readings -> read
+  > "No readings. Just a sound." -> sound
+node read
+THEO Basin, Kestrel. Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}.
+DOT  Copy. And the sound?
+node sound
+THEO The wind in the tower. It's not one note. It's two, a hair apart.
+DOT  The wobble.
+THEO The wobble.
+DOT  Goodnight, Kestrel.

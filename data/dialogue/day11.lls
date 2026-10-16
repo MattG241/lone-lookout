@@ -1,0 +1,87 @@
+# Day 11 — First Rain. 15 September. Clouding over; rain from noon. The last weather
+# report. The logbook's last page (in the game's own UI). The last call. Leave when ready.
+
+call D11_AM
+  day 11
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Last weather report of the season.
+DOT  I'm going to read it slowly. Humour me.
+DOT  Clouding over through the morning. Wind backing southwest. Rain by noon.
+DOT  Real rain, Kestrel. The first in seven weeks. That's the season.
+choice
+  > "Copy, Basin." -> copy
+  > "Dry {dry}, wet {wet}. For the record." if obs_am set gave_readings -> read
+node read
+THEO Dry bulb {dry}, wet bulb {wet}. Humidity {rh}. Wind {wind}. For the record.
+DOT  For the record. Copy.
+node copy
+DOT  No job today. Do whatever you like. Basin out.
+do errand None. The season's over. Do whatever you like.
+
+call D11_WHERE
+  day 11
+  time 12:30-19:00
+  needs rain_on
+DOT  Kestrel, Basin. Where are you right now? Describe it. I want to picture it.
+branch area:tower -> tower
+branch area:meadow -> meadow
+branch area:tarn -> tarn
+branch area:ridge -> ridge
+branch area:burn -> burn
+branch area:cabin -> cabin
+THEO On a trail. The dust's gone dark. It smells like a whole summer all at once.
+goto out
+node tower
+THEO In the cab. The rain on the roof sounds like somebody's tuning a hundred snare drums, all slightly wrong.
+goto out
+node meadow
+THEO In the meadow. The grass is bending over. The creek's already louder. The fence posts look black.
+goto out
+node tarn
+THEO At the tarn. The water's gone from a mirror to a dish of pins. The far shore's gone grey.
+goto out
+node ridge
+THEO On the ridge. Up in it. The cloud's on top of me. I can't see the tower. I can hear the rain on the scree, a long way down.
+goto out
+node burn
+THEO In the burn. The snags are black now, not silver. The fireweed's all seed, and it's soaking.
+goto out
+node cabin
+THEO On the cabin porch. The chimes are going. The tin roof's doing all the talking.
+node out
+DOT  ...Thank you. I can see it. Basin out.
+
+call D11_LAST
+  day 11
+  time 19:30-26:00
+DOT  Basin to Kestrel.
+THEO Basin, Kestrel. Go ahead.
+DOT  Last call of the season. There's no Basin next year, so I'll just say it plain.
+DOT  It was good, having a voice on four.
+choice
+  > "Tell Ruth to keep the piano." if offered_tuning -> piano
+  > "Go and see your sister, Dot." -> sister
+  > "Thank you, Basin." -> thanks
+  > [say nothing] -> quiet
+node piano
+THEO Tell Ruth to keep the piano. I'm coming to tune it.
+DOT  ...I'll tell her. She'll want to know who you are.
+THEO Tell her I'm the lookout.
+goto out
+node sister
+THEO Go and see your sister, Dot.
+DOT  ...Augie said that.
+THEO Augie was right about most things. Except the stair.
+goto out
+node thanks
+THEO Thank you, Basin.
+DOT  Thank you, Kestrel.
+goto out
+node quiet
+DOT  ...I'll take that as a maybe.
+node out
+set season_over
+do season_over
+DOT  Basin, clear.
+do music rain

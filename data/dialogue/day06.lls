@@ -1,0 +1,121 @@
+# Day 6 — Relay. 30 August. Smoke from the Harrow fire. Dot is on her third night shift.
+# The crew's handhelds can't reach Basin from the drainage, but they reach the ridge.
+
+call D6_AM
+  day 6
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Readings.
+THEO Basin, Kestrel. You sound tired.
+DOT  Third night on. Readings, Kestrel.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_am set gave_readings -> read
+  > "Not yet." -> notyet
+node read
+THEO Dry bulb {dry}, wet {wet}. Humidity {rh}. Wind {wind}. Fuel stick {fuel}.
+DOT  Copy.
+goto plan
+node notyet
+THEO Not yet.
+DOT  Fine. Smoky. That's the reading.
+node plan
+DOT  The Harrow crew's working the north flank, down in the drainage. Their handhelds can't reach me from in there. They can reach your ridge.
+DOT  I need you up on Cinder Ridge, Kestrel. Be my ears. Relay what they say. Basin out.
+do errand Climb to Cinder Ridge and relay for the Harrow crew.
+
+call D6_RELAY
+  day 6
+  time 06:30-21:00
+  where area:ridge
+  after D6_AM
+  garble
+CREW Kestrel, Harrow Crew. You on the ridge? We need... — ...Basin, over.
+THEO Harrow Crew, Kestrel. I'm on the ridge. Go ahead.
+CREW Tell Basin we're tied in on the... — ...north flank, and we need... — ...hundred gallons at the... — ...over.
+choice
+  > Relay it as heard. -> m1heard
+  > "Say again, Harrow?" -> m1again
+  > Guess. -> m1guess
+node m1heard
+THEO Basin, Kestrel. Relay from Harrow Crew: tied in on the north flank, need some hundred gallons at... somewhere.
+DOT  Copy. Water. They always need water. I'll find out where.
+goto m2
+node m1again
+THEO Say again, Harrow? All after "need." Left ear's... — say again.
+CREW ...Two hundred gallons at the lower spike camp, over.
+THEO Basin, Kestrel. Relay: Harrow tied in on the north flank, needs two hundred gallons at the lower spike camp.
+DOT  Copy, two hundred at the lower spike camp. Nice and clean.
+set relay_clean
+goto m2
+node m1guess
+THEO Basin, Kestrel. Relay: north flank, two thousand gallons.
+DOT  Two thousand? They'd float away. I'll send two hundred and ask.
+node m2
+CREW Kestrel, Harrow. Second thing. Tell Basin the... — ...is down, we're walking... — ...out by sixteen hundred, over.
+choice
+  > Relay it as heard. -> m2heard
+  > "Say again, Harrow?" -> m2again
+node m2heard
+THEO Basin, Kestrel. Relay: something's down, they're walking out by sixteen hundred.
+DOT  Probably the pump. It's always the pump. Copy.
+goto m3
+node m2again
+THEO Say again, Harrow. All after "the."
+CREW The pump is down. Walking the hose out by sixteen hundred, over.
+THEO Basin, Kestrel. Relay: their pump's down. They're walking the hose out by sixteen hundred.
+DOT  It's always the pump. Copy, Kestrel.
+node m3
+CREW Kestrel, Harrow. Last one. Tell Basin... — ...thanks for the coffee. And tell her to go to bed. Over.
+THEO Basin, Kestrel. Last relay from Harrow: thanks for the coffee. And go to bed.
+DOT  ...Tell Harrow copy, and mind their own business.
+THEO Harrow, Kestrel. Basin says copy. And mind your own business.
+CREW Ha. Copy. Harrow Crew out.
+set relay_done
+do errand_done
+DOT  Thank you, Kestrel. You can come down off your mountain now. Basin out.
+
+call D6_EVE
+  day 6
+  time 16:30-18:30
+  retry 20:30
+  kind report
+DOT  Kestrel, Basin. Readings, if you're back.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_pm set gave_readings -> read
+  > "Still walking." -> walking
+node read
+THEO Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}.
+DOT  Copy. Smoke's laying down for the night. Basin out.
+end
+node walking
+THEO Still walking.
+DOT  Copy. Mind the scree in the dark. Basin out.
+
+call D6_NIGHT
+  day 6
+  time 21:00-26:00
+DOT  Kestrel, Basin. You awake?
+THEO Basin, Kestrel. I'm awake.
+DOT  Talk to me about something that isn't fire. Anything. I've had fire in my ear for three days.
+choice
+  > "The worst piano I ever tuned." -> piano
+  > "The stairs here have a note." -> stairs
+node piano
+THEO The worst piano I ever tuned was in a church hall in Port Hallam. Someone had kept a cat in it.
+DOT  In it?
+THEO In it. For years. It had opinions about middle C.
+DOT  Mm.
+THEO The vicar said it had always sounded like that. That it was the sound of the parish. I said it was the sound of a cat.
+DOT  ...
+THEO Basin?
+goto asleep
+node stairs
+THEO The third stair from the top rings when you step on it. Augie thought it was F. It's not.
+DOT  Mm.
+THEO It's E-flat. A little flat, even. Which makes it a very bad F.
+DOT  ...
+THEO Basin?
+node asleep
+THEO ...Basin?
+THEO ...Goodnight, Dot.
+do hiss_hold

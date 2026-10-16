@@ -1,0 +1,49 @@
+# Ash & Fireweed -- the Burn. Guitar harmonics over a low drone.
+piece ash "Ash & Fireweed"
+tempo 52
+beats 4
+
+bar
+d D1+A1/4:.45
+h -/1 D5/1.5:.42 A5/1.5:.36
+bar
+d D1+A1/4:.45
+h -/.5 E6/1.5:.38 D6/2:.34
+bar
+d D1+A1/4:.45
+h A5/2:.36 -/1 G5/1:.32
+bar
+d D1+A1/4:.45
+h -/2 D5/2:.36
+
+bar
+d D1+A1/4:.45
+h D6/1:.42 A5/1:.36 B5/1.5:.4 F#5/.5:.34
+bar
+d D1+A1/4:.45
+h E5/4:.38
+bar ?
+d G1+D2/4:.42
+h -/1 G5/1:.34 D6/2:.32
+bar
+d G1+D2/4:.42
+h B5/2:.36 A5/2:.32
+
+bar ~
+d B0+F#1/4:.42
+h F#5/1.5:.36 -/.5 D6/2:.34
+bar
+d B0+F#1/4:.42
+h -/1 A5/3:.34
+bar
+d D1+A1/4:.45
+h D6/1:.4 A5/1:.36 B5/1.5:.38 F#5/.5:.34
+bar
+d D1+A1/4:.45
+h E5/4:.36
+
+again 1-2
+
+bar
+d D1+A1/4:.4
+h -/2 A5/2:.3

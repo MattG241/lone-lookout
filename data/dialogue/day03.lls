@@ -1,0 +1,119 @@
+# Day 3 — Say Again. 23 August. High cloud, breezy. The supply truck; wind at the tarn; the cabin.
+
+call D3_AM
+  day 3
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Morning. Readings? Over.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_am set gave_readings -> read
+  > "Give me five minutes." -> five
+  > [say nothing] -> quiet
+node read
+THEO Basin, Kestrel. Dry bulb {dry}, wet {wet}. Humidity {rh}. Wind {wind}. Fuel stick {fuel}.
+DOT  Copy. Wind's coming up. You'll feel it on the catwalk by lunch. Over.
+goto plan
+node five
+THEO Basin, Kestrel. Give me five minutes.
+DOT  Augie used to say that. Then he'd call at noon. I'll guess. Breezy. Over.
+goto plan
+node quiet
+DOT  I can hear you breathing, Kestrel. That counts as a reading. Over.
+node plan
+DOT  High cloud, breezy from the west-southwest. Fire danger moderate.
+DOT  Supply truck at the gate around noon. Don't make Hal wait. He talks to his truck, and his truck is a bad listener. Basin out.
+do errand Meet the supply truck at the trailhead gate around noon.
+
+call D3_SUPPLY
+  day 3
+  needs supply_today
+  after D3_AM
+DOT  Kestrel, Basin. Hal says you weren't at the gate. Hal says it with feeling.
+THEO Basin, Kestrel. I've got the box. There are peaches in it.
+DOT  Peaches are from me. Don't tell Augie. He always wanted peaches and I never sent him any.
+choice
+  > "Why not?" -> why
+  > "Thank you." -> thanks
+  > [say nothing] -> quiet
+node why
+THEO Why not?
+DOT  Twenty-two years, and he never once asked. I was waiting for him to ask.
+goto out
+node thanks
+THEO Thank you, Basin. Really.
+DOT  Don't make it a thing.
+goto out
+node quiet
+DOT  Eat them cold. It's the only way.
+node out
+do errand_done
+DOT  Basin out.
+
+call D3_WIND
+  day 3
+  where area:tarn
+  after D3_AM
+  garble
+DOT  Kestrel, Basin. Wind's... — ...this afternoon, so... — ...the catwalk, over.
+THEO Basin, Kestrel. Say again?
+DOT  ...said the wind... — ...gusting to... — ...keep your... — ...over.
+THEO Say again, Basin. All after "wind."
+DOT  ...ty miles... — ...hat on... — ...copy?
+THEO Say again! I can't — I can't hear you!
+DOT  ...
+DOT  Kestrel, Basin. You're breaking up. Get off the water and try me again. Over.
+choice
+  > "Wind's loud up here. Sorry." -> wind
+  > "Left ear's not great. Sorry." set told_ear_early -> ear
+  > [say nothing] -> quiet
+node wind
+THEO Wind's loud up here. Sorry. I didn't mean to bark.
+DOT  You didn't bark. You should hear the crews. Gusts to thirty this afternoon. Hold on to your hat. Basin out.
+end
+node ear
+THEO Left ear's not great. Sorry. I didn't mean to bark.
+DOT  ...Copy. Noted. I'll talk slower, and you tell me when I'm mumbling. Deal?
+THEO Deal.
+DOT  Gusts to thirty this afternoon. Hold on to your hat. Basin out.
+end
+node quiet
+DOT  ...Gusts to thirty, Kestrel. Hold on to something. Basin out.
+
+call D3_CABIN
+  day 3-10
+  needs cabin_entered
+DOT  Kestrel, Basin. You found the cabin.
+THEO How do you know?
+DOT  Because you've gone quiet in a different way. He'd go down there when the tower got too loud.
+DOT  A tower's never loud, Theo. That's what I told him.
+choice
+  > "What did he say?" -> said
+  > "It's a good room." -> room
+  > [say nothing] -> quiet
+node said
+THEO What did he say?
+DOT  He said, "Dot, you've never been in one." Which was fair. Basin out.
+end
+node room
+THEO It's a good room. It smells like coffee and dust.
+DOT  That's him. That's exactly him. Basin out.
+end
+node quiet
+DOT  Take your time down there. Basin out.
+
+call D3_EVE
+  day 3
+  time 16:30-18:00
+  retry 20:00
+  kind report
+DOT  Kestrel, Basin. Evening readings.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_pm set gave_readings -> read
+  > "Didn't get to the box." -> notyet
+node read
+THEO Basin, Kestrel. Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}.
+DOT  Copy. Wind's dropping. Eat a peach. Basin out.
+end
+node notyet
+THEO Basin, Kestrel. Didn't get to the box.
+DOT  Wind's dropping, if it helps. Basin out.

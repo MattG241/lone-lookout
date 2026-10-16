@@ -6,9 +6,9 @@ Phase 1 (design): defines the playable map -- terrain features, the six
 locations, the trail network and vegetation masks -- and renders a
 "found in Augie's notebook" paper map for the design document.
 
-Phase 3 (world building) will extend this same module with an exporter
-that bakes the 129x129 heightmap, vertex colours and foliage instances
-into binary blobs linked into the .dol, so the map in the design
+Phase 3 (world building): tools/worldgen/bake_world.py imports this module
+and bakes the 129x129 heightmap, vertex colours, surface IDs and foliage
+instances into binary blobs linked into the .dol, so the map in the design
 document and the map in the game can never drift apart.
 
 Coordinate system (matches the game):
@@ -48,17 +48,20 @@ LOCATIONS = [
 LANDMARKS = [
     dict(id="trailhead", name="Trailhead & supply box", pos=(250.0, 498.0)),
     dict(id="dock",      name="Tarn dock",              pos=(156.0, 150.0)),
-    dict(id="bench",     name="Augie's bench",          pos=(392.0, 118.0)),
+    dict(id="bench",     name="Augie's bench",          pos=(403.0, 119.5)),
     dict(id="fence",     name="Old drift fence",        pos=(142.0, 318.0)),
     dict(id="spring",    name="Cold spring",            pos=(196.0, 214.0)),
 ]
 
 # Trails as polylines (world metres). Together they form one big loop
 # with two spurs, so a player can never get "stuck" down a dead end.
+# The climb to the ridge angles across its gentle south-west face.
 TRAILS = {
     "tower-meadow": [(256, 258), (238, 284), (204, 298), (170, 312), (140, 326), (112, 334)],
     "meadow-tarn":  [(112, 334), (120, 296), (134, 256), (150, 214), (150, 178)],
-    "tarn-ridge":   [(160, 128), (198, 108), (240, 98), (288, 92), (330, 96), (364, 92), (380, 108), (398, 112)],
+    "tarn-shore":   [(150, 178), (158, 162), (160, 146), (160, 128)],
+    "tarn-ridge":   [(160, 128), (198, 108), (240, 98), (288, 96), (326, 110), (352, 130),
+                     (374, 130), (390, 120), (398, 112)],
     "ridge-tower":  [(398, 112), (372, 140), (352, 168), (322, 196), (290, 222), (264, 242)],
     "tower-cabin":  [(256, 258), (266, 300), (258, 342), (248, 386), (258, 440)],
     "cabin-burn":   [(258, 440), (300, 428), (340, 404), (372, 384), (392, 372)],
@@ -76,7 +79,9 @@ KNOB_CENTRE = (256.0, 248.0)
 RIDGE_A, RIDGE_B = (318.0, 66.0), (482.0, 176.0)
 MEADOW_CENTRE = (112.0, 334.0)
 BURN_CENTRE = (392.0, 372.0)
-CABIN_CENTRE = (258.0, 440.0)
+CABIN_CENTRE = (258.0, 440.0)          # the trail junction in the cabin yard
+CABIN_BUILDING = (244.0, 434.0)        # the cabin itself, west of the junction
+GATE = (250.0, 505.0)                  # road gate at the south edge of the district
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +208,10 @@ def _height_features(x, z):
     notch_s = np.exp(-((x - 252.0) / 48.0) ** 2) * smoothstep(400.0, 512.0, z)
     notch_sw = np.exp(-(dist_to_point(x, z, (34.0, 506.0)) / 95.0) ** 2)
     rim *= 1.0 - 0.82 * np.maximum(notch_s, notch_sw)
+    # Behind Cinder Ridge the ridge itself is the edge; ease the rim there
+    # so the overlook's south-west face stays walkable.
+    d_rr, _ = dist_to_segment(x, z, RIDGE_A, RIDGE_B)
+    rim *= 1.0 - 0.6 * np.exp(-(d_rr / 70.0) ** 2) * smoothstep(1.02, 0.8, r)
 
     h = 18.0 + rim
 
@@ -212,17 +221,23 @@ def _height_features(x, z):
     # Kestrel Knob -- the tower's hill, with a long spur running SE
     # (the burn trail follows it) and a shorter one toward the ridge.
     d_knob = dist_to_point(x, z, KNOB_CENTRE)
-    h += 58.0 * np.exp(-(d_knob / 58.0) ** 2) + 10.0 * np.exp(-(d_knob / 150.0) ** 2)
+    h += 34.0 * np.exp(-(d_knob / 80.0) ** 2) + 8.0 * np.exp(-(d_knob / 170.0) ** 2)
+    # Spurs are shoulders that leave the summit, not extra height on it.
     d_spur, t_spur = dist_to_segment(x, z, KNOB_CENTRE, (350.0, 330.0))
-    h += 22.0 * (1.0 - t_spur) * np.exp(-(d_spur / 30.0) ** 2)
+    h += 12.0 * (1.0 - t_spur) * smoothstep(0.0, 0.35, t_spur) * np.exp(-(d_spur / 40.0) ** 2)
     d_spur2, t_spur2 = dist_to_segment(x, z, KNOB_CENTRE, (330.0, 180.0))
-    h += 16.0 * (1.0 - t_spur2) * np.exp(-(d_spur2 / 26.0) ** 2)
+    h += 10.0 * (1.0 - t_spur2) * smoothstep(0.0, 0.35, t_spur2) * np.exp(-(d_spur2 / 36.0) ** 2)
 
     # Cinder Ridge -- an elongated crest, highest two-thirds of the way along.
     d_ridge, t_ridge = dist_to_segment(x, z, RIDGE_A, RIDGE_B)
     along = 0.55 + 0.45 * np.sin(np.clip(t_ridge, 0, 1) * math.pi * 0.9 + 0.25)
-    h += 92.0 * along * np.exp(-(d_ridge / 40.0) ** 2)
-    h += 10.0 * np.exp(-(d_ridge / 12.0) ** 2)               # sharp spine
+    # Asymmetric: a long, walkable face toward the bowl (south-west), a
+    # steep drop on the far side (north-east, outside the playable area).
+    vx, vz = RIDGE_B[0] - RIDGE_A[0], RIDGE_B[1] - RIDGE_A[1]
+    sw = ((x - RIDGE_A[0]) * vz - (z - RIDGE_A[1]) * vx) < 0.0
+    width = np.where(sw, 88.0, 46.0)
+    h += 52.0 * along * np.exp(-(d_ridge / width) ** 2)
+    h += 6.0 * np.exp(-(d_ridge / 14.0) ** 2)                # sharp spine
 
     # Mirror Tarn basin.
     h -= 17.0 * np.exp(-(dist_to_point(x, z, TARN_CENTRE) / 52.0) ** 2)
@@ -248,9 +263,116 @@ def _height_features(x, z):
 # Flat building pads: (centre, inner radius, outer radius, extra height).
 PADS = [
     (KNOB_CENTRE, 9.0, 16.0, 1.0),     # tower footing on the knob summit
-    (CABIN_CENTRE, 12.0, 24.0, 0.0),   # Pell's Cabin
+    ((250.0, 437.0), 15.0, 26.0, 0.0), # Pell's Cabin and its yard
     ((250.0, 498.0), 10.0, 20.0, 0.0), # trailhead turnaround
 ]
+
+
+def _padded(x, z):
+    """Terrain features plus the flat building pads."""
+    x = np.asarray(x, dtype=np.float64)
+    z = np.asarray(z, dtype=np.float64)
+    h = _height_features(x, z)
+    # Flat pads, levelled to the terrain height at their centre.
+    for centre, r0, r1, lift in PADS:
+        target = float(_height_features(np.array([centre[0]]), np.array([centre[1]]))[0]) + lift
+        p = 1.0 - smoothstep(r0, r1, dist_to_point(x, z, centre))
+        h = h * (1.0 - p) + target * p
+    return h
+
+
+# Trails are graded into the hillside: each one gets a smoothed elevation
+# profile along its length, and the ground within a few metres is cut or
+# filled to that profile. The bed is level across and free of bumps, so a
+# walker never meets a sudden steep step. Order matters: a trail that starts
+# on an earlier one is pinned to that trail's profile so junctions agree.
+TRAIL_ORDER = ["tower-meadow", "tower-cabin", "burn-tower", "ridge-tower", "cabin-burn", "cabin-gate",
+               "meadow-tarn", "tarn-shore", "tarn-ridge", "spring-spur"]
+TRAIL_BED = 3.0          # half-width of the level bed (m)
+TRAIL_BANK = 12.0        # cut/fill blends back into the hillside by here
+_PROFILE_STEP = 1.0
+MAX_GRADE = 0.36         # ~20 degrees along a trail
+# The last pull up to the overlook is allowed to be a steeper scramble.
+TRAIL_MAX_GRADE = {"tarn-ridge": 0.52, "ridge-tower": 0.52}
+_profiles = None
+
+
+def _arc(pts):
+    p = np.asarray(pts, dtype=np.float64)
+    seg = np.sqrt(((p[1:] - p[:-1]) ** 2).sum(axis=1))
+    return p, np.concatenate([[0.0], np.cumsum(seg)])
+
+
+def _nearest_on(pts, px, pz):
+    """Distance and arc length of the nearest point on a polyline."""
+    p, s = _arc(pts)
+    best = np.full(np.shape(px), 1e9)
+    best_s = np.zeros(np.shape(px))
+    for i in range(len(p) - 1):
+        d, t = dist_to_segment(px, pz, p[i], p[i + 1])
+        m = d < best
+        best = np.where(m, d, best)
+        best_s = np.where(m, s[i] + t * (s[i + 1] - s[i]), best_s)
+    return best, best_s
+
+
+def trail_profiles():
+    """name -> (arc lengths, bed heights), computed once from the padded terrain."""
+    global _profiles
+    if _profiles is not None:
+        return _profiles
+    prof = {}
+    for name in TRAIL_ORDER:
+        p, s = _arc(TRAILS[name])
+        ss = np.arange(0.0, s[-1] + 1e-6, _PROFILE_STEP)
+        if ss[-1] < s[-1]:
+            ss = np.append(ss, s[-1])
+        xs = np.interp(ss, s, p[:, 0])
+        zs = np.interp(ss, s, p[:, 1])
+        nat = _padded(xs, zs)
+        n = len(ss)
+        # Pin the ends: to an earlier trail's bed where they meet one, else
+        # to the natural ground (the pads, at the buildings).
+        ends = []
+        for k in (0, n - 1):
+            e = nat[k]
+            for other, (os_, oh) in prof.items():
+                d, sa = _nearest_on(TRAILS[other], np.array([xs[k]]), np.array([zs[k]]))
+                if d[0] < 3.0:
+                    e = float(np.interp(sa[0], os_, oh))
+                    break
+            ends.append(e)
+        # Moving average over +/-R metres, with the ends extended flat.
+        R = int(18.0 / _PROFILE_STEP)
+        ext = np.concatenate([np.full(R, ends[0]), nat, np.full(R, ends[1])])
+        c = np.concatenate([[0.0], np.cumsum(ext)])
+        out = (c[2 * R + 1:] - c[:-2 * R - 1]) / (2 * R + 1)
+        f = ss / ss[-1]
+        out += (ends[0] - out[0]) * (1.0 - f) + (ends[1] - out[-1]) * f
+        # Grade limiter: no stretch steeper than MAX_GRADE (or the trail's
+        # average, if the two ends alone demand more).
+        ds = np.diff(ss)
+        g = max(TRAIL_MAX_GRADE.get(name, MAX_GRADE), 1.02 * abs(ends[1] - ends[0]) / ss[-1])
+        for _ in range(6):
+            out[0] = ends[0]
+            for i in range(1, n):
+                out[i] = min(max(out[i], out[i - 1] - g * ds[i - 1]), out[i - 1] + g * ds[i - 1])
+            out[-1] = ends[1]
+            for i in range(n - 2, -1, -1):
+                out[i] = min(max(out[i], out[i + 1] - g * ds[i]), out[i + 1] + g * ds[i])
+        prof[name] = (ss, out)
+    _profiles = prof
+    return prof
+
+
+def trail_distance(x, z):
+    """Distance to the nearest trail centre line."""
+    x = np.asarray(x, dtype=np.float64)
+    z = np.asarray(z, dtype=np.float64)
+    best = np.full(np.shape(x), 1e9)
+    for pts in TRAILS.values():
+        best = np.minimum(best, dist_to_polyline(x, z, pts))
+    return best
 
 
 def height(x, z):
@@ -264,19 +386,26 @@ def height(x, z):
     """
     x = np.asarray(x, dtype=np.float64)
     z = np.asarray(z, dtype=np.float64)
-    h = _height_features(x, z)
-
-    # Flat pads, levelled to the terrain height at their centre.
-    for centre, r0, r1, lift in PADS:
-        target = float(_height_features(np.array([centre[0]]), np.array([centre[1]]))[0]) + lift
-        p = 1.0 - smoothstep(r0, r1, dist_to_point(x, z, centre))
-        h = h * (1.0 - p) + target * p
-
-    # Trails are trodden in a little.
+    h = _padded(x, z)
+    # Blend toward the bed of every nearby trail (the nearest point on each).
+    # Trails meet at matching bed heights, so weighting them keeps the ground
+    # continuous at junctions.
+    w_max = np.zeros(np.shape(x))
+    w_sum = np.zeros(np.shape(x))
+    bed_sum = np.zeros(np.shape(x))
     d_trail = np.full(np.shape(x), 1e9)
-    for pts in TRAILS.values():
-        d_trail = np.minimum(d_trail, dist_to_polyline(x, z, pts))
-    h -= 0.35 * np.exp(-(d_trail / 1.6) ** 2)
+    for name, (ss, hh) in trail_profiles().items():
+        d, sa = _nearest_on(TRAILS[name], x, z)
+        w = 1.0 - smoothstep(TRAIL_BED, TRAIL_BANK, d)
+        w2 = w * w
+        w_max = np.maximum(w_max, w)
+        w_sum += w2
+        bed_sum += w2 * np.interp(sa, ss, hh)
+        d_trail = np.minimum(d_trail, d)
+    bed = np.where(w_sum > 0, bed_sum / np.maximum(w_sum, 1e-12), h)
+    h = h * (1.0 - w_max) + bed * w_max
+    # Trails are trodden in a little.
+    h -= 0.30 * np.exp(-(d_trail / 1.8) ** 2)
     return h
 
 
@@ -357,8 +486,26 @@ def _wash(img, mask, colour, strength=1.0, edge=0.35, rng=None, grain=None):
     return tinted
 
 
-def render_map(path, size=1024, seed=1):
-    from PIL import Image, ImageDraw, ImageFont
+def _liberation_text():
+    """Default label renderer for the design-document map (system serif)."""
+    from PIL import ImageFont
+    try:
+        base = "/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf"
+        fonts = {k: ImageFont.truetype(base, sz) for k, sz in (("title", 34), ("label", 21), ("small", 15))}
+    except OSError:
+        fonts = {k: ImageFont.load_default() for k in ("title", "label", "small")}
+
+    def put(img, d, xy, text, kind, fill, scale=1.0):
+        d.text(xy, text, font=fonts[kind], fill=fill)
+    return put
+
+
+def render_map(path, size=1024, seed=1, put_text=None, title=True):
+    """Paint the notebook map. put_text(img, draw, xy, text, kind, rgba, scale)
+    draws labels (kind: title/label/small); the game's baker passes one that
+    letters them in Lookout Hand. Returns the PIL image (and saves it if
+    path is given)."""
+    from PIL import Image, ImageDraw
 
     rng = np.random.default_rng(seed)
     s = size / WORLD_SIZE                       # pixels per metre
@@ -465,19 +612,16 @@ def render_map(path, size=1024, seed=1):
         for i in range(0, len(dense) - 1, 2):
             d.line([dense[i], dense[i + 1]], fill=(115, 79, 51, 230), width=2)
 
-    try:
-        f_title = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf", 34)
-        f_label = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf", 21)
-        f_small = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf", 15)
-    except OSError:
-        f_title = f_label = f_small = ImageFont.load_default()
+    if put_text is None:
+        put_text = _liberation_text()
+    k = size / 1024.0                            # layout was authored at 1024 px
 
     ink = (52, 44, 40, 235)
 
     # Location markers and labels.
     label_offsets = {
         "tower": (16, -34), "meadow": (-70, 40), "tarn": (-58, -86),
-        "ridge": (-60, -42), "burn": (-30, 52), "cabin": (18, -6),
+        "ridge": (-190, -46), "burn": (-30, 52), "cabin": (18, -6),
     }
     for loc in LOCATIONS:
         px, py = to_px(loc["pos"])
@@ -492,7 +636,7 @@ def render_map(path, size=1024, seed=1):
         else:
             d.ellipse([px - 4, py - 4, px + 4, py + 4], outline=ink, width=2)
         ox, oy = label_offsets.get(loc["id"], (10, -10))
-        d.text((px + ox, py + oy), loc["name"], font=f_label, fill=ink)
+        put_text(out, d, (px + ox * k, py + oy * k), loc["name"], "label", ink)
 
     for lm in LANDMARKS:
         px, py = to_px(lm["pos"])
@@ -500,29 +644,31 @@ def render_map(path, size=1024, seed=1):
         d.line([(px - 3, py + 3), (px + 3, py - 3)], fill=ink, width=1)
         offs = {"trailhead": (8, -22), "dock": (8, 2), "bench": (10, -2),
                 "fence": (8, -18), "spring": (8, -8)}[lm["id"]]
-        d.text((px + offs[0], py + offs[1]), lm["name"], font=f_small, fill=(70, 60, 55, 220))
+        put_text(out, d, (px + offs[0] * k, py + offs[1] * k), lm["name"], "small", (70, 60, 55, 220))
 
     # Title cartouche, compass, scale bar.
-    d.text((34, 26), "The Ashen Peaks", font=f_title, fill=ink)
-    d.text((36, 66), "District 4 - copied from A. Pell's notebook", font=f_small, fill=(80, 70, 64, 220))
+    if title:
+        put_text(out, d, (34 * k, 26 * k), "The Ashen Peaks", "title", ink)
+        put_text(out, d, (36 * k, 66 * k), "District 4 - copied from A. Pell's notebook", "small", (80, 70, 64, 220))
 
-    cx, cy = size - 70, 80
-    d.line([(cx, cy + 34), (cx, cy - 34)], fill=ink, width=2)
-    d.polygon([(cx, cy - 40), (cx - 7, cy - 24), (cx + 7, cy - 24)], fill=ink)
-    d.line([(cx - 20, cy), (cx + 20, cy)], fill=ink, width=1)
-    d.text((cx - 6, cy - 68), "N", font=f_label, fill=ink)
+    cx, cy = size - 70 * k, 80 * k
+    d.line([(cx, cy + 34 * k), (cx, cy - 34 * k)], fill=ink, width=2)
+    d.polygon([(cx, cy - 40 * k), (cx - 7 * k, cy - 24 * k), (cx + 7 * k, cy - 24 * k)], fill=ink)
+    d.line([(cx - 20 * k, cy), (cx + 20 * k, cy)], fill=ink, width=1)
+    put_text(out, d, (cx - 6 * k, cy - 68 * k), "N", "label", ink)
 
-    bx, by = 40, size - 50
+    bx, by = 40 * k, size - 50 * k
     bar = 100 * s
     d.line([(bx, by), (bx + bar, by)], fill=ink, width=2)
     for i in range(5):
         tx = bx + bar * i / 4
-        d.line([(tx, by - 5), (tx, by + 5)], fill=ink, width=1)
-    d.text((bx + bar + 8, by - 10), "100 m", font=f_small, fill=ink)
-    d.text((bx, by + 10), "contours 6 m", font=f_small, fill=(80, 70, 64, 200))
+        d.line([(tx, by - 5 * k), (tx, by + 5 * k)], fill=ink, width=1)
+    put_text(out, d, (bx + bar + 8 * k, by - 10 * k), "100 m", "small", ink)
+    put_text(out, d, (bx, by + 10 * k), "contours 6 m", "small", (80, 70, 64, 200))
 
-    out.save(path)
-    return h
+    if path:
+        out.save(path)
+    return out
 
 
 def summary():

@@ -1,0 +1,129 @@
+# Day 2 — Piano Man. 22 August. Clear and warm. Errand: check the cold spring is running.
+
+call D2_AM
+  day 2
+  time 06:20-12:00
+  kind report
+DOT  Kestrel, Basin. Morning. You alive? Over.
+THEO Basin, Kestrel. Alive. Mostly.
+DOT  Good. Readings when you have them. Over.
+choice
+  > "Dry bulb {dry}, wet bulb {wet}. Wind {wind}." if obs_am set gave_readings -> read
+  > "Haven't been out to the box yet." -> notyet
+  > [say nothing] -> quiet
+node read
+THEO Dry bulb {dry}, wet bulb {wet}. Humidity {rh} percent. Wind {wind}. Fuel stick {fuel}.
+DOT  Copy all. That's warm for up there. Write it in the log or Augie will haunt you. Over.
+goto plan
+node notyet
+THEO Haven't been out to the box yet.
+DOT  I'll guess, then. Warm. Augie always said "warm" and he was always right. Over.
+goto plan
+node quiet
+DOT  Still asleep. Fine. I'll put down "warm." Over.
+node plan
+DOT  Forecast: clear and warm, light winds from the west, fire danger moderate.
+DOT  Job for you today, if you want one. Augie's spring, west of the knob, up the little spur trail. If it's running, the season's not over. Go and look. Basin out.
+do errand Check that Augie's cold spring is running.
+
+call D2_SPRING
+  day 2
+  needs at_spring
+  after D2_AM
+DOT  Kestrel, Basin. You find that spring?
+choice
+  > "It's running. Cold." -> running
+  > "There's a cup on a nail. And a note." if note_spring -> cup
+  > [say nothing] -> quiet
+node running
+THEO It's running. Cold enough to hurt your teeth.
+DOT  Then the season's not over. Augie checked it every week like it owed him money.
+goto out
+node cup
+THEO There's a tin cup on a nail. And a note telling me to rinse it.
+DOT  Shared cup. He'll have told you who with. Rinse it.
+goto out
+node quiet
+DOT  I'll assume it's running and you're drinking out of it. Rinse the cup.
+node out
+do errand_done
+DOT  Basin out.
+
+call D2_FAWNS
+  day 2-7
+  time 05:00-13:00
+  needs fawns_seen
+DOT  Kestrel, Basin. You've gone quiet. Seen something?
+THEO Basin, Kestrel. A doe. Two fawns. Below the old fence.
+DOT  The twins. Augie named them, didn't he.
+THEO He says he did. He doesn't say what.
+DOT  Then it's your job now. Go on. Name them.
+choice
+  > "Sharp and Flat." set fawn_names -> sharp
+  > "Salt and Pepper." -> salt
+  > "I'm not naming them." -> not
+node sharp
+THEO Sharp and Flat.
+DOT  Why Sharp and Flat?
+THEO I tune pianos.
+DOT  Tune. Not tuned?
+THEO ...Tune.
+DOT  Huh. Sharp and Flat it is. Basin out.
+end
+node salt
+THEO Salt and Pepper.
+DOT  Very practical. Augie's were sillier. Basin out.
+end
+node not
+THEO I'm not naming them. The note says not to.
+DOT  The note also says he did it anyway. Suit yourself, Kestrel. Basin out.
+
+call D2_EVE
+  day 2
+  time 16:30-18:00
+  retry 19:30
+  kind report
+DOT  Kestrel, Basin. Evening readings when you've got them.
+choice
+  > "Dry {dry}, wet {wet}. Wind {wind}." if obs_pm set gave_readings -> read
+  > "Not yet. Sorry." -> notyet
+node read
+THEO Dry {dry}, wet {wet}. Humidity {rh}. Wind {wind}.
+DOT  Copy. Cooling off nicely. Basin out.
+end
+node notyet
+THEO Not yet. Sorry.
+DOT  Don't be sorry. Be on the catwalk at five tomorrow. Basin out.
+
+call D2_PM
+  day 2
+  time 18:00-20:30
+  retry 22:00
+DOT  Kestrel, Basin. You got a minute?
+THEO Basin, Kestrel. I've got nothing but minutes.
+DOT  Ha. So. Augie's sheet on you says "previous occupation: piano tuner." Is that a real job?
+THEO It's a real job.
+DOT  How does a person tune a piano? Walk me through it. I've got a crossword and no wind.
+choice
+  > "You listen for the wobble." -> wobble
+  > "Very slowly." -> slowly
+  > "It's boring, honestly." -> boring
+node slowly
+THEO Very slowly.
+DOT  Funny. Now the real answer.
+goto wobble
+node boring
+THEO It's boring, honestly.
+DOT  Kestrel, I read barometers for fun. Try me.
+node wobble
+set asked_about_tuning
+THEO Two strings that should be the same note. If they're a hair apart, they beat against each other. Wah... wah... wah.
+THEO You turn the pin until the wobble slows down. And stops.
+DOT  And then?
+THEO And then the next one. There are two hundred and thirty of them.
+DOT  ...You know that's my job too. More or less.
+THEO Tuning pianos?
+DOT  Finding where the wobble is. Somebody's voice goes a little flat on a check-in, you ask a second question.
+THEO Is that what this is? A second question?
+DOT  Kestrel, everything I say is a second question. Basin out.
+do music channel

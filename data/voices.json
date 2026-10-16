@@ -1,0 +1,27 @@
+{
+  "_comment": [
+    "Casting for tools/voice/generate_vo.py (ElevenLabs text to speech).",
+    "Each speaker lists voice names (or voice IDs) in order of preference; the first one",
+    "your account has is used. 'python3 tools/voice/generate_vo.py --list-voices' shows",
+    "what's available. Settings: stability (lower = more expressive), similarity_boost,",
+    "style (exaggeration, 0 = off) and speed (0.7-1.2). The character notes are DESIGN.md §2."
+  ],
+  "model": "eleven_flash_v2_5",
+  "speakers": {
+    "DOT": {
+      "note": "Dot Amsel, 63, dispatcher: warm alto with a little gravel; precise radio cadence that loosens over the season.",
+      "voices": ["Lily", "Matilda", "Alice", "Laura"],
+      "settings": { "stability": 0.45, "similarity_boost": 0.8, "style": 0.15, "speed": 0.95 }
+    },
+    "THEO": {
+      "note": "Theo Marsh, 41, piano tuner: soft light baritone, unhurried, a smile in it; a bit formal on the radio at first.",
+      "voices": ["Eric", "George", "Brian", "Chris"],
+      "settings": { "stability": 0.5, "similarity_boost": 0.8, "style": 0.1, "speed": 0.92 }
+    },
+    "CREW": {
+      "note": "The Harrow ground crew on a bad relay: gruff, clipped, outdoors.",
+      "voices": ["Bill", "Roger", "Callum", "Liam"],
+      "settings": { "stability": 0.35, "similarity_boost": 0.75, "style": 0.2, "speed": 1.05 }
+    }
+  }
+}
