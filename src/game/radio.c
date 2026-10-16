@@ -12,6 +12,7 @@
 #include "game/story.h"
 #include "audio/audio.h"
 #include "audio/vo.h"
+#include "game/playtest.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/text.h"
@@ -142,6 +143,7 @@ void radio_call_basin(void)
 	if (dlg_get_state() == DS_IDLE && dlg_answer(&w)) {
 		audio_ui(UI_KEY_UP);
 		audio_radio_hiss(true);
+		playtest_event("call_basin", "%s", dlg_call_id(dlg_current_call()));
 	}
 }
 
@@ -161,6 +163,7 @@ void radio_update(float dt)
 		if (st == DS_RINGING) {
 			R.ring_t = 0.0f;
 			R.next_chirp = 0.0f;
+			playtest_event("ring", "%s", dlg_call_id(dlg_current_call()));
 		}
 		if (st == DS_CHOICE) R.hovered = 0;
 		if (st == DS_CLOSING) {
@@ -195,11 +198,13 @@ void radio_update(float dt)
 			R.next_chirp += 3.5f;
 		}
 		if (!P.input_locked && in_down(WPAD_BUTTON_B) && P.mode != MODE_SLEEP) {
+			playtest_event("answer", "%s\t%.0f", dlg_call_id(dlg_current_call()), R.ring_t);
 			audio_ui(UI_KEY_UP);
 			audio_radio_hiss(true);
 			dlg_answer(&w);
 		} else if (R.ring_t > RING_GIVE_UP) {
 			/* Unanswered: Dot will try again later. Never a penalty. */
+			playtest_event("missed", "%s", dlg_call_id(dlg_current_call()));
 			dlg_unanswered(&w);
 		}
 		break;
@@ -228,7 +233,9 @@ void radio_update(float dt)
 		}
 		if (R.t > 0.3f && in_down(WPAD_BUTTON_A)) {
 			audio_ui(UI_PAGE);
-			dlg_choose(R.hovered < n ? R.hovered : 0);
+			int pick = R.hovered < n ? R.hovered : 0;
+			playtest_event("choice", "%s\t%d\t%s", dlg_call_id(dlg_current_call()), pick, opts[pick]);
+			dlg_choose(pick);
 		}
 		break;
 	}

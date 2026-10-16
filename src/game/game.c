@@ -8,6 +8,7 @@
  * the view turn, and losing the sensor bar eases turning to a stop.
  */
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include <wiiuse/wpad.h>
 #include "game/game.h"
@@ -17,6 +18,7 @@
 #include "game/listen.h"
 #include "game/director.h"
 #include "game/save.h"
+#include "game/playtest.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
@@ -120,6 +122,64 @@ void game_think(const char *text)
 {
 	S.thought = text;
 	S.thought_t = 0.0f;
+}
+
+/* The closing card: two lines always, then up to five that remember what you
+ * did, most personal first. Nothing here is a score: missing things just
+ * leaves them out. */
+int game_ending_card(const char **lines)
+{
+	int n = 0;
+	lines[n++] = "Kestrel Lookout closed for the season on 15 September.";
+	lines[n++] = "The logbook was left on the table for whoever's next.";
+	const char *more[12];
+	int m = 0;
+	if (story_flag(FLAG_TOLD_EAR) || story_flag(FLAG_TOLD_EAR_EARLY))
+		more[m++] = "Theo still hears slower. He minds it less.";
+	if (story_flag(FLAG_PS_TOLD)) more[m++] = "In October, Dot took a week off and went to see her sister.";
+	if (story_flag(FLAG_OFFERED_TUNING)) more[m++] = "Ruth's piano was tuned the following spring.";
+	if (story_flag(FLAG_STAIR_IS_EFLAT)) more[m++] = "The third stair from the top still sings. E-flat.";
+	if (story_flag(FLAG_SMOKE_REPORTED)) more[m++] = "The Harrow smoke was out by morning. The bearing was good.";
+	if (story_flag(FLAG_FLOWER_BOOK)) more[m++] = "Augie's flower book went down the mountain, for Dot.";
+	int heard = sounds_logged();
+	if (heard >= SND_COUNT) more[m++] = "Augie's sound log was finished, in two hands.";
+	else if (heard >= SND_COUNT / 2) more[m++] = "Augie's sound log has a second hand in it now.";
+	if (story_flag(FLAG_FAWN_NAMES)) more[m++] = "Sharp and Flat were back in October, below the drift fence.";
+	if (story_flag(FLAG_CAIRN_STONE)) more[m++] = "There's one more stone on the cairn on Cinder Ridge.";
+	int found = 0;
+	for (int i = 0; i < NOTE_COUNT; i++) found += S.found[i];
+	if (found >= NOTE_COUNT - 1) more[m++] = "Augie's notes stayed where he left them, read.";
+	for (int i = 0; i < m && n < ENDING_LINES; i++) lines[n++] = more[i];
+	return n;
+}
+
+float game_credits_at(void)
+{
+	const char *lines[ENDING_LINES];
+	return 3.0f + game_ending_card(lines) * 1.8f + 5.0f;      /* each line in, then time to read */
+}
+
+/* What's left today: the line at the foot of the notebook's Today page. */
+const char *game_next_step(void)
+{
+	static char buf[160];
+	const char *pass = IN.nunchuk ? "sit somewhere and hold Z" : "sit somewhere and hold the D-pad down";
+	float h = DAY.hour;
+	if (S.day >= NUM_DAYS && story_flag(FLAG_SEASON_OVER))
+		return "The season's over. The road gate at the trailhead is open whenever you're ready.";
+	if (!S.obs_am && h < 12.0f) return "Next: the morning readings, at the shelter on the catwalk.";
+	const char *errand = story_errand();
+	if (errand && !story_errand_done()) return "Next: Dot's errand, above.";
+	if (!S.obs_pm && h < 17.0f) {
+		snprintf(buf, sizeof(buf), "Nothing until the evening readings at five. Wander, or %s.", pass);
+		return buf;
+	}
+	if (!S.obs_pm) return "Next: the evening readings, then call them in.";
+	if (h >= 7.0f && h < 19.0f) {
+		snprintf(buf, sizeof(buf), "That's the day's work. The cot's free from seven; till then, %s.", pass);
+		return buf;
+	}
+	return "That's the day's work. Sleep whenever you like.";
 }
 
 static void think_once(int id, const char *text)
@@ -389,11 +449,18 @@ static void open_text(int id)
 	audio_ui(UI_PAGE);
 }
 
+static const char *const IA_NAMES[] = {
+	"note", "sit", "sleep", "lamp", "kettle", "logbook", "finder", "handset", "binoculars", "supply",
+	"chimes", "gate", "weather", "gauge", "cairn", "shutters", "cistern",
+};
+
 static void use(int index)
 {
 	int n;
 	const interactable_t *ia = world_interactables(&n);
 	const interactable_t *h = &ia[index];
+	playtest_event("use", "%s %d", (unsigned)h->kind < sizeof(IA_NAMES) / sizeof(IA_NAMES[0]) ? IA_NAMES[h->kind] : "?",
+	               h->id);
 	switch (h->kind) {
 	case IA_NOTE:
 		S.found[h->id] = true;
@@ -566,12 +633,14 @@ static void update_tools(float dt)
 			if (bino && S.binoculars) {
 				P.binoculars_up = !P.binoculars_up;
 				audio_ui(UI_TICK);
+				if (P.binoculars_up) playtest_event("binoculars", NULL);
 			}
 			bool book = (IN.nunchuk && in_take(WPAD_BUTTON_DOWN)) | (in_take(WPAD_BUTTON_2) && !other1);
 			if (book) {
 				P.binoculars_up = false;
 				P.mode = MODE_NOTEBOOK;
 				audio_ui(UI_PAGE);
+				playtest_event("notebook", "%d", S.notebook_page);
 			}
 		}
 	}
@@ -594,6 +663,16 @@ static void update_places(float dt)
 	S.area_card_t += dt;
 	S.thought_t += dt;
 	S.hint_t += dt;
+
+	/* The day's work done: say so once, so nobody wanders looking for more. */
+	static int s_done_day;
+	const char *errand = story_errand();
+	if (S.obs_pm && (!errand || story_errand_done()) && s_done_day != S.day && !radio_busy() &&
+	    !(S.day >= NUM_DAYS && story_flag(FLAG_SEASON_OVER)) && (P.mode == MODE_WALK || P.mode == MODE_SIT)) {
+		s_done_day = S.day;
+		game_think("That's the day's work. The rest of it's mine.");
+		playtest_event("day_done", NULL);
+	}
 
 	/* Playing with the Remote alone: say how, once, and again if the Nunchuk
 	 * comes out later. */
@@ -631,6 +710,8 @@ static void update_sleep(float dt)
 		game_new_day(S.day + 1);
 		S.fade = 1.0f;
 		if (!P.input_locked) save_game();     /* each morning is kept */
+		playtest_event("day", NULL);
+		playtest_flush();
 	}
 }
 
@@ -642,7 +723,11 @@ static void update_ending(float dt)
 	S.ending_t += dt;
 	S.fade = saturatef(S.ending_t / 3.0f);
 	if (before < 2.0f && S.ending_t >= 2.0f) audio_music_cue("channel_end");   /* the motif resolves, at last */
-	if (S.ending_t > ENDING_CREDITS_AT + 4.0f && !P.input_locked && in_take(WPAD_BUTTON_A)) {
+	if (before == 0.0f) {
+		playtest_event("ending", NULL);
+		playtest_flush();
+	}
+	if (S.ending_t > game_credits_at() + 4.0f && !P.input_locked && in_take(WPAD_BUTTON_A)) {
 		/* After the credits, A walks back up for one more look. */
 		P.mode = MODE_WALK;
 		S.ending_t = 0.0f;
@@ -669,10 +754,20 @@ void game_update(float dt)
 	                            (P.mode == MODE_READ && P.notebook_fade > 0.5f) ? 1.0f : 0.0f, 9.0f, dt);
 
 	/* Let time pass: hold Z while seated (stops if the radio rings). */
+	/* (Without a Nunchuk, holding the D-pad down does it: seated, the D-pad has nothing else to do.) */
+	bool hold = IN.nunchuk ? in_held(WPAD_NUNCHUK_BUTTON_Z) : in_held(WPAD_BUTTON_DOWN);
 	bool lapse = P.mode == MODE_SIT && P.sit_blend > 0.9f && !radio_busy() &&
-	             (P.input_locked ? P.timelapse > 0.5f : in_held(WPAD_NUNCHUK_BUTTON_Z));
+	             (P.input_locked ? P.timelapse > 0.5f : hold);
 	DAY.rate = lapse ? DAY_TIMELAPSE_RATE : 1.0f;
 	if (!P.input_locked) P.timelapse = approachf(P.timelapse, lapse ? 1.0f : 0.0f, 4.0f, dt);
+	static bool s_lapsing;
+	static float s_lapse_from;
+	if (lapse != s_lapsing && !P.input_locked) {
+		if (lapse) s_lapse_from = DAY.hour;
+		else playtest_event("timelapse", "%.0f", fmodf(DAY.hour - s_lapse_from + 24.0f, 24.0f) * 60.0f);
+		s_lapsing = lapse;
+	}
+	if (!P.input_locked) playtest_update(dt);
 	daycycle_update(dt);
 	weather_update(S.day, DAY.hour, dt);
 	foliage_update(dt);

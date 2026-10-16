@@ -16,6 +16,7 @@
 #include "game/game.h"
 #include "game/story.h"
 #include "game/radio.h"
+#include "game/playtest.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
@@ -220,6 +221,7 @@ static void write_down(int id, const char *thought)
 	if (S.sound_day[id]) return;
 	S.sound_day[id] = (u8)S.day;
 	audio_ui(UI_PENCIL);
+	playtest_event("sound", "%s", SOUNDS[id].name);
 	story_raise(FLAG_SOUND_LOGGED);
 	static char line[96];
 	snprintf(line, sizeof(line), "%s. Written down.", SOUNDS[id].name);
@@ -233,7 +235,9 @@ void listen_update(float dt)
 
 	bool can = (P.mode == MODE_WALK || P.mode == MODE_SIT) && !radio_wants_pointer() && P.zoom < 0.1f;
 	bool button = IN.nunchuk ? in_held(WPAD_NUNCHUK_BUTTON_C) : in_held(WPAD_BUTTON_MINUS);
+	bool was = L.held;
 	L.held = L.force || (can && !P.input_locked && button);
+	if (L.held && !was && !L.force) playtest_event("listen", NULL);
 	L.amount = approachf(L.amount, L.held ? 1.0f : 0.0f, L.held ? 3.0f : 5.0f, dt);
 
 	/* Focus: the loudest sound near where the reticle points. */

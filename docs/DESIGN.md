@@ -287,7 +287,8 @@ the radio (**B**) to answer, whenever you like.
 
 When no Nunchuk is detected, a small card says "*Connect a Nunchuk for the best experience,
 or press A to continue*." The fallback scheme is: **D-pad ↑/↓** walk, **D-pad ←/→** turn (smooth),
-**pointer** looks, **A** interact, **B** radio, **1** binoculars, **2** notebook, **hold −** listen.
+**pointer** looks, **A** interact, **B** radio, **1** binoculars, **2** notebook, **hold −** listen,
+and, seated, **hold D-pad ↓** to let time pass.
 There is no stride without the Nunchuk, because B stays reserved for the radio.
 
 ### Suggested Dolphin mapping (emulated Wii Remote + Nunchuk)

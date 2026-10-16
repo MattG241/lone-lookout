@@ -22,7 +22,7 @@
 static lwp_t s_thread;
 static lwpq_t s_wake;
 static u8 *s_stack;
-static volatile bool s_ready_card, s_available;
+static volatile bool s_ready_card, s_available, s_eleven;
 static s16 *s_buf[2];
 static int s_slot;
 
@@ -35,6 +35,7 @@ static volatile int s_len;
 static char s_last[48];               /* the last line asked for, for the dev overlay */
 
 bool vo_available(void) { return s_available; }
+bool vo_elevenlabs(void) { return s_eleven; }
 
 static void load(const char *id)
 {
@@ -67,6 +68,7 @@ static void *loader(void *arg)
 		s_buf[0] = memalign(32, VO_MAX_SAMPLES * 2);
 		s_buf[1] = memalign(32, VO_MAX_SAMPLES * 2);
 		s_available = s_buf[0] && s_buf[1];
+		s_eleven = stat(VO_DIR "/ELEVENLABS.txt", &st) == 0;
 	}
 	s_ready_card = true;
 	for (;;) {

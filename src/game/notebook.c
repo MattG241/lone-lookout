@@ -133,8 +133,16 @@ static void today_page(float x, float y, float w, float h, float a)
 	else {
 		text_begin();
 		text_draw(FONT_S, x + 62.0f, ly, "Nothing else from Basin yet.", -1, faint);
+		ly += 30.0f;
 	}
-	(void)h;
+	/* What's next, in pencil at the foot of the page. */
+	const char *next = game_next_step();
+	int st[3], ln[3];
+	int n = text_wrap(FONT_S, next, w - 60.0f, st, ln, 3);
+	float ny = fmaxf(ly + 24.0f, y + h - 30.0f - (n - 1) * 22.0f);
+	GXColor pencil = gx_col(rgb_make(0.55f, 0.18f, 0.14f), 0.85f * a);
+	text_begin();
+	for (int i = 0; i < n; i++) text_draw(FONT_S, x + 30.0f, ny + i * 22.0f, next + st[i], ln[i], pencil);
 }
 
 static void map_page(float x, float y, float w, float h, float a)

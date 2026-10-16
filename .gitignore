@@ -9,6 +9,7 @@ build_remotetest/
 build_soakridge/
 gen/
 dist/
+voices/
 *.dol
 *.elf
 *.map

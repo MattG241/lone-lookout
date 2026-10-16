@@ -1,7 +1,7 @@
 /*
  * creatures.c -- the living things and passing events the story places in
- * the world: the doe and twin fawns below the drift fence (one small
- * folded-paper deer, drawn from a display list at three sizes) and the
+ * the world: the doe and twin fawns below the drift fence (one folded-paper
+ * deer, drawn from a display list at three sizes) and the
  * Day 5 smoke column out on Harrow Ridge.
  *
  * Where and when they appear is the story's business (game/story.c); this
@@ -18,33 +18,53 @@ static dlist_t s_deer;
 
 #define SMOKE_PUFFS 36
 
-/* A deer standing at the origin, facing north (-z), shoulder ~1 m. */
+/* A deer standing at the origin, facing north (-z), shoulder ~1 m: folded
+ * paper, each part a few flat facets -- a barrel and haunches, a neck rising
+ * to a head that narrows to the muzzle, paper ears, and legs that bend at
+ * the knee and the hock. */
+#define DEER_SIDES 6
+#define DEER_PARTS 22
 static void build_deer(void)
 {
 	u32 coat = rgba_u32(rgb_make(0.56f, 0.41f, 0.29f), 1.0f);
-	u32 dark = rgba_u32(rgb_make(0.36f, 0.27f, 0.21f), 1.0f);
+	u32 back = rgba_u32(rgb_make(0.48f, 0.35f, 0.25f), 1.0f);
+	u32 dark = rgba_u32(rgb_make(0.33f, 0.25f, 0.20f), 1.0f);
 	u32 pale = rgba_u32(rgb_make(0.88f, 0.84f, 0.77f), 1.0f);
-	mesh_box(v3_make(0, 0.95f, 0), v3_make(0.2f, 0.19f, 0.6f), coat);                 /* body */
-	mesh_box(v3_make(0, 0.97f, 0.6f), v3_make(0.15f, 0.13f, 0.03f), pale);             /* rump */
-	mesh_beam(v3_make(0, 1.0f, 0.62f), v3_make(0, 1.12f, 0.68f), 0.07f, 0.04f, dark);  /* tail */
-	mesh_beam(v3_make(0, 1.02f, -0.45f), v3_make(0, 1.42f, -0.7f), 0.15f, 0.17f, coat); /* neck */
-	mesh_box(v3_make(0, 1.47f, -0.82f), v3_make(0.085f, 0.085f, 0.16f), coat);        /* head */
-	mesh_box(v3_make(0, 1.43f, -0.97f), v3_make(0.05f, 0.05f, 0.03f), dark);           /* muzzle */
+	const int S = DEER_SIDES;
+	/* Body: chest barrel into the haunches, the white rump patch as the back cap. */
+	mesh_frustum(v3_make(0, 0.99f, -0.44f), v3_make(0, 0.96f, 0.14f), 0.215f, 0.19f, S, coat, coat);
+	mesh_frustum(v3_make(0, 0.96f, 0.14f), v3_make(0, 1.0f, 0.56f), 0.19f, 0.15f, S, back, pale);
+	mesh_frustum(v3_make(0, 1.07f, 0.58f), v3_make(0, 0.93f, 0.69f), 0.05f, 0.02f, 4, dark, pale);   /* tail */
+	/* Neck and head. */
+	mesh_frustum(v3_make(0, 1.05f, -0.40f), v3_make(0, 1.43f, -0.67f), 0.115f, 0.07f, S, coat, coat);
+	mesh_frustum(v3_make(0, 1.49f, -0.69f), v3_make(0, 1.39f, -0.97f), 0.088f, 0.042f, S, coat, dark);
+	/* Ears: paper triangles, both faces, angled out and back. */
 	for (int s = -1; s <= 1; s += 2) {
-		mesh_box(v3_make(s * 0.11f, 1.6f, -0.74f), v3_make(0.06f, 0.08f, 0.015f), dark); /* ears */
-		for (int e = -1; e <= 1; e += 2) {
-			float z = e * 0.46f;
-			mesh_beam(v3_make(s * 0.12f, 0.82f, z), v3_make(s * 0.12f, 0.0f, z + e * 0.03f), 0.065f, 0.065f,
-			          e > 0 ? coat : dark);                                         /* legs */
+		v3 e0 = v3_make(s * 0.05f, 1.56f, -0.70f), e1 = v3_make(s * 0.045f, 1.53f, -0.77f);
+		v3 tip = v3_make(s * 0.19f, 1.67f, -0.68f);
+		if (s > 0) {
+			mesh_tri(e0, e1, tip, dark);
+			mesh_tri(e1, e0, tip, coat);
+		} else {
+			mesh_tri(e1, e0, tip, dark);
+			mesh_tri(e0, e1, tip, coat);
 		}
+	}
+	/* Legs: forelegs nearly straight; hind legs back to the hock, then down. */
+	for (int s = -1; s <= 1; s += 2) {
+		float x = s * 0.115f;
+		mesh_frustum(v3_make(x, 0.88f, -0.33f), v3_make(x, 0.47f, -0.30f), 0.06f, 0.038f, 5, coat, coat);
+		mesh_frustum(v3_make(x, 0.47f, -0.30f), v3_make(x, 0.02f, -0.32f), 0.034f, 0.024f, 5, dark, dark);
+		mesh_frustum(v3_make(x, 0.92f, 0.38f), v3_make(x, 0.50f, 0.52f), 0.085f, 0.042f, 5, back, coat);
+		mesh_frustum(v3_make(x, 0.50f, 0.52f), v3_make(x, 0.02f, 0.45f), 0.034f, 0.024f, 5, dark, dark);
 	}
 }
 
 void creatures_build(void)
 {
-	dl_begin(&s_deer, 16 * MESH_BOX_BYTES + 256, vdesc_pnc_flush);
+	dl_begin(&s_deer, DEER_PARTS * MESH_FRUSTUM_BYTES(DEER_SIDES) + 8 * (3 + 3 * 28) + 256, vdesc_pnc_flush);
 	build_deer();
-	dl_end(&s_deer);
+	if (!dl_end(&s_deer)) s_deer.len = 0;          /* (overflow: no deer rather than garbage) */
 }
 
 void creatures_draw(const daylight *d)

@@ -96,6 +96,7 @@ typedef struct {
 	bool mono;
 	u8 vol_music, vol_ambience, vol_voice;   /* 0..10 */
 	bool lock30;             /* always 30 fps (25 on PAL) */
+	bool playtest;           /* write a play log to the SD card (game/playtest.h) */
 } options_t;
 
 extern options_t OPT;
@@ -108,11 +109,15 @@ v3 game_reticle_dir(void);               /* world-space ray through the reticle 
 float game_fov(void);
 bool game_radio_allowed(void);           /* B may raise the radio now */
 void game_think(const char *text);       /* show one of Theo's thoughts */
+const char *game_next_step(void);        /* what's left today, for the notebook's Today page */
 void game_new_day(int day);              /* jump to a morning (sleep, tour) */
 float game_season(void);
 
-/* The ending: seconds into MODE_ENDING when the closing card gives way to the credits. */
-#define ENDING_CREDITS_AT 14.0f
+/* The ending: the closing card's lines (what became of things, from what you
+ * did), and the seconds into MODE_ENDING when the card gives way to the credits. */
+#define ENDING_LINES 7
+int game_ending_card(const char **lines);   /* fills up to ENDING_LINES, returns how many */
+float game_credits_at(void);
 
 /* Readable texts: notes (0..NOTE_COUNT-1), the logbook and supply box cards. */
 #define TEXT_LOGBOOK 100

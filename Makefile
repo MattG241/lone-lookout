@@ -10,8 +10,9 @@
 #   make SOAK=1     build the audio soak variant (Day 11, music, calls and Listen on a loop;
 #                   presents one frame every 10 s with the mixer stats -- tools/capture/soak.sh)
 #   make SOAKRIDGE=1 the ridge time-lapse soak: seated on the bench, days cycling (SOAK_VARIANT=ridge soak.sh)
-#   make test       host tests: the world, the story playthroughs, the music
+#   make test       host tests: the world, the story playthroughs, the music, saves, the voice tool
 #   make package    dist/apps/lonelookout/{boot.dol,meta.xml,icon.png} and dist/lonelookout-<version>.zip
+#                   (+ a voices zip if tools/voice/generate_vo.py has made voices/)
 #   make run        send to a Wii running the Homebrew Channel (wiiload)
 #   make clean
 #---------------------------------------------------------------------------------
@@ -143,6 +144,8 @@ test: $(GEN)/assets.mk
 	@./tests/host/run_story
 	@./tests/host/run_audio
 	@./tests/host/run_save
+	@$(PYTHON) tests/host/test_generate_vo.py
+	@$(PYTHON) tests/host/test_playtest_summary.py
 
 all: $(BUILD)
 
@@ -167,6 +170,9 @@ package: $(BUILD)
 	@$(PYTHON) tools/assets/make_icon.py dist/apps/lonelookout/icon.png
 	@cd dist && $(PYTHON) -m zipfile -c lonelookout-$(VERSION).zip apps
 	@echo packaged dist/apps/lonelookout and dist/lonelookout-$(VERSION).zip
+	@if [ -d voices/apps/lonelookout/vo ]; then \
+		cd voices && $(PYTHON) -m zipfile -c ../dist/lonelookout-$(VERSION)-voices.zip apps && \
+		echo "packaged dist/lonelookout-$(VERSION)-voices.zip ($$(ls apps/lonelookout/vo | wc -l) lines)"; fi
 
 #---------------------------------------------------------------------------------
 else

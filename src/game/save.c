@@ -43,7 +43,7 @@ static void write_settings(sw_t *w)
 	sw_u8(w, OPT.comfort);
 	u16 bits = (u16)(OPT.invert_pitch | OPT.snap_turn << 1 | OPT.head_sway << 2 | OPT.walk_bob << 3 |
 	                 OPT.compass << 4 | OPT.subs_large << 5 | OPT.subs_backing << 6 | OPT.hearing << 7 |
-	                 OPT.mono << 8 | OPT.lock30 << 9);
+	                 OPT.mono << 8 | OPT.lock30 << 9 | OPT.playtest << 10);
 	sw_u16(w, bits);
 	sw_u8(w, OPT.vol_music);
 	sw_u8(w, OPT.vol_ambience);
@@ -66,6 +66,7 @@ static void read_settings(sr_t *r)
 	o.hearing = (b >> 7) & 1;
 	o.mono = (b >> 8) & 1;
 	o.lock30 = (b >> 9) & 1;
+	o.playtest = (b >> 10) & 1;           /* (saves from before 1.1 read as off) */
 	o.vol_music = sr_u8(r) % 11;
 	o.vol_ambience = sr_u8(r) % 11;
 	o.vol_voice = sr_u8(r) % 11;

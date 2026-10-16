@@ -34,7 +34,7 @@ static struct {
 } D;
 
 int dlg_num_calls(void) { return DLG_NUM_CALLS; }
-const char *dlg_call_id(int c) { return DLG_CALLS[c].id; }
+const char *dlg_call_id(int c) { return c >= 0 && c < DLG_NUM_CALLS ? DLG_CALLS[c].id : "-"; }
 int dlg_call_kind(int c) { return DLG_CALLS[c].kind; }
 int dlg_call_day(int c) { return DLG_CALLS[c].day_min; }
 

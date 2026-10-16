@@ -147,3 +147,27 @@ rejected; names the script no longer has are skipped.
 - **Listening.** The headless runs have no audio output; the music and beds were checked by
   analysis in the host tests.
 - **The 4–6 h length** is a simulation with the real dialogue runtime and a modelled player.
+
+## After 1.0: version 1.1
+
+Nobody has played the game yet, so 1.1 adds ways to find out, and fixes the risks to its fun
+that can be fixed without that evidence.
+
+| | |
+|---|---|
+| **Voices** | `tools/voice/generate_vo.py` voices the radio script with ElevenLabs text to speech. Dot, Theo and the Harrow crew are cast in `data/voices.json` from the character notes in §2. It voices **whole calls in story order** and never starts a call it can't finish, so a partial set never switches between a voice and the murmur mid-conversation. It checks the account's remaining credits and the model's credit rate first, skips lines already voiced (re-voicing only lines whose text or casting changed), trims and levels each line, and writes the game's own format (`pcm_22050`). The script is 505 lines, about 24,000 characters; the 20 lines that read out live values stay murmured. `make package` adds a voices zip. When the voices are on the card, the credits say they were made with ElevenLabs, as the free plan asks. A host test runs the tool against a fake ElevenLabs server: casting, the quota, budgets, resume, re-voicing, the PCM it writes, a rejected key, and that the key never reaches the output (29 checks). |
+| **Playtest log** | **Options → Playtest log (SD card)**, off by default. It appends tab-separated events to `sd:/apps/lonelookout/playtest.log`: new days, each call (rang, answered and after how long, missed, the choice made), calls to Basin, things used, Listen, sounds logged, the notebook, binoculars, time-lapses (game minutes skipped), the day's work done, pauses, quits and the ending. Where you are is noted once a minute, and every 30 s or more without input is noted with its place. It's buffered and written on each new day, every five minutes, and on pause, save and quit. `tools/playtest/summarise.py` turns logs into a report: real time per day, time-lapse, standing still, calls, the longest stretches standing still and where, and how each sitting ended with the last things done before it. Verified end to end in Dolphin: the scripted menu test switches the option on, plays, saves and quits, and the log on the virtual SD card summarises cleanly. |
+| **"What now?"** | The notebook's Today page ends with what's next, in red pencil: the morning readings, Dot's errand, *nothing until the evening readings at five; wander, or sit and let time pass*, or *that's the day's work*. When the day's duties are done, Theo says so once (*"That's the day's work. The rest of it's mine."*). Walking simulators lose people when they can't tell whether there's anything left to do. |
+| **Remote-only time-lapse** | Without a Nunchuk there was no way to let time pass, because it needed Z, so evenings had to be waited out at two real minutes per game hour. Now, seated, **hold the D-pad down**; the seated hint says which. |
+| **Choices that show** | The closing card remembers up to five things you did, most personal first: whether Theo told Dot about his ear, Dot's week with her sister, Ruth's piano, the E-flat stair, the smoke you reported, Augie's flower book, how much of the sound log you finished, the fawns' names, the stone on the cairn, and Augie's notes. The credits wait until the card has been read. |
+| **Deer** | The doe and the fawns are folded paper now: tapered, faceted parts (a barrel and haunches, a neck rising to a head that narrows to the muzzle, paper ears, legs that bend at the knee and the hock) in place of boxes. |
+
+| | |
+|---|---|
+| ![The doe, before and after](../screenshots/phase5/v11_deer_before_after.png) | ![The Today page](../screenshots/phase5/v11_today_next.png) |
+| **The doe**, before (boxes) and after (folded paper), zoomed from the binoculars shot. | **The Today page** with its "Next" line. |
+
+**Still waiting on people:** the length of the middle days (whether 27 minutes a day drags) is
+for the playtest logs to answer, not a guess. The voices need an ElevenLabs key in the
+environment; with one, `--sample` gives a few lines per character to listen to before spending
+the month's credits.

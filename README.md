@@ -40,7 +40,7 @@ no binary assets to download.
 
 ## Running
 
-**On a Wii:** unzip `dist/lonelookout-1.0.zip` to the root of the SD card (it holds
+**On a Wii:** unzip `dist/lonelookout-1.1.zip` to the root of the SD card (it holds
 `apps/lonelookout/boot.dol`, `meta.xml` and `icon.png`) and launch *Lone Lookout* from the
 Homebrew Channel. (Or `make run` to send it over the network with `wiiload`; saves still need
 the SD card.) It runs in 480i, 480p (with component cables and progressive scan on), PAL 50 Hz
@@ -66,11 +66,11 @@ and PAL 60, in 4:3 or 16:9 as set in the Wii's settings.
 | **A** | Interact (*Read*, *Sit*, *Sleep*, *Light*, *Brew*, *Sight*…), pick a radio choice, stand up |
 | **B** | Answer the radio, or call Basin yourself · close the notebook or a note |
 | Hold **C** | Listen: the world quietens and nearby sounds get labels; stay on one for 3 s to write it down |
-| Seated, hold **Z** | Let time pass |
+| Seated, hold **Z** | Let time pass (without a Nunchuk: hold D-pad ↓) |
 | D-pad ↑ | Binoculars (once you've taken them from the hook by the cab door) |
 | D-pad ↓ | Notebook (Today, Map, Notes, Radio, Sounds): ←/→ turn pages, ↑/↓ and **A** to reread a note |
 | D-pad ←/→ | Snap turn 30° |
-| Without a Nunchuk | D-pad ↑/↓ walk, ←/→ turn, **1** binoculars, **2** notebook, hold **−** listen |
+| Without a Nunchuk | D-pad ↑/↓ walk, ←/→ turn, **1** binoculars, **2** notebook, hold **−** listen; seated, hold D-pad ↓ to let time pass |
 | **HOME** or **+** | Pause (time stops): Resume, Options, Save and return to the title, Save and quit |
 | Hold **1 + 2** | Developer overlay (frame time, position, state, mixer stats, triangles, video mode) |
 
@@ -79,8 +79,10 @@ The title screen has **Continue** (with the saved day and time), **New season**,
 
 You arrive at the trailhead on Day 1 at 15:30. The tower is up the trail to the north. Each day
 there are weather readings to take at the shelter on the catwalk (one before noon, one after
-five) and an errand from Dot; the notebook's **Today** page keeps track. The cot lets you sleep
-from 19:00, and each morning is a new day. On the last evening, the road gate is the way out.
+five) and an errand from Dot; the notebook's **Today** page keeps track and says what's next. Once
+the day's work is done, the rest of the day is yours: wander, or sit and let time pass. The cot
+lets you sleep from 19:00, and each morning is a new day. On the last evening, the road gate is
+the way out, and the closing card remembers a few of the things you did.
 
 ### Saves and options
 
@@ -92,15 +94,48 @@ Without an SD card the game still plays, and the title says the season won't be 
 
 **Options:** look sensitivity, comfort-box size, invert look, snap turn, head sway, walk bob,
 compass, larger subtitles, subtitle backing, the hearing effect (Theo's bad left ear while
-listening), mono, three volumes (sounds of the world, the radio, music) and a 30 fps lock.
+listening), mono, three volumes (sounds of the world, the radio, music), a 30 fps lock and the
+playtest log.
 
-### Real voices (optional)
+### Voices (optional)
 
-The radio voices are a "murmur" synthesiser by default, with subtitles. To use recorded lines,
-put `<LINE_ID>.pcm` files (raw 16-bit little-endian mono, 22,050 Hz) in
-`SD:/apps/lonelookout/vo/`. The build writes the full list of line IDs, speakers and text to
-`gen/vo_lines.txt` (e.g. `D7_SEVEN_03	DOT	...Go on.`). Any line without a file keeps the
-murmur.
+The radio voices are a "murmur" synthesiser by default, with subtitles. Any line can be replaced
+by a recording: `SD:/apps/lonelookout/vo/<LINE_ID>.pcm` (raw 16-bit little-endian mono,
+22,050 Hz). The build lists every line ID with its speaker and text in `gen/vo_lines.txt`
+(e.g. `D7_SEVEN_03	DOT	...Go on.`); a line without a file keeps the murmur.
+
+**Generating them with ElevenLabs.** `tools/voice/generate_vo.py` voices the whole script with
+[ElevenLabs](https://elevenlabs.io) text to speech, cast from `data/voices.json` (Dot, Theo
+and the Harrow crew, matched to the character notes in the design):
+
+```sh
+export ELEVENLABS_API_KEY=...                     # from your ElevenLabs account; never commit it
+python3 tools/voice/generate_vo.py --plan         # what it would voice, and the cost in credits
+python3 tools/voice/generate_vo.py --sample       # a few lines per speaker: voices/samples/*.wav
+python3 tools/voice/generate_vo.py --list-voices  # recast in data/voices.json if you like
+python3 tools/voice/generate_vo.py                # voice as much as this month's credits allow
+make package                                      # + dist/lonelookout-1.1-voices.zip
+```
+
+The script is 505 lines, about 24,000 characters (the 20 lines that read out live values stay
+murmured). It voices whole calls in story order and never starts a call it can't finish, so a
+partial set never switches voices mid-conversation; run it again when your credits renew and it
+carries on where it stopped. On the free plan (about 10,000 credits a month) with the default
+Flash model, that's most of the story in the first month and the rest in the second. Unzip the
+voices zip to the SD card's root next to the game. ElevenLabs' free plan is for non-commercial use
+and asks you to credit them; the game's credits do that when these voices are on the card.
+
+### Playtesting
+
+Turn on **Options → Playtest log (SD card)** and the game keeps a log at
+`SD:/apps/lonelookout/playtest.log`: each day's real time, the calls (how long they rang, which
+were missed, the choices), where the player stood still for half a minute or more, time-lapses,
+what they used, and how each sitting ended. Nothing leaves the card. Collect one log per tester,
+then:
+
+```sh
+python3 tools/playtest/summarise.py alice.log bob.log > report.md
+```
 
 ## Development builds
 
@@ -115,6 +150,8 @@ murmur.
 | `make SOAKRIDGE=1` | `lonelookout_soakridge.dol`: the time-lapse soak, seated on Augie's bench holding Z with days cycling |
 | `tools/capture/capture_shots.sh <dir>` | Builds the tour, runs it in headless Dolphin and keeps one frame per shot |
 | `tools/capture/soak.sh <dir>` | Runs the audio soak in headless Dolphin and keeps a frame a minute (`SOAK_VARIANT=ridge` for the ridge soak) |
+| `tools/voice/generate_vo.py` | Voices the radio script with ElevenLabs (see *Voices* above) |
+| `tools/playtest/summarise.py <logs>` | Turns playtest logs into a report |
 | `tools/test/matrix.sh <dir>` | The Dolphin test matrix: 480p, 480i, PAL 50, PAL 60, 16:9, no Nunchuk, with and without an SD card, the menus and saves, the worst views |
 
 ## Repository layout
@@ -123,7 +160,8 @@ murmur.
 src/        game code (C99, libogc): core/ gfx/ input/ world/ game/ audio/
 tools/      Python generators: assets/ (textures, icon), font/ (Lookout Hand),
             worldgen/ (the Ashen Peaks map and its baker), dialogue/ (the .lls compiler),
-            music/ (the score compiler), concept/ (design renders), capture/, test/
+            music/ (the score compiler), concept/ (design renders), capture/, test/,
+            voice/ (ElevenLabs voices), playtest/ (log reports)
 data/       palette/ (colour script), dialogue/ (the radio script, .lls), music/ (six scores)
 docs/       DESIGN.md, devlog/, screenshots/, concept/
 tests/host/ host-side tests of pure game logic
@@ -133,5 +171,6 @@ hbc/        Homebrew Channel metadata
 ## Originality
 
 Every asset is generated by tools in this repository: textures, models, the hand-lettered font,
-music and sound effects. The six pieces of music are written as note data in `data/music/` and
+music and sound effects. (The optional ElevenLabs voices are generated by you, with your key, and
+stay on your SD card; they aren't part of the repository or the release.) The six pieces of music are written as note data in `data/music/` and
 performed by the game's own synthesiser. No third-party game assets are used.

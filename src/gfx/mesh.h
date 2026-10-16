@@ -61,5 +61,9 @@ void mesh_tri(v3 a, v3 b, v3 c, u32 col);               /* flat-shaded triangle 
 void mesh_quad(v3 a, v3 b, v3 c, v3 d, u32 col);        /* flat-shaded quad */
 /* An n-sided prism (log, post, pipe) from a to b; caps in col_end. */
 void mesh_prism(v3 a, v3 b, float r, int sides, u32 col, u32 col_end);
+/* The same, tapering from radius ra at a to rb at b (folded-paper limbs). */
+void mesh_frustum(v3 a, v3 b, float ra, float rb, int sides, u32 col, u32 col_end);
+/* Bytes one prism or frustum records (for display-list capacities). */
+#define MESH_FRUSTUM_BYTES(sides) (3 * 3 + ((sides) * 4 + 2 * ((sides) + 2)) * 28)
 
 #endif

@@ -190,7 +190,8 @@ static void draw_seated_hint(void)
 		centred(FONT_S, 52.0f, "time passing", c, a);
 		centred(FONT_L, 92.0f, clock, c, a);
 	} else {
-		centred(FONT_S, 452.0f, "Hold Z to let time pass  -  A to stand", c, a);
+		centred(FONT_S, 452.0f, IN.nunchuk ? "Hold Z to let time pass  -  A to stand"
+		                                   : "Hold the D-pad down to let time pass  -  A to stand", c, a);
 	}
 }
 
@@ -367,28 +368,25 @@ static void draw_ending(void)
 	if (P.mode != MODE_ENDING) return;
 	float t = S.ending_t;
 	GXColor paper = gx_col(rgb_from(UI_SUBTITLE), 1.0f);
-	const char *card[6];
-	int n = 0;
-	card[n++] = "Kestrel Lookout closed for the season on 15 September.";
-	card[n++] = "The logbook was left on the table for whoever's next.";
-	if (story_flag(FLAG_STAIR_IS_EFLAT)) card[n++] = "The third stair from the top still sings. E-flat.";
-	if (story_flag(FLAG_PS_TOLD)) card[n++] = "In October, Dot took a week off and went to see her sister.";
-	if (story_flag(FLAG_OFFERED_TUNING)) card[n++] = "Ruth's piano was tuned the following spring.";
+	const char *card[ENDING_LINES];
+	int n = game_ending_card(card);
+	float credits_at = game_credits_at();
 	text_begin();
-	if (t < ENDING_CREDITS_AT) {
+	if (t < credits_at) {
 		for (int i = 0; i < n; i++) {
-			float a = saturatef((t - 3.0f - i * 1.6f) / 1.2f) * (1.0f - saturatef((t - ENDING_CREDITS_AT + 1.5f) / 1.2f));
-			if (a > 0.01f) centred(FONT_S, 170.0f + i * 34.0f, card[i], gx_col(rgb_from(UI_SUBTITLE), 0.9f * a), a);
+			float a = saturatef((t - 3.0f - i * 1.8f) / 1.2f) * (1.0f - saturatef((t - credits_at + 1.5f) / 1.2f));
+			if (a > 0.01f) centred(FONT_S, 160.0f + i * 32.0f, card[i], gx_col(rgb_from(UI_SUBTITLE), 0.9f * a), a);
 		}
 		return;
 	}
 	const char *CREDITS[] = {
 		"Lone Lookout", "", "A small game about listening.", "", "Dot, Theo, Augie, and the Harrow crew",
-		vo_available() ? "were played by the voices on your SD card, and a synthesiser that murmurs."
-		               : "were played by a synthesiser that only knows how to murmur.",
+		!vo_available()  ? "were played by a synthesiser that only knows how to murmur."
+		: vo_elevenlabs() ? "were voiced with ElevenLabs text to speech, from your SD card."
+		                  : "were played by the voices on your SD card, and a synthesiser that murmurs.",
 		"", "Thank you for keeping watch.",
 	};
-	float c = t - ENDING_CREDITS_AT;
+	float c = t - credits_at;
 	for (int i = 0; i < (int)(sizeof(CREDITS) / sizeof(CREDITS[0])); i++) {
 		float a = saturatef((c - i * 0.5f) / 1.5f);
 		if (a > 0.01f && CREDITS[i][0])

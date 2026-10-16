@@ -145,6 +145,11 @@ void mesh_quad(v3 a, v3 b, v3 c, v3 d, u32 col)
 
 void mesh_prism(v3 a, v3 b, float r, int sides, u32 col, u32 col_end)
 {
+	mesh_frustum(a, b, r, r, sides, col, col_end);
+}
+
+void mesh_frustum(v3 a, v3 b, float ra, float rb, int sides, u32 col, u32 col_end)
+{
 	v3 axis = v3_sub(b, a);
 	float len = v3_len(axis);
 	if (len < 1e-4f || sides < 3) return;
@@ -155,15 +160,18 @@ void mesh_prism(v3 a, v3 b, float r, int sides, u32 col, u32 col_end)
 	GX_Begin(GX_QUADS, VF_3D, sides * 4);
 	for (int i = 0; i < sides; i++) {
 		float a0 = LL_TAU * i / sides, a1 = LL_TAU * (i + 1) / sides;
-		v3 o0 = v3_add(v3_scale(u, cosf(a0) * r), v3_scale(w, sinf(a0) * r));
-		v3 o1 = v3_add(v3_scale(u, cosf(a1) * r), v3_scale(w, sinf(a1) * r));
-		v3 n = v3_norm(v3_add(o0, o1));
-		quad(v3_add(a, o0), v3_add(a, o1), v3_add(b, o1), v3_add(b, o0), n, col);
+		v3 o0 = v3_add(v3_scale(u, cosf(a0)), v3_scale(w, sinf(a0)));
+		v3 o1 = v3_add(v3_scale(u, cosf(a1)), v3_scale(w, sinf(a1)));
+		/* Each side a flat facet, its normal leaning with the taper. */
+		v3 n = v3_norm(v3_add(v3_norm(v3_add(o0, o1)), v3_scale(dir, (ra - rb) / len)));
+		quad(v3_add(a, v3_scale(o0, ra)), v3_add(a, v3_scale(o1, ra)), v3_add(b, v3_scale(o1, rb)),
+		     v3_add(b, v3_scale(o0, rb)), n, col);
 	}
 	GX_End();
 	/* End caps as fans. */
 	for (int e = 0; e < 2; e++) {
 		v3 c = e ? b : a;
+		float r = e ? rb : ra;
 		v3 n = e ? dir : v3_scale(dir, -1.0f);
 		GX_Begin(GX_TRIANGLEFAN, VF_3D, sides + 2);
 		emit_pnc(c, n, col_end);

@@ -11,6 +11,7 @@
 #include "game/menu.h"
 #include "game/game.h"
 #include "game/save.h"
+#include "game/playtest.h"
 #include "game/radio.h"
 #include "game/director.h"
 #include "audio/audio.h"
@@ -46,7 +47,7 @@ typedef struct {
 enum {
 	A_CONTINUE, A_NEW, A_OPTIONS, A_QUIT, A_RESUME, A_SAVE_TITLE, A_SAVE_QUIT, A_YES_NEW, A_NO,
 	A_SENS, A_COMFORT, A_INVERT, A_SNAP, A_SWAY, A_BOB, A_COMPASS, A_SUBS, A_BACKING, A_HEARING, A_MONO,
-	A_VOL_MUSIC, A_VOL_WORLD, A_VOL_RADIO, A_LOCK30, A_BACK,
+	A_VOL_MUSIC, A_VOL_WORLD, A_VOL_RADIO, A_LOCK30, A_PLAYTEST, A_BACK,
 };
 
 bool menu_active(void) { return M.id != M_NONE; }
@@ -125,6 +126,7 @@ static void new_season(void)
 	DAY.hour = 15.5f;                   /* Day 1: arrive at the trailhead mid-afternoon */
 	S.season_dirty = true;
 	start_play();
+	playtest_event("new_season", NULL);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -191,6 +193,8 @@ static int build(item_t *it)
 		snprintf(x->value, sizeof(x->value), "%d", OPT.vol_voice);
 		x = ADD("Lock to 30 fps", A_LOCK30);
 		snprintf(x->value, sizeof(x->value), "%s", on_off(OPT.lock30));
+		x = ADD("Playtest log (SD card)", A_PLAYTEST);
+		snprintf(x->value, sizeof(x->value), "%s", on_off(OPT.playtest));
 		ADD("Back", A_BACK);
 		break;
 	}
@@ -223,6 +227,7 @@ static void change(int action, int dir, bool wrap)
 	case A_HEARING: OPT.hearing = !OPT.hearing; break;
 	case A_MONO: OPT.mono = !OPT.mono; break;
 	case A_LOCK30: OPT.lock30 = !OPT.lock30; break;
+	case A_PLAYTEST: OPT.playtest = !OPT.playtest; break;
 	case A_VOL_MUSIC:
 	case A_VOL_WORLD:
 	case A_VOL_RADIO: {
@@ -243,7 +248,10 @@ static void activate(int action)
 	audio_ui(UI_PAGE);
 	switch (action) {
 	case A_CONTINUE:
-		if (save_continue()) start_play();
+		if (save_continue()) {
+			start_play();
+			playtest_event("continue", NULL);
+		}
 		break;
 	case A_NEW:
 		if (save_status().has_game) go(M_CONFIRM_NEW);
@@ -259,10 +267,14 @@ static void activate(int action)
 	case A_RESUME: go(M_NONE); break;
 	case A_SAVE_TITLE:
 		save_game();
+		playtest_event("to_title", NULL);
+		playtest_flush();
 		title_enter();
 		break;
 	case A_SAVE_QUIT:
 		save_game();
+		playtest_event("quit", NULL);
+		playtest_flush();
 		M.quit = true;
 		break;
 	case A_BACK:
@@ -285,10 +297,10 @@ static layout_t layout(int n)
 	switch (M.id) {
 	case M_OPTIONS:
 		L.f = FONT_S;
-		L.row = 22.5f;
+		L.row = 21.0f;                              /* 17 rows inside the screen's safe area */
 		L.w = 470.0f;
 		L.x = (G.ui_w - L.w) * 0.5f;
-		L.y = 66.0f;
+		L.y = 72.0f;
 		break;
 	case M_TITLE:
 		L.f = FONT_L;
@@ -315,6 +327,8 @@ void menu_pause(void)
 	if (APP != APP_PLAY || M.id != M_NONE) return;
 	audio_ui(UI_PAGE);
 	go(M_PAUSE);
+	playtest_event("pause", NULL);
+	playtest_flush();
 }
 
 void menu_update(float dt)
@@ -446,7 +460,7 @@ void menu_draw(void)
 		if (it[i].value[0]) {
 			font_id vf = FONT_S;
 			float vw = text_width(vf, it[i].value, -1);
-			bool setting = it[i].action >= A_SENS && it[i].action <= A_LOCK30;
+			bool setting = it[i].action >= A_SENS && it[i].action <= A_PLAYTEST;
 			float vx = L.x + L.w - vw - (setting ? 18.0f : 0.0f);
 			text_draw(vf, vx, y, it[i].value, -1, on ? ink : faint);
 			if (setting && on) {

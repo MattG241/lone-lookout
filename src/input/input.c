@@ -155,8 +155,8 @@ static void scripted(u32 f)
 /*
  * The scripted menu and save test (make MENUTEST=1): from the title, take the
  * first item (New season, or Continue if a season is saved), walk, pause,
- * turn the compass on in Options, save and return to the title, Continue,
- * then Save and quit. Each step waits for the screen it needs.
+ * turn the compass and the playtest log on in Options, save and return to the
+ * title, Continue, then Save and quit. Each step waits for the screen it needs.
  */
 typedef struct { int screen; u16 wait; u32 buttons; u16 hold_stick; } mstep;
 #define PLAYING (-1)
@@ -170,6 +170,12 @@ static const mstep MSTEPS[] = {
 	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
 	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
 	{ MENU_OPTIONS, 40, WPAD_BUTTON_A, 0 },                   /* Compass: on */
+	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 }, { MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_OPTIONS, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_OPTIONS, 40, WPAD_BUTTON_A, 0 },                   /* Playtest log: on */
 	{ MENU_OPTIONS, 60, WPAD_BUTTON_B, 0 },                   /* back (settings saved) */
 	{ MENU_PAUSE, 60, WPAD_BUTTON_DOWN, 0 }, { MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
 	{ MENU_PAUSE, 40, WPAD_BUTTON_A, 0 },                     /* Save and return to the title */

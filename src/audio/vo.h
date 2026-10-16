@@ -18,6 +18,7 @@ typedef enum { VO_NONE, VO_PENDING, VO_READY, VO_MISSING } vo_status;
 
 void vo_init(void);                          /* starts the loader; harmless without a card */
 bool vo_available(void);                     /* the vo folder was found */
+bool vo_elevenlabs(void);                    /* ...made by tools/voice/generate_vo.py (credits) */
 void vo_request(const char *line_id);        /* replaces any earlier request */
 vo_status vo_poll(const s16 **pcm, int *len);
 void vo_debug(char *out, int n);             /* a line for the dev overlay */
