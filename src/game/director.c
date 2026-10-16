@@ -68,7 +68,7 @@ void director_update(float dt)
 {
 	if (P.input_locked) return;
 	bool playing = audio_music_playing();
-#ifdef LL_SOAK
+#if defined(LL_SOAK) && !defined(LL_SOAK_RIDGE)
 	/* The soak plays the pieces back to back, the worst case for the mixer. */
 	static int next;
 	static float wait;

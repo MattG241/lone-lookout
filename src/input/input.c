@@ -24,10 +24,39 @@ void input_init(void)
  * Walking and turning are timed; radio presses react to the radio's state so
  * the script doesn't depend on how fast the emulator runs.
  */
-static void scripted(u32 f)
+#ifdef LL_SOAK_RIDGE
+#include "game/game.h"
+#include "game/story.h"
+#include "game/dialogue.h"
+#include "world/world.h"
+#include "world/sites.h"
+
+/* Sit on Augie's bench, facing the sunset. */
+static void sit_on_bench(void)
 {
-	static u32 ring_frames, choice_frames, idle_after_call, book;
-	static int stage;   /* 0 waiting for ring, 1 in call, 2 call done, 3 check-in sent, 4 notebook, 5 done */
+	int n, seat = world_find_interactable(IA_SIT, 4);
+	const interactable_t *ia = world_interactables(&n);
+	P.mode = MODE_SIT;
+	P.sit_id = seat;
+	P.sit_blend = 1.0f;
+	P.pos = v3_make(ia[seat].sit_eye.x, world_ground(ia[seat].sit_eye.x, ia[seat].sit_eye.z, 1e9f, NULL),
+	                ia[seat].sit_eye.z);
+	P.stand_pos = P.pos;
+	P.yaw = BENCH_FACING;
+	P.pitch = DEG2RAD(-3.0f);
+	P.day_card = 100.0f;
+}
+
+/*
+ * The ridge time-lapse soak (make SOAKRIDGE=1): seated on the bench holding
+ * Z, so the hours run forty times as fast; the radio's calls are answered
+ * and played through (they pause the time-lapse). At 21:30 the next day
+ * starts (Day 11 wraps to a fresh season), so an hour covers dozens of days:
+ * every palette, the weather, the seasonal re-recording and the music.
+ */
+static void ridge_soak(u32 f)
+{
+	static u32 ring_frames, choice_frames;
 	u32 prev = IN.held;
 	IN.connected = true;
 	IN.nunchuk = true;
@@ -35,7 +64,53 @@ static void scripted(u32 f)
 	IN.stick_x = IN.stick_y = 0.0f;
 	IN.ir_valid = true;
 	IN.ir_x = IN.ir_y = 0.0f;
+	if (f == 1 || (P.mode != MODE_SIT && !radio_busy())) sit_on_bench();
+	if (DAY.hour > 21.5f && !radio_busy()) {
+		int next = S.day % NUM_DAYS + 1;
+		if (next == 1) {
+			radio_init();
+			dlg_init();
+			story_init();
+		}
+		game_new_day(next);
+		sit_on_bench();
+	}
+	IN.held |= WPAD_NUNCHUK_BUTTON_Z;                         /* let time pass */
+	bool ringing = radio_busy() && !radio_in_call();
+	ring_frames = ringing ? ring_frames + 1 : 0;
+	choice_frames = radio_wants_pointer() ? choice_frames + 1 : 0;
+	if (ring_frames == 60) IN.held |= WPAD_BUTTON_B;          /* answer */
+	if (choice_frames == 45) IN.held |= WPAD_BUTTON_A;        /* take the first card */
+	if (radio_in_call() && !radio_wants_pointer() && (f % 240) == 0) IN.held |= WPAD_BUTTON_A;
+	IN.down |= IN.held & ~prev;
+	IN.up |= prev & ~IN.held;
+}
+#endif
+
+static void scripted(u32 f)
+{
+#ifdef LL_SOAK_RIDGE
+	ridge_soak(f);
+	return;
+#endif
+	static u32 ring_frames, choice_frames, idle_after_call, book;
+	static int stage;   /* 0 waiting for ring, 1 in call, 2 call done, 3 check-in sent, 4 notebook, 5 done */
+	u32 prev = IN.held;
+	IN.connected = true;
+	IN.held = 0;
+	IN.stick_x = IN.stick_y = 0.0f;
+	IN.ir_valid = true;
+	IN.ir_x = IN.ir_y = 0.0f;
+#ifdef LL_SCRIPT_REMOTE_ONLY
+	/* make REMOTETEST=1: the same test with no Nunchuk (D-pad walks, 2 is the notebook). */
+	IN.nunchuk = false;
+	const u32 NOTEBOOK = WPAD_BUTTON_2;
+	if (f >= 240 && f < 600) IN.held |= WPAD_BUTTON_UP;        /* walk forward */
+#else
+	IN.nunchuk = true;
+	const u32 NOTEBOOK = WPAD_BUTTON_DOWN;
 	if (f >= 240 && f < 600) IN.stick_y = 1.0f;                 /* walk forward */
+#endif
 	if (f >= 600 && f < 660) IN.ir_x = 1.0f;                   /* turn right */
 	if (f >= 660 && f < 720) IN.ir_x = -1.0f;                  /* and back */
 
@@ -51,7 +126,7 @@ static void scripted(u32 f)
 	if (stage == 3 && !radio_busy()) { stage = 4; book = 0; }
 	if (stage == 4) {                                         /* notebook: open, two pages on, close */
 		book++;
-		if (book == 60) IN.held |= WPAD_BUTTON_DOWN;
+		if (book == 60) IN.held |= NOTEBOOK;
 		if (book == 120 || book == 180) IN.held |= WPAD_BUTTON_RIGHT;
 		if (book == 300) { IN.held |= WPAD_BUTTON_B; stage = 5; }
 	}

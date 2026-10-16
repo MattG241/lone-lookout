@@ -17,6 +17,8 @@ typedef struct {
 	void *buf;
 	u32 cap;
 	u32 len;
+	u16 stride;                      /* bytes per vertex */
+	u32 tris;                        /* triangles in the list */
 } dlist_t;
 
 typedef void (*vdesc_fn)(void);

@@ -1,6 +1,12 @@
 /*
  * terrain.c -- the Ashen Peaks ground: 8 x 8 chunks of 16 x 16 cells, each a
- * display list of triangle strips, plus per-chunk lists of cut-paper tufts.
+ * display list of triangle strips, plus lists of cut-paper tufts in 16 m
+ * cells.
+ *
+ * Chunks beyond LOD_RANGE draw a half-resolution list instead (about 40 %
+ * of the triangles). Its border cells are fans that keep every full-
+ * resolution vertex along the chunk's edge, so it meets a full-resolution
+ * neighbour (or another half-resolution one) without cracks.
  *
  * Vertex colour = baked albedo (late summer and early autumn, blended by the
  * season) with cavity AO; light comes from the ramp in mat_lit_solid().
@@ -22,19 +28,29 @@
 #define CHUNKS 8
 #define CHUNK_CELLS (WORLD_GRID / CHUNKS)       /* 16 */
 #define SKIRT 40.0f
-#define TUFT_RANGE 62.0f
+#define LOD_RANGE 96.0f                         /* half-resolution chunks beyond this */
+#define TUFT_CELLS 32                           /* tuft lists in 16 m cells */
+#define TUFT_CELL_SIZE (WORLD_GRID * WORLD_CELL / TUFT_CELLS)
+#define TUFT_RANGE 44.0f
 
 typedef struct {
-	dlist_t ground;
-	dlist_t tufts;
+	dlist_t ground, ground_lo;
 	v3 centre;
 	float radius;
 	float x0, z0;               /* NW corner */
-	int tuft_first, tuft_count; /* into s_tuft_order */
 } chunk_t;
 
+typedef struct {
+	dlist_t dl;
+	v3 centre;
+	float radius;
+	float x0, z0;
+	int first, count;           /* into s_tuft_order */
+} tuft_cell;
+
 static chunk_t s_chunks[CHUNKS][CHUNKS];
-static int *s_tuft_order;       /* tuft indices sorted by chunk */
+static tuft_cell s_tcells[TUFT_CELLS][TUFT_CELLS];
+static int *s_tuft_order;       /* tuft indices sorted by cell */
 static float s_season;
 
 static float gx(int i) { return i * WORLD_CELL; }
@@ -93,6 +109,50 @@ static void record_ground(chunk_t *c, int ci, int cj, bool again)
 	}
 	emit_skirt(ci, cj);
 	dl_end(&c->ground);
+}
+
+/* Around a 2 x 2 border cell's centre, counter-clockwise seen from above
+ * (the strips' winding); odd entries are the edge midpoints. */
+static const s8 FAN_RING[8][2] = { { 2, 2 }, { 2, 1 }, { 2, 0 }, { 1, 0 }, { 0, 0 }, { 0, 1 }, { 0, 2 }, { 1, 2 } };
+
+static u32 ground_lo_bytes(void)
+{
+	const int H = CHUNK_CELLS / 2;
+	return (H - 2) * (3 + (H - 1) * 2 * 28) + (4 * H - 4) * (3 + 10 * 28) + 4 * (3 + (CHUNK_CELLS + 1) * 2 * 28) + 96;
+}
+
+static void record_ground_lo(chunk_t *c, int ci, int cj, bool again)
+{
+	const int H = CHUNK_CELLS / 2;                  /* 2 x 2 cells per coarse cell */
+	int i0 = ci * CHUNK_CELLS, j0 = cj * CHUNK_CELLS;
+	if (again) dl_rebegin(&c->ground_lo, vdesc_pnc_flush);
+	else dl_begin(&c->ground_lo, ground_lo_bytes(), vdesc_pnc_flush);
+	/* The interior: coarse strips. */
+	for (int b = 1; b < H - 1; b++) {
+		GX_Begin(GX_TRIANGLESTRIP, VF_3D, (H - 1) * 2);
+		for (int a = 1; a < H; a++) {
+			emit_vertex(i0 + 2 * a, j0 + 2 * b);
+			emit_vertex(i0 + 2 * a, j0 + 2 * b + 2);
+		}
+		GX_End();
+	}
+	/* The border: a fan per coarse cell, with the midpoints of its outer sides. */
+	for (int b = 0; b < H; b++)
+		for (int a = 0; a < H; a++) {
+			if (a > 0 && a < H - 1 && b > 0 && b < H - 1) continue;
+			bool outer[4] = { a == H - 1, b == 0, a == 0, b == H - 1 };   /* east, north, west, south */
+			int ring[9], n = 0;
+			for (int k = 0; k < 8; k++)
+				if (!(k & 1) || outer[k / 2]) ring[n++] = k;
+			ring[n++] = ring[0];
+			int ci2 = i0 + 2 * a, cj2 = j0 + 2 * b;
+			GX_Begin(GX_TRIANGLEFAN, VF_3D, n + 1);
+			emit_vertex(ci2 + 1, cj2 + 1);
+			for (int k = 0; k < n; k++) emit_vertex(ci2 + FAN_RING[ring[k]][0], cj2 + FAN_RING[ring[k]][1]);
+			GX_End();
+		}
+	emit_skirt(ci, cj);
+	dl_end(&c->ground_lo);
 }
 
 static void chunk_bounds(chunk_t *c, int ci, int cj)
@@ -175,18 +235,18 @@ static void tuft_colours(const tuft_t *t, float season, rgbf *bot, rgbf *top)
 	*top = rgb_scale(tp, 1.08f);
 }
 
-static void record_tufts(chunk_t *c, bool again)
+static void record_tufts(tuft_cell *c, bool again)
 {
 	int count;
 	const tuft_t *tufts = world_tufts(&count);
-	if (!c->tuft_count) {
-		c->tufts.len = 0;
+	if (!c->count) {
+		c->dl.len = 0;
 		return;
 	}
-	if (again) dl_rebegin(&c->tufts, vdesc_pnct_flush);
-	else dl_begin(&c->tufts, c->tuft_count * (3 + 8 * 36) + 64, vdesc_pnct_flush);
-	for (int n = 0; n < c->tuft_count; n++) {
-		const tuft_t *t = &tufts[s_tuft_order[c->tuft_first + n]];
+	if (again) dl_rebegin(&c->dl, vdesc_pnct_flush);
+	else dl_begin(&c->dl, c->count * (3 + 8 * 36) + 64, vdesc_pnct_flush);
+	for (int n = 0; n < c->count; n++) {
+		const tuft_t *t = &tufts[s_tuft_order[c->first + n]];
 		const tuft_style *st = &STYLES[t->kind];
 		float u0, v0, u1, v1;
 		atlas_uv(st->cell[0], st->cell[1], st->cell[2], st->cell[3], &u0, &v0, &u1, &v1);
@@ -209,7 +269,13 @@ static void record_tufts(chunk_t *c, bool again)
 		}
 		GX_End();
 	}
-	dl_end(&c->tufts);
+	dl_end(&c->dl);
+}
+
+static int tuft_cell_of(float v)
+{
+	int k = (int)(v / TUFT_CELL_SIZE);
+	return k < 0 ? 0 : (k >= TUFT_CELLS ? TUFT_CELLS - 1 : k);
 }
 
 static void sort_tufts(void)
@@ -217,19 +283,35 @@ static void sort_tufts(void)
 	int count;
 	const tuft_t *tufts = world_tufts(&count);
 	s_tuft_order = malloc(sizeof(int) * (count ? count : 1));
-	int fill = 0;
-	for (int cj = 0; cj < CHUNKS; cj++)
-		for (int ci = 0; ci < CHUNKS; ci++) {
-			chunk_t *c = &s_chunks[cj][ci];
-			float size = CHUNK_CELLS * WORLD_CELL;
-			c->tuft_first = fill;
-			for (int i = 0; i < count; i++) {
-				int ti = (int)(tufts[i].x / size), tj = (int)(tufts[i].z / size);
-				ti = ti < 0 ? 0 : (ti >= CHUNKS ? CHUNKS - 1 : ti);
-				tj = tj < 0 ? 0 : (tj >= CHUNKS ? CHUNKS - 1 : tj);
-				if (ti == ci && tj == cj) s_tuft_order[fill++] = i;
+	/* Count per cell, then place: a counting sort. */
+	static int fill[TUFT_CELLS][TUFT_CELLS];
+	for (int i = 0; i < count; i++) s_tcells[tuft_cell_of(tufts[i].z)][tuft_cell_of(tufts[i].x)].count++;
+	int first = 0;
+	for (int cj = 0; cj < TUFT_CELLS; cj++)
+		for (int ci = 0; ci < TUFT_CELLS; ci++) {
+			tuft_cell *c = &s_tcells[cj][ci];
+			c->first = fill[cj][ci] = first;
+			first += c->count;
+			c->x0 = ci * TUFT_CELL_SIZE;
+			c->z0 = cj * TUFT_CELL_SIZE;
+		}
+	for (int i = 0; i < count; i++) {
+		int ci = tuft_cell_of(tufts[i].x), cj = tuft_cell_of(tufts[i].z);
+		s_tuft_order[fill[cj][ci]++] = i;
+	}
+	for (int cj = 0; cj < TUFT_CELLS; cj++)
+		for (int ci = 0; ci < TUFT_CELLS; ci++) {
+			tuft_cell *c = &s_tcells[cj][ci];
+			float ymin = 1e9f, ymax = -1e9f;
+			for (int n = 0; n < c->count; n++) {
+				const tuft_t *t = &tufts[s_tuft_order[c->first + n]];
+				ymin = fminf(ymin, t->y - 0.5f);
+				ymax = fmaxf(ymax, t->y + 2.0f);
 			}
-			c->tuft_count = fill - c->tuft_first;
+			if (!c->count) ymin = ymax = 0.0f;
+			float half = TUFT_CELL_SIZE * 0.5f, hh = (ymax - ymin) * 0.5f;
+			c->centre = v3_make(c->x0 + half, (ymin + ymax) * 0.5f, c->z0 + half);
+			c->radius = sqrtf(2.0f * half * half + hh * hh) + 1.0f;
 		}
 }
 
@@ -244,8 +326,10 @@ void terrain_build(float season)
 			chunk_t *c = &s_chunks[cj][ci];
 			chunk_bounds(c, ci, cj);
 			record_ground(c, ci, cj, false);
-			record_tufts(c, false);
+			record_ground_lo(c, ci, cj, false);
 		}
+	for (int cj = 0; cj < TUFT_CELLS; cj++)
+		for (int ci = 0; ci < TUFT_CELLS; ci++) record_tufts(&s_tcells[cj][ci], false);
 }
 
 void terrain_set_season(float season)
@@ -254,18 +338,21 @@ void terrain_set_season(float season)
 	for (int cj = 0; cj < CHUNKS; cj++)
 		for (int ci = 0; ci < CHUNKS; ci++) {
 			record_ground(&s_chunks[cj][ci], ci, cj, true);
-			record_tufts(&s_chunks[cj][ci], true);
+			record_ground_lo(&s_chunks[cj][ci], ci, cj, true);
 		}
+	for (int cj = 0; cj < TUFT_CELLS; cj++)
+		for (int ci = 0; ci < TUFT_CELLS; ci++) record_tufts(&s_tcells[cj][ci], true);
 }
 
-/* Distance from the eye to a chunk's footprint (0 when standing on it). */
-static float chunk_dist(const chunk_t *c)
+/* Distance from the eye to a square's footprint (0 when standing on it). */
+static float square_dist(float x0, float z0, float size)
 {
-	float size = CHUNK_CELLS * WORLD_CELL;
-	float dx = fmaxf(fmaxf(c->x0 - G.eye.x, 0.0f), G.eye.x - (c->x0 + size));
-	float dz = fmaxf(fmaxf(c->z0 - G.eye.z, 0.0f), G.eye.z - (c->z0 + size));
+	float dx = fmaxf(fmaxf(x0 - G.eye.x, 0.0f), G.eye.x - (x0 + size));
+	float dz = fmaxf(fmaxf(z0 - G.eye.z, 0.0f), G.eye.z - (z0 + size));
 	return sqrtf(dx * dx + dz * dz);
 }
+
+static float chunk_dist(const chunk_t *c) { return square_dist(c->x0, c->z0, CHUNK_CELLS * WORLD_CELL); }
 
 int terrain_draw(const daylight *d)
 {
@@ -277,11 +364,13 @@ int terrain_draw(const daylight *d)
 	vdesc_pnc_flush();
 	int drawn = 0;
 	for (int cj = 0; cj < CHUNKS; cj++)
-		for (int ci = 0; ci < CHUNKS; ci++)
-			if (gfx_sphere_visible(s_chunks[cj][ci].centre, s_chunks[cj][ci].radius)) {
-				dl_draw(&s_chunks[cj][ci].ground);
+		for (int ci = 0; ci < CHUNKS; ci++) {
+			chunk_t *c = &s_chunks[cj][ci];
+			if (gfx_sphere_visible(c->centre, c->radius)) {
+				dl_draw(chunk_dist(c) < LOD_RANGE ? &c->ground : &c->ground_lo);
 				drawn++;
 			}
+		}
 	return drawn;
 }
 
@@ -290,15 +379,18 @@ void terrain_draw_tufts(const daylight *d)
 	gfx_model_identity();
 	gfx_depth(true, true);
 	gfx_blend_none();
-	mat_lit_cutout();
+	mat_lit_cutout(false);                  /* colours are baked into the lists */
 	mat_ramp_light(d->key_dir);
-	GX_SetTevKColor(GX_KCOLOR0, (GXColor){ 255, 255, 255, 255 });
 	vdesc_pnct_flush();
-	for (int cj = 0; cj < CHUNKS; cj++)
-		for (int ci = 0; ci < CHUNKS; ci++) {
-			chunk_t *c = &s_chunks[cj][ci];
-			if (c->tufts.len && chunk_dist(c) < TUFT_RANGE && gfx_sphere_visible(c->centre, c->radius))
-				dl_draw(&c->tufts);
+	/* Only the cells around the eye. */
+	int c0 = tuft_cell_of(G.eye.x - TUFT_RANGE), c1 = tuft_cell_of(G.eye.x + TUFT_RANGE);
+	int r0 = tuft_cell_of(G.eye.z - TUFT_RANGE), r1 = tuft_cell_of(G.eye.z + TUFT_RANGE);
+	for (int cj = r0; cj <= r1; cj++)
+		for (int ci = c0; ci <= c1; ci++) {
+			tuft_cell *c = &s_tcells[cj][ci];
+			if (c->dl.len && square_dist(c->x0, c->z0, TUFT_CELL_SIZE) < TUFT_RANGE &&
+			    gfx_sphere_visible(c->centre, c->radius))
+				dl_draw(&c->dl);
 		}
 }
 

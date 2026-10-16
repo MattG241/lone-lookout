@@ -27,7 +27,7 @@ void rain_draw(const daylight *d, float rain, float wind, bool indoor_eye)
 	mat_vcolor();
 	vdesc_pc();
 	GX_SetLineWidth(12, GX_TO_ZERO);
-	GX_Begin(GX_LINES, VF_3D, n * 2);
+	gx_begin(GX_LINES, VF_3D, n * 2);
 	for (int i = 0; i < n; i++) {
 		u32 h = hash32((u32)i * 2654435761u + 17u);
 		float a = (h & 1023) / 1023.0f * LL_TAU, r = sqrtf(((h >> 10) & 1023) / 1023.0f) * RADIUS;

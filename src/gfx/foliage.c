@@ -10,7 +10,9 @@
  * unit-tree display list per kind and a model matrix carrying position, yaw,
  * scale and a little wind shear. Further out, each 64 m chunk's trees are
  * pre-transformed into one static display list -- no wind at that distance,
- * and one call per chunk instead of one per tree.
+ * and one call per chunk instead of one per tree. Beyond FAR_RANGE a chunk
+ * draws a lighter list: two whole planes at right angles (4 triangles, not
+ * 12), lit and shaded edge to edge, so the ramp still splits them in two.
  */
 #include <malloc.h>
 #include <math.h>
@@ -24,6 +26,7 @@
 #define CHUNKS 8
 #define CHUNK_SIZE (WORLD_SIZE / CHUNKS)
 #define NEAR_RANGE 70.0f
+#define FAR_RANGE 150.0f
 #define UNIT_VERTS 24                 /* 3 planes x 2 halves x 4 */
 
 typedef struct {
@@ -33,7 +36,7 @@ typedef struct {
 } unit_tree;
 
 typedef struct {
-	dlist_t far;
+	dlist_t far, far2;
 	v3 centre;
 	float radius;
 	float x0, z0;
@@ -151,6 +154,45 @@ static void record_far(fchunk_t *fc, bool again)
 	dl_end(&fc->far);
 }
 
+/* The distant tree: two planes crossing at right angles, one quad each. */
+static void record_far2(fchunk_t *fc, bool again)
+{
+	int n;
+	const tree_t *trees = world_trees(&n);
+	if (!fc->count) {
+		fc->far2.len = 0;
+		return;
+	}
+	if (again) dl_rebegin(&fc->far2, vdesc_pnct_flush);
+	else dl_begin(&fc->far2, fc->count * (3 + 8 * 36) + 64, vdesc_pnct_flush);
+	v3 up = v3_make(0, 1, 0);
+	for (int i = 0; i < fc->count; i++) {
+		const tree_t *t = &trees[s_order[fc->first + i]];
+		const unit_tree *u = &s_unit[t->kind];
+		GXColor tint = tree_tint(t);
+		/* The unit tree's corners: u0/u1 at its first plane's ends, v0/v1 top and bottom. */
+		float u0 = u->s[0], u1 = u->s[5], v0 = u->t[3], v1 = u->t[0];
+		u32 cb = tint_rgba(u->c[0], tint), ct = tint_rgba(u->c[3], tint);
+		GX_Begin(GX_QUADS, VF_3D, 8);
+		for (int pl = 0; pl < 2; pl++) {
+			float a = t->yaw + pl * (LL_PI * 0.5f);
+			v3 d = v3_make(cosf(a) * 0.5f * t->width, 0, sinf(a) * 0.5f * t->width);
+			v3 dn = v3_norm(d);
+			v3 nl = v3_norm(v3_add(v3_scale(dn, -1.0f), v3_scale(up, 0.25f)));
+			v3 nr = v3_norm(v3_add(dn, v3_scale(up, 0.25f)));
+			v3 base = v3_make(t->x, t->y, t->z);
+			v3 bl = v3_sub(base, d), br = v3_add(base, d);
+			v3 tl = v3_add(bl, v3_make(0, t->height, 0)), tr = v3_add(br, v3_make(0, t->height, 0));
+			emit_pnct(bl, nl, cb, u0, v1);
+			emit_pnct(br, nr, cb, u1, v1);
+			emit_pnct(tr, nr, ct, u1, v0);
+			emit_pnct(tl, nl, ct, u0, v0);
+		}
+		GX_End();
+	}
+	dl_end(&fc->far2);
+}
+
 static void sort_trees(void)
 {
 	int n;
@@ -190,7 +232,10 @@ void foliage_build(float season)
 	}
 	sort_trees();
 	for (int cj = 0; cj < CHUNKS; cj++)
-		for (int ci = 0; ci < CHUNKS; ci++) record_far(&s_chunk[cj][ci], false);
+		for (int ci = 0; ci < CHUNKS; ci++) {
+			record_far(&s_chunk[cj][ci], false);
+			record_far2(&s_chunk[cj][ci], false);
+		}
 }
 
 void foliage_set_season(float season)
@@ -201,7 +246,10 @@ void foliage_set_season(float season)
 		record_kind(k, true);
 	}
 	for (int cj = 0; cj < CHUNKS; cj++)
-		for (int ci = 0; ci < CHUNKS; ci++) record_far(&s_chunk[cj][ci], true);
+		for (int ci = 0; ci < CHUNKS; ci++) {
+			record_far(&s_chunk[cj][ci], true);
+			record_far2(&s_chunk[cj][ci], true);
+		}
 }
 
 void foliage_update(float dt)
@@ -222,23 +270,24 @@ int foliage_draw(const daylight *d, float wind)
 	const tree_t *trees = world_trees(&n);
 	gfx_depth(true, true);
 	gfx_blend_none();
-	mat_lit_cutout();
+	mat_lit_cutout(false);                     /* the far lists have their tints baked in */
 	vdesc_pnct_flush();
 
 	/* Far chunks: static world-space lists. */
 	gfx_model_identity();
 	mat_ramp_light(d->key_dir);
-	GX_SetTevKColor(GX_KCOLOR0, (GXColor){ 255, 255, 255, 255 });
 	for (int cj = 0; cj < CHUNKS; cj++)
 		for (int ci = 0; ci < CHUNKS; ci++) {
 			fchunk_t *fc = &s_chunk[cj][ci];
-			if (fc->count && chunk_dist(fc) >= NEAR_RANGE && gfx_sphere_visible(fc->centre, fc->radius)) {
-				dl_draw(&fc->far);
+			float dist = chunk_dist(fc);
+			if (fc->count && dist >= NEAR_RANGE && gfx_sphere_visible(fc->centre, fc->radius)) {
+				dl_draw(dist < FAR_RANGE ? &fc->far : &fc->far2);
 				drawn += fc->count;
 			}
 		}
 
-	/* Near chunks: one draw per tree, swaying. */
+	/* Near chunks: one draw per tree, swaying, tinted through K0. */
+	mat_lit_cutout(true);
 	for (int cj = 0; cj < CHUNKS; cj++)
 		for (int ci = 0; ci < CHUNKS; ci++) {
 			fchunk_t *fc = &s_chunk[cj][ci];

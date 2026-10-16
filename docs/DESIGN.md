@@ -265,9 +265,9 @@ the radio (**B**) to answer, whenever you like.
 | **D-pad ↑** | Binoculars (raise / lower) |
 | **D-pad ↓** | Notebook |
 | **D-pad ← / →** | Snap turn 30° (option) |
-| **+** | Pause menu (Resume · Notebook · Options · Save & quit) |
-| **−** | Compass on/off (off by default) · in binoculars: zoom out |
-| **HOME** | Return to the Homebrew Channel (standard libogc behaviour) |
+| **+** or **HOME** | Pause menu (Resume · Options · Save and return to the title · Save and quit); time stops |
+| **−** | In binoculars: lower them (the compass is an option) |
+| **HOME** on the title | Return to the Homebrew Channel |
 | **Remote tilt (roll)** | Subtle head sway, ±2.5° camera roll, low-pass filtered (option) |
 | **1 + 2 (hold)** | Developer builds only: performance overlay |
 

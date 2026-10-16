@@ -95,7 +95,7 @@ void smoke_draw(const daylight *d)
 	gfx_blend_alpha();
 	mat_vcolor_tex(&T_GLOW, true, false);
 	vdesc_pct();
-	GX_Begin(GX_QUADS, VF_3D, SMOKE_PUFFS * 3 * 4);
+	gx_begin(GX_QUADS, VF_3D, SMOKE_PUFFS * 3 * 4);
 	for (int i = 0; i < SMOKE_PUFFS; i++) {
 		/* Each puff climbs the column and loops; higher up the wind leans it east
 		 * and it spreads. */

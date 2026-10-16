@@ -35,9 +35,19 @@ void props_build(void)
 	build_place_props();
 }
 
+/* How far off a group is still drawn (0: always). Interiors only show through
+ * the windows up close, and the smaller sites are a few pixels past this. */
+static const float DRAW_RANGE[PG_COUNT] = {
+	[PG_TOWER_IN] = 45.0f, [PG_CABIN_IN] = 30.0f, [PG_BINOCULARS] = 30.0f, [PG_TARN] = 200.0f,
+	[PG_RIDGE] = 200.0f, [PG_MEADOW] = 200.0f, [PG_SPRING] = 120.0f, [PG_BURN] = 200.0f, [PG_TRAILHEAD] = 200.0f,
+};
+
 static bool visible(prop_group g)
 {
-	return s_groups[g].dl.len && gfx_sphere_visible(s_groups[g].centre, s_groups[g].radius);
+	const group_t *gr = &s_groups[g];
+	if (!gr->dl.len) return false;
+	if (DRAW_RANGE[g] > 0.0f && v3_len(v3_sub(gr->centre, G.eye)) - gr->radius > DRAW_RANGE[g]) return false;
+	return gfx_sphere_visible(gr->centre, gr->radius);
 }
 
 /* Glazing faces wind so their front faces outward: invisible from inside. */

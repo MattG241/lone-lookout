@@ -23,6 +23,9 @@
 #define CAM_NEAR 0.08f
 #define CAM_FAR 1700.0f
 
+/* Triangles drawn, by line of the budget in DESIGN.md section 11. */
+enum { TRI_TERRAIN, TRI_TREES, TRI_TUFTS, TRI_PROPS, TRI_SKY, TRI_UI, TRI_CATS };
+
 typedef struct {
 	GXRModeObj *rmode;
 	void *xfb[2];
@@ -43,9 +46,31 @@ typedef struct {
 	u32 frame;
 	float work_ms;
 	int stat_chunks, stat_trees;     /* drawn last frame (developer overlay) */
+	u32 tris[TRI_CATS];              /* this frame so far, by budget line */
+	u32 tris_last[TRI_CATS];         /* the last finished frame */
+	u32 tris_peak;                   /* the most in any frame so far */
+	int tri_cat;                     /* the budget line draws are counted into */
 } gfx_t;
 
 extern gfx_t G;
+
+static inline u32 gx_prim_tris(u8 prim, u32 verts)
+{
+	switch (prim) {
+	case GX_QUADS: return verts / 4 * 2;
+	case GX_TRIANGLES: return verts / 3;
+	case GX_TRIANGLESTRIP:
+	case GX_TRIANGLEFAN: return verts >= 3 ? verts - 2 : 0;
+	default: return 0;                       /* lines and points */
+	}
+}
+
+/* GX_Begin for immediate draws: also counts the triangles. */
+static inline void gx_begin(u8 prim, u8 fmt, u16 verts)
+{
+	G.tris[G.tri_cat] += gx_prim_tris(prim, verts);
+	GX_Begin(prim, fmt, verts);
+}
 
 /* Shared textures */
 extern GXTexObj T_PAPER, T_GRAIN, T_GLOW, T_FOLIAGE, T_BACKDROP, T_FONT_S, T_FONT_L, T_MAP;
@@ -80,7 +105,9 @@ void vdesc_pnct_flush(void);
 /* Materials */
 void ramp_update(const daylight *d);
 void mat_lit_solid(void);            /* ramp x vertex colour x paper tooth */
-void mat_lit_cutout(void);           /* ramp x vertex colour x foliage atlas, alpha-tested */
+/* Ramp x vertex colour x foliage atlas, alpha-tested; 'tint' adds a third
+ * stage multiplying by konst colour K0 (near trees: per-tree tint). */
+void mat_lit_cutout(bool tint);
 /* Interiors: lit as solid, dimmed by 'dim', plus lamp light (vertex colour x lamp). */
 void mat_lit_interior(rgbf dim, rgbf lamp);
 void mat_ramp_light(v3 light_model); /* key-light direction in the current model's space */

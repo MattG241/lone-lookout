@@ -91,7 +91,7 @@ void text_draw(font_id fid, float x, float y, const char *s, int len, GXColor c)
 			float x1 = x0 + g->w, y1 = y0 + g->h;
 			float u0 = g->x * f->inv_w, v0 = g->y * f->inv_h;
 			float u1 = (g->x + g->w) * f->inv_w, v1 = (g->y + g->h) * f->inv_h;
-			GX_Begin(GX_QUADS, VF_2D, 4);
+			gx_begin(GX_QUADS, VF_2D, 4);
 			GX_Position2f32(x0, y0); GX_Color4u8(c.r, c.g, c.b, c.a); GX_TexCoord2f32(u0, v0);
 			GX_Position2f32(x1, y0); GX_Color4u8(c.r, c.g, c.b, c.a); GX_TexCoord2f32(u1, v0);
 			GX_Position2f32(x1, y1); GX_Color4u8(c.r, c.g, c.b, c.a); GX_TexCoord2f32(u1, v1);

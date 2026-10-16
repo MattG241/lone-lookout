@@ -71,7 +71,7 @@ static void check_box(float x, float y, bool done, float a)
 	mat_vcolor();
 	vdesc_2d(false);
 	const float s = 13.0f;
-	GX_Begin(GX_LINESTRIP, VF_2D, 5);
+	gx_begin(GX_LINESTRIP, VF_2D, 5);
 	GX_Position2f32(x, y); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
 	GX_Position2f32(x + s, y + 0.6f); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
 	GX_Position2f32(x + s - 0.4f, y + s); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
@@ -79,7 +79,7 @@ static void check_box(float x, float y, bool done, float a)
 	GX_Position2f32(x, y); GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
 	GX_End();
 	if (!done) return;
-	GX_Begin(GX_LINESTRIP, VF_2D, 3);
+	gx_begin(GX_LINESTRIP, VF_2D, 3);
 	GX_Position2f32(x + 2.0f, y + 6.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
 	GX_Position2f32(x + 5.5f, y + 11.5f); GX_Color4u8(red.r, red.g, red.b, red.a);
 	GX_Position2f32(x + s + 3.0f, y - 4.0f); GX_Color4u8(red.r, red.g, red.b, red.a);
@@ -157,7 +157,7 @@ static void map_page(float x, float y, float w, float h, float a)
 	mat_vcolor_tex(&T_MAP, false, false);
 	vdesc_2d(true);
 	u8 al = (u8)(255 * a);
-	GX_Begin(GX_QUADS, VF_2D, 4);
+	gx_begin(GX_QUADS, VF_2D, 4);
 	GX_Position2f32(mx, my); GX_Color4u8(255, 255, 255, al); GX_TexCoord2f32(0, 0);
 	GX_Position2f32(mx + s, my); GX_Color4u8(255, 255, 255, al); GX_TexCoord2f32(1, 0);
 	GX_Position2f32(mx + s, my + s); GX_Color4u8(255, 255, 255, al); GX_TexCoord2f32(1, 1);
@@ -168,14 +168,14 @@ static void map_page(float x, float y, float w, float h, float a)
 	mat_vcolor();
 	vdesc_2d(false);
 	GXColor pen = gx_col(rgb_make(0.55f, 0.18f, 0.14f), 0.9f * a);
-	GX_Begin(GX_LINESTRIP, VF_2D, 17);
+	gx_begin(GX_LINESTRIP, VF_2D, 17);
 	for (int i = 0; i <= 16; i++) {
 		float t = LL_TAU * i / 16.0f;
 		GX_Position2f32(px + cosf(t) * 6.0f, py + sinf(t) * 6.0f);
 		GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
 	}
 	GX_End();
-	GX_Begin(GX_LINES, VF_2D, 2);
+	gx_begin(GX_LINES, VF_2D, 2);
 	GX_Position2f32(px, py);
 	GX_Color4u8(pen.r, pen.g, pen.b, pen.a);
 	GX_Position2f32(px + sinf(P.yaw) * 14.0f, py - cosf(P.yaw) * 14.0f);

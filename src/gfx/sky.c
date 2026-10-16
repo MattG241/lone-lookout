@@ -80,7 +80,7 @@ static void draw_clouds(const daylight *d, float cloud)
 			float sz = s_cloud_size[i] * (k ? 0.7f : 1.0f);
 			v3 cc = v3_add(c, v3_add(v3_scale(t, k * sz * 1.1f), v3_scale(u, (k ? -0.15f : 0.1f) * sz)));
 			v3 r = v3_scale(t, sz * 1.8f), up = v3_scale(u, sz * 0.55f);
-			GX_Begin(GX_QUADS, VF_3D, 4);
+			gx_begin(GX_QUADS, VF_3D, 4);
 			GX_Position3f32(cc.x - r.x + up.x, cc.y - r.y + up.y, cc.z - r.z + up.z);
 			GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 0);
 			GX_Position3f32(cc.x + r.x + up.x, cc.y + r.y + up.y, cc.z + r.z + up.z);
@@ -121,7 +121,7 @@ static void draw_glow(v3 dir, float dist, float size, rgbf col, float alpha)
 	v3 r = v3_scale(G.right, size);
 	v3 u = v3_scale(G.up, size);
 	GXColor gc = gx_col(col, alpha);
-	GX_Begin(GX_QUADS, VF_3D, 4);
+	gx_begin(GX_QUADS, VF_3D, 4);
 	GX_Position3f32(c.x - r.x + u.x, c.y - r.y + u.y, c.z - r.z + u.z);
 	GX_Color4u8(gc.r, gc.g, gc.b, gc.a); GX_TexCoord2f32(0, 0);
 	GX_Position3f32(c.x + r.x + u.x, c.y + r.y + u.y, c.z + r.z + u.z);
@@ -148,7 +148,7 @@ void sky_draw(const daylight *d, float cloud)
 			cols[r][s] = sky_color(d, s_dome_dir[r][s]);
 
 	for (int r = 0; r < DOME_RINGS; r++) {
-		GX_Begin(GX_TRIANGLESTRIP, VF_3D, (DOME_SEG + 1) * 2);
+		gx_begin(GX_TRIANGLESTRIP, VF_3D, (DOME_SEG + 1) * 2);
 		for (int s = 0; s <= DOME_SEG; s++) {
 			for (int k = 1; k >= 0; k--) {
 				v3 p = v3_scale(s_dome_dir[r + k][s], DOME_R);
@@ -164,7 +164,7 @@ void sky_draw(const daylight *d, float cloud)
 	if (d->night > 0.01f) {
 		gfx_blend_add();
 		GX_SetPointSize(9, GX_TO_ZERO);   /* 1.5 px */
-		GX_Begin(GX_POINTS, VF_3D, NUM_STARS);
+		gx_begin(GX_POINTS, VF_3D, NUM_STARS);
 		for (int i = 0; i < NUM_STARS; i++) {
 			v3 p = v3_scale(s_star_dir[i], DOME_R * 0.98f);
 			float tw = 0.75f + 0.25f * sinf(G.frame * 0.05f + i * 1.7f);
@@ -245,7 +245,7 @@ static void draw_rings(const daylight *d, int first, int last)
 		GXColor cf = gx_col(d->fog, flat);
 		for (int pass = 0; pass < (flat > 0.01f ? 2 : 1); pass++) {
 			if (pass == 1) mat_vcolor_tex(&T_BACKDROP, true, false);
-			GX_Begin(GX_TRIANGLESTRIP, VF_3D, (SEG + 1) * 2);
+			gx_begin(GX_TRIANGLESTRIP, VF_3D, (SEG + 1) * 2);
 			for (int s = 0; s <= SEG; s++) {
 				float a = LL_TAU * s / SEG + R->spin;
 				float x = cosf(a) * R->radius, z = sinf(a) * R->radius;

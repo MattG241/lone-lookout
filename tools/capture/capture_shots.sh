@@ -30,7 +30,7 @@ timeout "$RUN_SECONDS" "$DOLPHIN" -u "$USERDIR" -p headless -v Vulkan \
 
 # Shot names, in the order of SHOTS[] in src/game/tour.c.
 python3 tools/capture/split_shots.py "$USERDIR/Dump/Frames" "$OUT" \
-	trailhead_day1 tower_from_trail meadow_afternoon ridge_vista from_the_deck cab_night tower_at_night \
+	title trailhead_day1 tower_from_trail meadow_afternoon ridge_vista from_the_deck cab_night tower_at_night \
 	tarn_dawn fawns_day2 burn_morning cabin_afternoon notebook_today notebook_radio notebook_sounds \
 	listen_burn listen_meadow notebook_map binoculars fire_finder storm_day5 smoke_day5 \
 	smoke_finder_day5 bench_call_day7 rain_day11 rain_deck_day11 radio_choices note_bench ending_card

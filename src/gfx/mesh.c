@@ -8,12 +8,17 @@
 #include "gfx/mesh.h"
 #include "gfx/gfx.h"
 
+/* The two layouts lists are recorded with: POS NRM CLR0 [TEX0], direct. */
+static u16 stride_of(vdesc_fn vdesc) { return vdesc == vdesc_pnct_flush ? 36 : 28; }
+
 bool dl_begin(dlist_t *d, u32 cap, vdesc_fn vdesc)
 {
 	cap = (cap + 63u) & ~31u;
 	d->buf = memalign(32, cap);
 	d->cap = cap;
 	d->len = 0;
+	d->stride = stride_of(vdesc);
+	d->tris = 0;
 	if (!d->buf) return false;
 	memset(d->buf, 0, cap);
 	DCInvalidateRange(d->buf, cap);
@@ -26,6 +31,8 @@ bool dl_rebegin(dlist_t *d, vdesc_fn vdesc)
 {
 	if (!d->buf) return false;
 	d->len = 0;
+	d->stride = stride_of(vdesc);
+	d->tris = 0;
 	memset(d->buf, 0, d->cap);
 	DCFlushRange(d->buf, d->cap);
 	DCInvalidateRange(d->buf, d->cap);
@@ -34,16 +41,41 @@ bool dl_rebegin(dlist_t *d, vdesc_fn vdesc)
 	return true;
 }
 
+/* Count a recorded list's triangles by walking its draw commands (the lists
+ * hold nothing else; zero bytes are the padding at the end). */
+static u32 count_tris(const u8 *p, u32 len, u32 stride)
+{
+	u32 tris = 0, i = 0;
+	while (i + 3 <= len) {
+		u8 op = p[i];
+		if (op == 0) {
+			i++;
+			continue;
+		}
+		if ((op & 0x80) == 0) break;            /* not a draw command: stop counting */
+		u32 n = ((u32)p[i + 1] << 8) | p[i + 2];
+		tris += gx_prim_tris(op & 0xF8, n);
+		i += 3 + n * stride;
+	}
+	return tris;
+}
+
 bool dl_end(dlist_t *d)
 {
 	d->len = GX_EndDispList();
+	if (d->len) {
+		DCInvalidateRange(d->buf, d->cap);      /* the GPU pipe wrote it, not the CPU */
+		d->tris = count_tris(d->buf, d->len, d->stride);
+	}
 	return d->len > 0;
 }
 
 void dl_draw(const dlist_t *d)
 {
-	if (d->len)
+	if (d->len) {
 		GX_CallDispList(d->buf, d->len);
+		G.tris[G.tri_cat] += d->tris;
+	}
 }
 
 static void quad(v3 a, v3 b, v3 c, v3 dd, v3 n, u32 col)

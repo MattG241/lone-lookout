@@ -4,9 +4,12 @@
 #   make            generate assets (Python) and build lonelookout.dol
 #   make SHOTS=1    build the screenshot-tour variant (scripted camera, no input)
 #   make WALKTEST=1 build the scripted-input variant (walks, answers the radio, pages the notebook)
+#   make REMOTETEST=1 the same walk test with no Nunchuk (the Remote-only controls)
 #   make MENUTEST=1 build the scripted title, options and save test
+#   make PERF=1     build the worst-case views tour, with the triangle counts on screen
 #   make SOAK=1     build the audio soak variant (Day 11, music, calls and Listen on a loop;
 #                   presents one frame every 10 s with the mixer stats -- tools/capture/soak.sh)
+#   make SOAKRIDGE=1 the ridge time-lapse soak: seated on the bench, days cycling (SOAK_VARIANT=ridge soak.sh)
 #   make test       host tests: the world, the story playthroughs, the music
 #   make package    dist/apps/lonelookout/{boot.dol,meta.xml,icon.png}
 #   make run        send to a Wii running the Homebrew Channel (wiiload)
@@ -48,15 +51,30 @@ DEFINES		+=	-DLL_INPUT_SCRIPT=1
 TARGET		:=	lonelookout_walktest
 BUILD		:=	build_walktest
 endif
+ifeq ($(REMOTETEST),1)
+DEFINES		+=	-DLL_INPUT_SCRIPT=1 -DLL_SCRIPT_REMOTE_ONLY=1
+TARGET		:=	lonelookout_remotetest
+BUILD		:=	build_remotetest
+endif
 ifeq ($(MENUTEST),1)
 DEFINES		+=	-DLL_MENU_TEST=1
 TARGET		:=	lonelookout_menutest
 BUILD		:=	build_menutest
 endif
+ifeq ($(PERF),1)
+DEFINES		+=	-DLL_SHOT_TOUR=1 -DLL_PERF=1
+TARGET		:=	lonelookout_perf
+BUILD		:=	build_perf
+endif
 ifeq ($(SOAK),1)
 DEFINES		+=	-DLL_INPUT_SCRIPT=1 -DLL_SOAK=1
 TARGET		:=	lonelookout_soak
 BUILD		:=	build_soak
+endif
+ifeq ($(SOAKRIDGE),1)
+DEFINES		+=	-DLL_INPUT_SCRIPT=1 -DLL_SOAK=1 -DLL_SOAK_RIDGE=1
+TARGET		:=	lonelookout_soakridge
+BUILD		:=	build_soakridge
 endif
 
 LIBS	:=	-lfat -laesnd -lwiiuse -lbte -logc -lm
@@ -134,7 +152,7 @@ $(BUILD):
 
 clean:
 	@echo clean ...
-	@rm -fr build build_shots build_walktest build_soak build_menutest $(GEN) dist tests/host/run_tests tests/host/run_story tests/host/run_audio tests/host/run_save *.elf *.dol *.map
+	@rm -fr build build_shots build_walktest build_soak build_menutest build_perf build_remotetest build_soakridge $(GEN) dist tests/host/run_tests tests/host/run_story tests/host/run_audio tests/host/run_save *.elf *.dol *.map
 
 run: $(BUILD)
 	wiiload $(OUTPUT).dol

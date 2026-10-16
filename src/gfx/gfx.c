@@ -146,6 +146,8 @@ void gfx_begin(rgbf clear)
 	GX_SetViewport(0, 0, G.efb_w, G.efb_h, 0, 1);
 	GX_InvVtxCache();
 	GX_InvalidateTexAll();
+	memset(G.tris, 0, sizeof(G.tris));
+	G.tri_cat = TRI_UI;
 }
 
 static void update_pacing(void)
@@ -194,6 +196,9 @@ void gfx_end(void)
 	GX_DrawDone();
 	G.work_ms = ticks_to_microsecs(gettime() - s_frame_start) * 0.001f;
 	update_pacing();
+	u32 total = 0;
+	for (int i = 0; i < TRI_CATS; i++) total += G.tris_last[i] = G.tris[i];
+	if (total > G.tris_peak) G.tris_peak = total;
 
 	VIDEO_SetNextFramebuffer(G.xfb[G.fb]);
 	if (s_first_frame) {
@@ -467,27 +472,29 @@ void mat_lit_solid(void)
 
 void mat_lit_interior(rgbf dim, rgbf lamp)
 {
+	/* albedo x (2 ramp dim x 2 tooth + lamp), in three stages:
+	 * 0: ramp x dim (K0), x2;  1: (lamp/2 (K1) + prev x tooth) x2;  2: prev x albedo. */
 	mat_lit_solid();
-	GX_SetNumTevStages(4);
+	GX_SetNumTevStages(3);
 	GX_SetTevKColor(GX_KCOLOR0, gx_col(dim, 1.0f));
-	GX_SetTevKColor(GX_KCOLOR1, gx_col(lamp, 1.0f));
-	/* Stage 2: daylight through the windows only reaches in so far. */
-	GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLORNULL);
-	GX_SetTevKColorSel(GX_TEVSTAGE2, GX_TEV_KCSEL_K0);
-	GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_CPREV, GX_CC_KONST, GX_CC_ZERO);
+	GX_SetTevKColor(GX_KCOLOR1, gx_col(rgb_scale(lamp, 0.5f), 1.0f));
+	GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+	/* The first two stages don't clamp (the TEV keeps values up to 4), so the
+	 * result matches the four-stage version this replaces. */
+	GX_SetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_K0);
+	GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_KONST, GX_CC_ZERO);
+	GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_2, GX_FALSE, GX_TEVPREV);
+	GX_SetTevKColorSel(GX_TEVSTAGE1, GX_TEV_KCSEL_K1);
+	GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_ZERO, GX_CC_CPREV, GX_CC_TEXC, GX_CC_KONST);
+	GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_2, GX_FALSE, GX_TEVPREV);
+	GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+	GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_CPREV, GX_CC_RASC, GX_CC_ZERO);
 	GX_SetTevColorOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
 	GX_SetTevAlphaIn(GX_TEVSTAGE2, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
 	GX_SetTevAlphaOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
-	/* Stage 3: + the lamp, warm on every surface (albedo x K1). */
-	GX_SetTevOrder(GX_TEVSTAGE3, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
-	GX_SetTevKColorSel(GX_TEVSTAGE3, GX_TEV_KCSEL_K1);
-	GX_SetTevColorIn(GX_TEVSTAGE3, GX_CC_ZERO, GX_CC_RASC, GX_CC_KONST, GX_CC_CPREV);
-	GX_SetTevColorOp(GX_TEVSTAGE3, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
-	GX_SetTevAlphaIn(GX_TEVSTAGE3, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
-	GX_SetTevAlphaOp(GX_TEVSTAGE3, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
 }
 
-void mat_lit_cutout(void)
+void mat_lit_cutout(bool tint)
 {
 	lit_common();
 	GX_SetTexCoordGen(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
@@ -498,13 +505,15 @@ void mat_lit_cutout(void)
 	GX_SetTevAlphaIn(GX_TEVSTAGE1, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_TEXA);
 	GX_SetTevAlphaOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
 	/* Stage 2: per-instance tint from konst colour K0 (set with GX_SetTevKColor). */
-	GX_SetNumTevStages(3);
-	GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLORNULL);
-	GX_SetTevKColorSel(GX_TEVSTAGE2, GX_TEV_KCSEL_K0);
-	GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_CPREV, GX_CC_KONST, GX_CC_ZERO);
-	GX_SetTevColorOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
-	GX_SetTevAlphaIn(GX_TEVSTAGE2, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
-	GX_SetTevAlphaOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	if (tint) {
+		GX_SetNumTevStages(3);
+		GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLORNULL);
+		GX_SetTevKColorSel(GX_TEVSTAGE2, GX_TEV_KCSEL_K0);
+		GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_CPREV, GX_CC_KONST, GX_CC_ZERO);
+		GX_SetTevColorOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+		GX_SetTevAlphaIn(GX_TEVSTAGE2, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
+		GX_SetTevAlphaOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	}
 	/* Cut-paper edges: alpha test, with depth written only for kept texels. */
 	GX_SetAlphaCompare(GX_GREATER, 120, GX_AOP_AND, GX_ALWAYS, 0);
 	GX_SetZCompLoc(GX_FALSE);
@@ -583,7 +592,7 @@ void gfx_fog_off(void)
 void ui_rect_grad(float x, float y, float w, float h, GXColor top, GXColor bottom)
 {
 	vdesc_2d(false);
-	GX_Begin(GX_QUADS, VF_2D, 4);
+	gx_begin(GX_QUADS, VF_2D, 4);
 	GX_Position2f32(x, y);         GX_Color4u8(top.r, top.g, top.b, top.a);
 	GX_Position2f32(x + w, y);     GX_Color4u8(top.r, top.g, top.b, top.a);
 	GX_Position2f32(x + w, y + h); GX_Color4u8(bottom.r, bottom.g, bottom.b, bottom.a);
@@ -624,7 +633,7 @@ void gfx_post(const daylight *d, float fade)
 	float oy = (float)(hash32(G.frame / 2u + 77u) & 127) / 128.0f;
 	float su = W / 128.0f, sv = H / 128.0f;
 	for (int j = 0; j < NY; j++) {
-		GX_Begin(GX_TRIANGLESTRIP, VF_2D, (NX + 1) * 2);
+		gx_begin(GX_TRIANGLESTRIP, VF_2D, (NX + 1) * 2);
 		for (int i = 0; i <= NX; i++) {
 			for (int k = 0; k < 2; k++) {
 				float u = (float)i / NX, v = (float)(j + k) / NY;

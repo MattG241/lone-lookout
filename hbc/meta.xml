@@ -2,13 +2,12 @@
 <app version="1">
   <name>Lone Lookout</name>
   <coder>Lone Lookout contributors</coder>
-  <version>0.2-prototype</version>
-  <release_date>20261015</release_date>
+  <version>1.0</version>
+  <release_date>20261016</release_date>
   <short_description>A quiet season in a fire lookout</short_description>
-  <long_description>A quiet first-person exploration game. Spend the end of a fire season as the lookout on Kestrel Knob in the Ashen Peaks: walk, look, listen, sit, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states.
+  <long_description>Spend the last eleven days of a fire season as the lookout on Kestrel Knob in the Ashen Peaks. Walk the six places around the tower, read the old lookout's notes, listen for the sounds he logged, keep the weather readings, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states. The story takes four to six hours.
 
-Phase 2 prototype: a small test area around the tower, pointer look, Nunchuk walking, the Day 1 radio check, a note to read and a log to sit on.
+Controls (Wii Remote + Nunchuk): stick to walk, point to look, A to use or sit, B for the radio, hold C to listen, hold Z to stride, D-pad up for the binoculars, D-pad down for the notebook, HOME or + to pause. Without a Nunchuk: D-pad to walk and turn, 1 binoculars, 2 notebook, hold - to listen.
 
-Controls: Nunchuk stick to walk (Z to stride), point to look, A to interact, B for the radio, HOME to exit.</long_description>
-  <ahb_access/>
+Saves go to sd:/apps/lonelookout/save.dat. Recorded voice lines, if you have them, go in sd:/apps/lonelookout/vo/.</long_description>
 </app>

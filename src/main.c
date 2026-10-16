@@ -43,23 +43,30 @@ static void draw_scene(const daylight *d)
 	gfx_camera(eye, P.yaw, P.pitch, P.roll, game_fov());
 	bool indoor = world_indoor(v3_make(eye.x, eye.y - 1.5f, eye.z)) != INDOOR_NONE;
 
+	G.tri_cat = TRI_SKY;
 	sky_draw(d, WX.cloud);
 	backdrop_draw_far(d);
 	smoke_draw(d);                         /* 900 m out: between the far and near ranges */
 	backdrop_draw_near(d);
 
 	gfx_fog(d);
+	G.tri_cat = TRI_TERRAIN;
 	G.stat_chunks = terrain_draw(d);
 	paths_draw(d);
 	props_state ps = { S.lamp, S.binoculars, story_flag(FLAG_SHUTTERS_DONE), story_flag(FLAG_CAIRN_STONE) };
+	G.tri_cat = TRI_PROPS;
 	props_draw(d, &ps);
 	creatures_draw(d);
+	G.tri_cat = TRI_TUFTS;
 	terrain_draw_tufts(d);
+	G.tri_cat = TRI_TREES;
 	G.stat_trees = foliage_draw(d, WX.wind * 1.6f);
+	G.tri_cat = TRI_SKY;
 	water_draw(d);
 	rain_draw(d, WX.rain, WX.wind, indoor);
 	gfx_fog_off();
 
+	G.tri_cat = TRI_UI;
 	gfx_post(d, 0.0f);
 	hud_draw();
 }
@@ -88,7 +95,7 @@ int main(int argc, char **argv)
 #ifdef LL_INPUT_SCRIPT
 	DAY.hour = 16.97f;                     /* the scripted test: Dot's first call rings at 17:00 */
 #endif
-#ifdef LL_SOAK
+#if defined(LL_SOAK) && !defined(LL_SOAK_RIDGE)
 	game_new_day(NUM_DAYS);                /* the soak: Day 11, in the cab as the rain starts */
 	DAY.hour = 12.3f;
 	P.day_card = 100.0f;

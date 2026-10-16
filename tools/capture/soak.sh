@@ -5,6 +5,9 @@
 #
 #   DOLPHIN=/path/to/dolphin-emu-nogui tools/capture/soak.sh out_dir [minutes] [wall_limit_s]
 #
+# SOAK_VARIANT=ridge runs the ridge time-lapse soak instead (make SOAKRIDGE=1):
+# seated on Augie's bench letting time pass, days cycling, calls answered.
+#
 # The soak build draws and presents one frame every 10 s, each showing the
 # mixer stats (blocks mixed, DSP underruns, mix time per 16 ms block). Game
 # logic, the radio, Listen and all the audio run every frame as usual; the
@@ -23,12 +26,18 @@ USERDIR=$(mktemp -d)
 pid=
 trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null; rm -rf "$USERDIR"' EXIT
 
-make SOAK=1
+if [ "${SOAK_VARIANT:-}" = ridge ]; then
+	make SOAKRIDGE=1
+	DOL=lonelookout_soakridge.dol
+else
+	make SOAK=1
+	DOL=lonelookout_soak.dol
+fi
 timeout "$WALL_LIMIT" "$DOLPHIN" -u "$USERDIR" -p headless -v Vulkan \
 	-C Dolphin.Movie.DumpFrames=True -C Dolphin.Movie.DumpFramesSilent=True \
 	-C GFX.Settings.DumpFramesAsImages=True -C GFX.Enhancements.DisableCopyFilter=False \
 	-C GFX.Settings.AspectRatio=2 -C SYSCONF.IPL.AR=0 -C Dolphin.Core.EmulationSpeed=0 \
-	-e "$PWD/lonelookout_soak.dol" >/dev/null 2>&1 &
+	-e "$PWD/$DOL" >/dev/null 2>&1 &
 pid=$!
 # Six shown frames a minute of game time: stop once the hour is covered.
 want=$((MINUTES * 6 + 1))

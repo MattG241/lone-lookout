@@ -4,6 +4,9 @@ build_shots/
 build_walktest/
 build_soak/
 build_menutest/
+build_perf/
+build_remotetest/
+build_soakridge/
 gen/
 dist/
 *.dol

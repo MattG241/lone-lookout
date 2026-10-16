@@ -14,6 +14,7 @@
 #include "game/notebook.h"
 #include "game/story.h"
 #include "game/listen.h"
+#include "game/menu.h"
 #include "world/world.h"
 #include "world/sites.h"
 
@@ -24,7 +25,7 @@
 
 typedef enum {
 	SHOT_PLAIN, SHOT_DAY_CARD, SHOT_CHOICES, SHOT_SEAT, SHOT_LAMP, SHOT_NOTEBOOK, SHOT_BINOCULARS, SHOT_FINDER,
-	SHOT_READ, SHOT_ENDING, SHOT_LISTEN,
+	SHOT_READ, SHOT_ENDING, SHOT_LISTEN, SHOT_TITLE,
 } shot_kind;
 
 typedef struct {
@@ -43,7 +44,31 @@ typedef struct {
 #define TX TOWER_X
 #define TZ TOWER_Z
 
+#ifdef LL_PERF
+/* The worst views for the frame budget (make PERF=1), shown with the
+ * developer overlay. DESIGN.md section 11 names the ridge at golden hour,
+ * looking south-west, as the heaviest. */
+#define RX (BENCH_X - 3.0f)
+#define RZ (BENCH_Z + 2.0f)
 static const shot_t SHOTS[] = {
+	{ "ridge_sw", 1, 18.65f, RX, RZ, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 225.0f, -4.0f },
+	{ "ridge_w", 1, 18.65f, RX, RZ, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 265.0f, -4.0f },
+	{ "ridge_s", 1, 18.65f, RX, RZ, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 185.0f, -4.0f },
+	{ "ridge_bench", 1, 18.65f, 0, 0, 0, TX, 8.0f, TZ, SHOT_SEAT, 4 },
+	{ "trailhead_n", 1, 17.0f, START_X, START_Z, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 355.0f, 2.0f },
+	{ "deck_sw", 1, 18.4f, TX - 2.5f, TZ + 2.4f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 225.0f, -6.0f },
+	{ "deck_n", 1, 18.4f, TX - 2.5f, TZ - 2.0f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 10.0f, -6.0f },
+	{ "meadow_e", 2, 12.0f, 140.0f, 325.0f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 70.0f, 0.0f },
+	{ "meadow_w", 2, 12.0f, 160.0f, 315.0f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 250.0f, -2.0f },
+	{ "burn_nw", 4, 9.0f, 380.0f, 384.0f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 300.0f, 0.0f },
+	{ "cabin_n", 3, 15.0f, 250.0f, 455.0f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 5.0f, 4.0f },
+	{ "tarn_seat", 2, 18.0f, 0, 0, 0, 104.0f, 4.0f, 200.0f, SHOT_SEAT, 3 },
+	{ "rain_day11", 11, 14.0f, 0, 0, 0, 250.0f, 1.5f, 470.0f, SHOT_SEAT, 6 },
+	{ "smoke_day5", 5, 17.3f, TX + 2.6f, TZ + 0.6f, 1.62f, 0, 0, 0, SHOT_PLAIN, 0, 0, 0, 101.0f, 13.0f },
+};
+#else
+static const shot_t SHOTS[] = {
+	{ "title", 1, 18.3f, 0, 0, 0, 0, 0, 0, SHOT_TITLE, 0 },
 	{ "trailhead_day1", 1, 15.55f, START_X, START_Z, 1.62f, 252.0f, 6.0f, 440.0f, SHOT_DAY_CARD, 0 },
 	{ "tower_from_trail", 1, 16.2f, 263.0f, 296.0f, 1.62f, TX, 9.0f, TZ, SHOT_PLAIN, 0 },
 	{ "meadow_afternoon", 1, 17.2f, 156.0f, 318.0f, 1.62f, 96.0f, 3.0f, 344.0f, SHOT_PLAIN, 0 },
@@ -76,6 +101,7 @@ static const shot_t SHOTS[] = {
 	{ "note_bench", 7, 18.7f, 0, 0, 0, TX, 8.0f, TZ, SHOT_READ, NOTE_BENCH },
 	{ "ending_card", 11, 21.0f, GATE_X, GATE_Z - 3.0f, 1.62f, GATE_X, 1.0f, GATE_Z + 20.0f, SHOT_ENDING, 0 },
 };
+#endif
 #define NUM_SHOTS ((int)(sizeof(SHOTS) / sizeof(SHOTS[0])))
 
 static int s_shot = -1;
@@ -108,6 +134,14 @@ static void look_at(v3 eye, float lx, float ly, float lz)
 
 static void begin_shot(const shot_t *s)
 {
+	if (s->kind == SHOT_TITLE) {
+		title_enter();
+		return;
+	}
+	if (APP != APP_PLAY) {
+		APP = APP_PLAY;
+		menu_close();
+	}
 	if (S.day != s->day) {
 		S.day = s->day;
 		S.season_dirty = true;

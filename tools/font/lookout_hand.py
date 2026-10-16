@@ -151,7 +151,7 @@ EXTRA = {
 
 FIRST, LAST = 32, 126
 EXTRA_SLOTS = sorted(EXTRA)                  # slot 95.. in the table
-SPACE_ADVANCE = 2.6
+SPACE_ADVANCE = 3.3
 LETTER_GAP = 1.15
 SLANT = 0.14
 VARIANTS = 2
@@ -241,7 +241,9 @@ def render_glyph(code, scale, variant, seed=1234):
     cov = a.reshape(height, ss, max(1, width), ss).mean(axis=(1, 3))
     cov = np.clip(cov * 1.25, 0, 1)
     advance = ((maxx - minx) + LETTER_GAP) * scale if strokes else SPACE_ADVANCE * scale
-    return cov, left, top, advance
+    # The ink starts at the pen and the advance covers the ink plus the gap, so
+    # every pair of letters (and every word space) is spaced the same.
+    return cov, -pad, top, advance
 
 
 def build_atlas(scale, atlas_w, atlas_h):

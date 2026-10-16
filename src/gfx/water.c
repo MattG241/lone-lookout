@@ -71,7 +71,7 @@ void water_draw(const daylight *d)
 	mat_vcolor();
 	vdesc_pc();
 	for (int j = s_j0; j < s_j1; j++) {
-		GX_Begin(GX_TRIANGLESTRIP, VF_3D, (s_i1 - s_i0 + 1) * 2);
+		gx_begin(GX_TRIANGLESTRIP, VF_3D, (s_i1 - s_i0 + 1) * 2);
 		for (int i = s_i0; i <= s_i1; i++) {
 			for (int k = 0; k < 2; k++) {
 				float x = i * WORLD_CELL, z = (j + k) * WORLD_CELL;

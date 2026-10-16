@@ -5,6 +5,7 @@
  * finder views, the notebook, and a developer overlay. Nothing is on screen
  * unless it is needed.
  */
+#include <malloc.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,7 +31,7 @@ static void ring(float cx, float cy, float r, float thick, GXColor c)
 	const int seg = 20;
 	mat_vcolor();
 	vdesc_2d(false);
-	GX_Begin(GX_TRIANGLESTRIP, VF_2D, (seg + 1) * 2);
+	gx_begin(GX_TRIANGLESTRIP, VF_2D, (seg + 1) * 2);
 	for (int i = 0; i <= seg; i++) {
 		float a = LL_TAU * i / seg;
 		float ca = cosf(a), sa = sinf(a);
@@ -47,7 +48,7 @@ static void dot(float cx, float cy, float r, GXColor c)
 	const int seg = 12;
 	mat_vcolor();
 	vdesc_2d(false);
-	GX_Begin(GX_TRIANGLEFAN, VF_2D, seg + 2);
+	gx_begin(GX_TRIANGLEFAN, VF_2D, seg + 2);
 	GX_Position2f32(cx, cy);
 	GX_Color4u8(c.r, c.g, c.b, c.a);
 	for (int i = 0; i <= seg; i++) {
@@ -62,7 +63,7 @@ static void line2(float x0, float y0, float x1, float y1, GXColor c)
 {
 	mat_vcolor();
 	vdesc_2d(false);
-	GX_Begin(GX_LINES, VF_2D, 2);
+	gx_begin(GX_LINES, VF_2D, 2);
 	GX_Position2f32(x0, y0);
 	GX_Color4u8(c.r, c.g, c.b, c.a);
 	GX_Position2f32(x1, y1);
@@ -249,7 +250,7 @@ static void draw_binoculars(void)
 	gfx_blend_alpha();
 	vdesc_2d(false);
 	for (int j = 0; j < NY; j++) {
-		GX_Begin(GX_TRIANGLESTRIP, VF_2D, (NX + 1) * 2);
+		gx_begin(GX_TRIANGLESTRIP, VF_2D, (NX + 1) * 2);
 		for (int i = 0; i <= NX; i++)
 			for (int k = 0; k < 2; k++) {
 				float x = W * i / NX, y = H * (j + k) / NY;
@@ -295,7 +296,7 @@ static void draw_finder(void)
 	vdesc_2d(false);
 	rgbf pc = rgb_from(UI_PAPER);
 	GXColor pg = gx_col(pc, 0.93f * a);
-	GX_Begin(GX_TRIANGLEFAN, VF_2D, 42);
+	gx_begin(GX_TRIANGLEFAN, VF_2D, 42);
 	GX_Position2f32(cx, cy);
 	GX_Color4u8(pg.r, pg.g, pg.b, pg.a);
 	for (int i = 0; i <= 40; i++) {
@@ -391,9 +392,9 @@ static void draw_ending(void)
 
 static void draw_dev_overlay(void)
 {
-#if defined(LL_SHOT_TOUR)
+#if defined(LL_SHOT_TOUR) && !defined(LL_PERF)
 	return;
-#elif !defined(LL_INPUT_SCRIPT) && !defined(LL_MENU_TEST)
+#elif !defined(LL_INPUT_SCRIPT) && !defined(LL_MENU_TEST) && !defined(LL_PERF)
 	if (!(in_held(WPAD_BUTTON_1) && in_held(WPAD_BUTTON_2))) return;
 #endif
 	char line[200];
@@ -420,6 +421,21 @@ static void draw_dev_overlay(void)
 	         storage_ok() ? "mounted" : "none", vo, OPT.look_sens, OPT.comfort, OPT.compass, OPT.subs_large, OPT.mono,
 	         OPT.vol_music, OPT.vol_ambience, OPT.vol_voice);
 	text_draw_soft(FONT_S, 20, 102, line, -1, c, 1.0f);
+	u32 total = 0;
+	for (int i = 0; i < TRI_CATS; i++) total += G.tris_last[i];
+	static const char *const FORMATS[] = { "NTSC", "PAL", "MPAL", "debug", "debug PAL", "EuRGB60" };
+	u32 tv = G.rmode->viTVMode;
+	snprintf(line, sizeof(line), "tris %.1fk (peak %.1fk)  ground %.1f  trees %.1f  tufts %.1f  props %.1f  sky %.1f  ui %.1f",
+	         total / 1000.0f, G.tris_peak / 1000.0f, G.tris_last[TRI_TERRAIN] / 1000.0f, G.tris_last[TRI_TREES] / 1000.0f,
+	         G.tris_last[TRI_TUFTS] / 1000.0f, G.tris_last[TRI_PROPS] / 1000.0f, G.tris_last[TRI_SKY] / 1000.0f,
+	         G.tris_last[TRI_UI] / 1000.0f);
+	text_draw_soft(FONT_S, 20, 126, line, -1, c, 1.0f);
+	struct mallinfo mi = mallinfo();
+	snprintf(line, sizeof(line), "video: %s %ux%u%s (efb %u) %.2f Hz %s   nunchuk %d   heap %u KB in use",
+	         (tv >> 2) < 6 ? FORMATS[tv >> 2] : "?", G.rmode->fbWidth, G.rmode->xfbHeight,
+	         (tv & 3) == VI_PROGRESSIVE ? "p" : "i", G.rmode->efbHeight, G.refresh_hz, G.widescreen ? "16:9" : "4:3",
+	         IN.nunchuk, (unsigned)(mi.uordblks / 1024));
+	text_draw_soft(FONT_S, 20, 150, line, -1, c, 1.0f);
 }
 
 /* The compass (an option): the heading, pencilled at the top of the screen. */

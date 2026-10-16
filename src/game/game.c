@@ -595,6 +595,16 @@ static void update_places(float dt)
 	S.thought_t += dt;
 	S.hint_t += dt;
 
+	/* Playing with the Remote alone: say how, once, and again if the Nunchuk
+	 * comes out later. */
+	static bool s_told_remote_only;
+	if (IN.connected && !IN.nunchuk && !P.input_locked && P.day_card > 6.0f) {
+		if (!s_told_remote_only) hint("No Nunchuk: D-pad walks and turns, 1 binoculars, 2 notebook, hold - to listen");
+		s_told_remote_only = true;
+	} else if (IN.nunchuk) {
+		s_told_remote_only = false;
+	}
+
 	/* The kettle: a minute on the stove, then the whistle and a cup. */
 	if (S.kettle_t >= 0.0f) {
 		float before = S.kettle_t;
