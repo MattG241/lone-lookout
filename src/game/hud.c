@@ -439,10 +439,10 @@ static void draw_dev_overlay(void)
 	         G.tris_last[TRI_UI] / 1000.0f);
 	text_draw_soft(FONT_S, 20, 126, line, -1, c, 1.0f);
 	struct mallinfo mi = mallinfo();
-	snprintf(line, sizeof(line), "video: %s %ux%u%s (efb %u) %.2f Hz %s   nunchuk %d   heap %u KB in use",
-	         (tv >> 2) < 6 ? FORMATS[tv >> 2] : "?", G.rmode->fbWidth, G.rmode->xfbHeight,
-	         (tv & 3) == VI_PROGRESSIVE ? "p" : "i", G.rmode->efbHeight, G.refresh_hz, G.widescreen ? "16:9" : "4:3",
-	         IN.nunchuk, (unsigned)(mi.uordblks / 1024));
+	snprintf(line, sizeof(line), "heap %u KB  nunchuk %d  video: %s %ux%u%s (efb %u) %.2f Hz %s",
+	         (unsigned)(mi.uordblks / 1024), IN.nunchuk, (tv >> 2) < 6 ? FORMATS[tv >> 2] : "?", G.rmode->fbWidth,
+	         G.rmode->xfbHeight, (tv & 3) == VI_PROGRESSIVE ? "p" : "i", G.rmode->efbHeight, G.refresh_hz,
+	         G.widescreen ? "16:9" : "4:3");
 	text_draw_soft(FONT_S, 20, 150, line, -1, c, 1.0f);
 }
 

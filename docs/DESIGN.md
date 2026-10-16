@@ -1,6 +1,6 @@
 # Lone Lookout — Game Design Document
 
-**Phase 1 of 5 · Concept & Design** · Target: Nintendo Wii (Homebrew Channel `.dol`) · Status: design approved → prototype next
+**Phase 1 of 5 · Concept & Design** · Target: Nintendo Wii (Homebrew Channel `.dol`) · Status: all five phases built (see `docs/devlog/`)
 
 > *A quiet first-person game about one late summer in a fire lookout. You walk, look,
 > listen, and sit. Someone 40 km away talks to you on the radio. Then the rain comes.*
