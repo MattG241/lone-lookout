@@ -599,7 +599,7 @@ static void update_places(float dt)
 	 * comes out later. */
 	static bool s_told_remote_only;
 	if (IN.connected && !IN.nunchuk && !P.input_locked && P.day_card > 6.0f) {
-		if (!s_told_remote_only) hint("No Nunchuk: D-pad walks and turns, 1 binoculars, 2 notebook, hold - to listen");
+		if (!s_told_remote_only) hint("No Nunchuk: the D-pad walks and turns,\n1 binoculars, 2 notebook, hold - to listen");
 		s_told_remote_only = true;
 	} else if (IN.nunchuk) {
 		s_told_remote_only = false;

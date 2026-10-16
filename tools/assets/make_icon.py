@@ -52,9 +52,14 @@ def main():
 
     # Title in Lookout Hand
     canvas = np.asarray(pil, dtype=np.float64) / 255.0
-    pen, base = 6.0, 22.0
-    for i, ch in enumerate("Lone Lookout"):
-        cov, left, top, adv = lookout_hand.render_glyph(ord(ch), 1.75, i % 2)
+    title = "Lone Lookout"
+    # As large as fits left of the tower's roof (x ~ 104).
+    scale = 1.75
+    while sum(lookout_hand.render_glyph(ord(ch), scale, i % 2)[3] for i, ch in enumerate(title)) > 97 - 5:
+        scale -= 0.05
+    pen, base = 5.0, 22.0
+    for i, ch in enumerate(title):
+        cov, left, top, adv = lookout_hand.render_glyph(ord(ch), scale, i % 2)
         x0, y0 = int(round(pen + left)), int(round(base + top))
         gh, gw = cov.shape
         x1, y1 = min(W, x0 + gw), min(H, y0 + gh)

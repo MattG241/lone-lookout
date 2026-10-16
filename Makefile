@@ -11,7 +11,7 @@
 #                   presents one frame every 10 s with the mixer stats -- tools/capture/soak.sh)
 #   make SOAKRIDGE=1 the ridge time-lapse soak: seated on the bench, days cycling (SOAK_VARIANT=ridge soak.sh)
 #   make test       host tests: the world, the story playthroughs, the music
-#   make package    dist/apps/lonelookout/{boot.dol,meta.xml,icon.png}
+#   make package    dist/apps/lonelookout/{boot.dol,meta.xml,icon.png} and dist/lonelookout-<version>.zip
 #   make run        send to a Wii running the Homebrew Channel (wiiload)
 #   make clean
 #---------------------------------------------------------------------------------
@@ -157,12 +157,16 @@ clean:
 run: $(BUILD)
 	wiiload $(OUTPUT).dol
 
+VERSION		:=	$(shell sed -n 's:.*<version>\(.*\)</version>.*:\1:p' hbc/meta.xml)
+
 package: $(BUILD)
+	@rm -rf dist/apps dist/lonelookout-*.zip
 	@mkdir -p dist/apps/lonelookout
 	@cp $(OUTPUT).dol dist/apps/lonelookout/boot.dol
 	@cp hbc/meta.xml dist/apps/lonelookout/meta.xml
 	@$(PYTHON) tools/assets/make_icon.py dist/apps/lonelookout/icon.png
-	@echo packaged dist/apps/lonelookout
+	@cd dist && $(PYTHON) -m zipfile -c lonelookout-$(VERSION).zip apps
+	@echo packaged dist/apps/lonelookout and dist/lonelookout-$(VERSION).zip
 
 #---------------------------------------------------------------------------------
 else

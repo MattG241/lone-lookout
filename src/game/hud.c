@@ -231,11 +231,17 @@ static void draw_thought(void)
 static void draw_hint(void)
 {
 	if (!S.hint) return;
-	float t = S.hint_t, a = saturatef(t / 0.4f) * (1.0f - saturatef((t - 5.0f) / 1.0f));
+	float hold = strchr(S.hint, '\n') ? 8.0f : 5.0f;          /* two lines stay longer */
+	float t = S.hint_t, a = saturatef(t / 0.4f) * (1.0f - saturatef((t - hold) / 1.0f));
 	if (a < 0.01f) return;
 	text_begin();
-	text_draw_soft(FONT_S, G.ui_w - 40.0f - text_width(FONT_S, S.hint, -1), 452.0f, S.hint, -1,
-	               gx_col(rgb_from(UI_SUBTITLE), a * 0.8f), a);
+	/* A newline splits it in two, right-aligned, the last line at the bottom. */
+	const char *nl = strchr(S.hint, '\n');
+	int len1 = nl ? (int)(nl - S.hint) : -1;
+	float y = nl ? 452.0f - text_line_height(FONT_S) : 452.0f;
+	GXColor c = gx_col(rgb_from(UI_SUBTITLE), a * 0.8f);
+	text_draw_soft(FONT_S, G.ui_w - 40.0f - text_width(FONT_S, S.hint, len1), y, S.hint, len1, c, a);
+	if (nl) text_draw_soft(FONT_S, G.ui_w - 40.0f - text_width(FONT_S, nl + 1, -1), 452.0f, nl + 1, -1, c, a);
 }
 
 /* Binoculars: a two-circle view with soft edges, faint pencil labels on known places. */
@@ -376,9 +382,11 @@ static void draw_ending(void)
 		}
 		return;
 	}
-	static const char *CREDITS[] = {
+	const char *CREDITS[] = {
 		"Lone Lookout", "", "A small game about listening.", "", "Dot, Theo, Augie, and the Harrow crew",
-		"were played by a synthesiser that only knows how to murmur.", "", "Thank you for keeping watch.",
+		vo_available() ? "were played by the voices on your SD card, and a synthesiser that murmurs."
+		               : "were played by a synthesiser that only knows how to murmur.",
+		"", "Thank you for keeping watch.",
 	};
 	float c = t - ENDING_CREDITS_AT;
 	for (int i = 0; i < (int)(sizeof(CREDITS) / sizeof(CREDITS[0])); i++) {
@@ -400,8 +408,8 @@ static void draw_dev_overlay(void)
 	char line[200];
 	text_begin();
 	GXColor c = { 255, 250, 235, 230 };
-	snprintf(line, sizeof(line), "%.1f ms  %s fps  day %d %02d:%02d  pos %.1f %.1f %.1f  yaw %.0f pitch %.0f",
-	         G.work_ms, G.vsyncs == 1 ? "60" : "30", S.day, (int)DAY.hour, (int)((DAY.hour - (int)DAY.hour) * 60),
+	snprintf(line, sizeof(line), "%.1f ms  %.0f fps  day %d %02d:%02d  pos %.1f %.1f %.1f  yaw %.0f pitch %.0f",
+	         G.work_ms, G.refresh_hz / G.vsyncs, S.day, (int)DAY.hour, (int)((DAY.hour - (int)DAY.hour) * 60),
 	         P.pos.x, P.pos.y, P.pos.z, RAD2DEG(P.yaw), RAD2DEG(P.pitch));
 	text_draw_soft(FONT_S, 20, 30, line, -1, c, 1.0f);
 	snprintf(line, sizeof(line), "mode %d hover %d radio %s surf %d area %d  chunks %d trees %d  wx c%.2f s%.2f r%.2f h%.2f",

@@ -5,10 +5,10 @@ end of a fire season as the lookout on Kestrel Knob in the fictional **Ashen Pea
 listen, sit, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states.
 Eleven in-game days, with a story path of about 4–6 hours.
 
-![Day 7: the bench call at seven (Dolphin capture)](docs/screenshots/phase4/bench_call_day7.png)
+![The title screen (Dolphin capture)](docs/screenshots/phase5/title.png)
 
-*Above: Day 7 at seven o'clock on Augie's bench, in the haze; Dot asks Theo to describe the
-sunset. Phase 4, running in Dolphin at native 640 × 480.*
+*Above: the title screen, Augie's bench on Cinder Ridge at golden hour, running in Dolphin at the
+Wii's native resolution. More in [`docs/devlog/phase5.md`](docs/devlog/phase5.md).*
 
 ## Status
 
@@ -18,7 +18,7 @@ sunset. Phase 4, running in Dolphin at native 640 × 480.*
 | 2 · Prototype (walk/look, radio v0, test area) | ✅ | [`docs/devlog/phase2.md`](docs/devlog/phase2.md) |
 | 3 · World building (the full map, interiors, days, weather, notebook) | ✅ | [`docs/devlog/phase3.md`](docs/devlog/phase3.md) |
 | 4 · Narrative & audio (the radio script, duties, sound log, music) | ✅ | [`docs/devlog/phase4.md`](docs/devlog/phase4.md) |
-| 5 · Polish & Dolphin testing | ⏳ next | |
+| 5 · Polish & Dolphin testing (saves, menus, options, performance, the test matrix, packaging) | ✅ | [`docs/devlog/phase5.md`](docs/devlog/phase5.md) |
 
 ## Building
 
@@ -40,8 +40,11 @@ no binary assets to download.
 
 ## Running
 
-**On a Wii:** copy `dist/apps/lonelookout/` to `SD:/apps/lonelookout/` and launch it from the
-Homebrew Channel. (Or `make run` to send it over the network with `wiiload`.)
+**On a Wii:** unzip `dist/lonelookout-1.0.zip` to the root of the SD card (it holds
+`apps/lonelookout/boot.dol`, `meta.xml` and `icon.png`) and launch *Lone Lookout* from the
+Homebrew Channel. (Or `make run` to send it over the network with `wiiload`; saves still need
+the SD card.) It runs in 480i, 480p (with component cables and progressive scan on), PAL 50 Hz
+and PAL 60, in 4:3 or 16:9 as set in the Wii's settings.
 
 **In Dolphin:** open `lonelookout.dol`. Recommended settings:
 
@@ -50,6 +53,9 @@ Homebrew Channel. (Or `make run` to send it over the network with `wiiload`.)
 - *Graphics → Enhancements*: **untick "Disable Copy Filter"** (Dolphin ticks it by default).
   The game uses the copy filter for its soft look.
 - *Graphics*: native (1×) internal resolution looks closest to hardware.
+- *Saves*: Dolphin's virtual SD card works. To see `save.dat` as a file, turn on *Config → Wii →
+  SD Card → Automatically Sync with Folder*; Dolphin writes the folder back when the game exits
+  (use **Save and quit**).
 
 ## Controls
 
@@ -65,13 +71,28 @@ Homebrew Channel. (Or `make run` to send it over the network with `wiiload`.)
 | D-pad ↓ | Notebook (Today, Map, Notes, Radio, Sounds): ←/→ turn pages, ↑/↓ and **A** to reread a note |
 | D-pad ←/→ | Snap turn 30° |
 | Without a Nunchuk | D-pad ↑/↓ walk, ←/→ turn, **1** binoculars, **2** notebook, hold **−** listen |
-| Hold **1 + 2** | Developer overlay (frame time, position, state, mixer stats) |
-| **HOME** | Back to the Homebrew Channel |
+| **HOME** or **+** | Pause (time stops): Resume, Options, Save and return to the title, Save and quit |
+| Hold **1 + 2** | Developer overlay (frame time, position, state, mixer stats, triangles, video mode) |
+
+The title screen has **Continue** (with the saved day and time), **New season**, **Options** and
+**Homebrew Channel**. **HOME** on the title returns to the Homebrew Channel.
 
 You arrive at the trailhead on Day 1 at 15:30. The tower is up the trail to the north. Each day
 there are weather readings to take at the shelter on the catwalk (one before noon, one after
 five) and an errand from Dot; the notebook's **Today** page keeps track. The cot lets you sleep
 from 19:00, and each morning is a new day. On the last evening, the road gate is the way out.
+
+### Saves and options
+
+The game saves to `SD:/apps/lonelookout/save.dat` when you go to sleep and when you choose
+**Save and quit** or **Save and return to the title**. A save holds the day and time, where you
+are, what you've found, written and logged, the radio log and the radio script's progress, and
+your options. It is versioned and checksummed, so a damaged file is ignored rather than loaded.
+Without an SD card the game still plays, and the title says the season won't be saved.
+
+**Options:** look sensitivity, comfort-box size, invert look, snap turn, head sway, walk bob,
+compass, larger subtitles, subtitle backing, the hearing effect (Theo's bad left ear while
+listening), mono, three volumes (sounds of the world, the radio, music) and a 30 fps lock.
 
 ### Real voices (optional)
 
@@ -87,9 +108,14 @@ murmur.
 |---|---|
 | `make SHOTS=1` | `lonelookout_shots.dol`: a scripted screenshot tour (fixed camera poses, no input) |
 | `make WALKTEST=1` | `lonelookout_walktest.dol`: synthetic Remote + Nunchuk input that walks, turns, answers the radio, calls Basin and pages through the notebook, for automated checks in Dolphin |
+| `make REMOTETEST=1` | `lonelookout_remotetest.dol`: the same walk test with no Nunchuk (the Remote-only controls) |
+| `make MENUTEST=1` | `lonelookout_menutest.dol`: scripted title, pause and Options menus, save, return to the title, Continue, Save and quit |
+| `make PERF=1` | `lonelookout_perf.dol`: the worst views for the frame budget, with the triangle counts on screen |
 | `make SOAK=1` | `lonelookout_soak.dol`: an hour of Day 11 with music back to back, calls and Listen, presenting one frame every 10 s with the mixer stats |
+| `make SOAKRIDGE=1` | `lonelookout_soakridge.dol`: the time-lapse soak, seated on Augie's bench holding Z with days cycling |
 | `tools/capture/capture_shots.sh <dir>` | Builds the tour, runs it in headless Dolphin and keeps one frame per shot |
-| `tools/capture/soak.sh <dir>` | Runs the audio soak in headless Dolphin and keeps a frame a minute |
+| `tools/capture/soak.sh <dir>` | Runs the audio soak in headless Dolphin and keeps a frame a minute (`SOAK_VARIANT=ridge` for the ridge soak) |
+| `tools/test/matrix.sh <dir>` | The Dolphin test matrix: 480p, 480i, PAL 50, PAL 60, 16:9, no Nunchuk, with and without an SD card, the menus and saves, the worst views |
 
 ## Repository layout
 
@@ -97,7 +123,7 @@ murmur.
 src/        game code (C99, libogc): core/ gfx/ input/ world/ game/ audio/
 tools/      Python generators: assets/ (textures, icon), font/ (Lookout Hand),
             worldgen/ (the Ashen Peaks map and its baker), dialogue/ (the .lls compiler),
-            music/ (the score compiler), concept/ (design renders), capture/
+            music/ (the score compiler), concept/ (design renders), capture/, test/
 data/       palette/ (colour script), dialogue/ (the radio script, .lls), music/ (six scores)
 docs/       DESIGN.md, devlog/, screenshots/, concept/
 tests/host/ host-side tests of pure game logic

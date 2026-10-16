@@ -81,7 +81,7 @@ void title_enter(void)
 	P.pos = v3_make(ia[seat].sit_eye.x, world_ground(ia[seat].sit_eye.x, ia[seat].sit_eye.z, 1e9f, NULL),
 	                ia[seat].sit_eye.z);
 	v3 eye = ia[seat].sit_eye;
-	M.yaw0 = atan2f(TOWER_X - eye.x, -(TOWER_Z - eye.z));
+	M.yaw0 = atan2f(TOWER_X - eye.x, -(TOWER_Z - eye.z)) - DEG2RAD(16.0f);   /* the tower in the right third */
 	P.yaw = M.yaw0;
 	P.pitch = DEG2RAD(-1.5f);
 	P.input_locked = true;
@@ -147,7 +147,7 @@ static int build(item_t *it)
 		}
 		ADD("New season", A_NEW);
 		ADD("Options", A_OPTIONS);
-		ADD("Back to the Homebrew Channel", A_QUIT);
+		ADD("Homebrew Channel", A_QUIT);
 		break;
 	case M_PAUSE:
 		ADD("Resume", A_RESUME);
@@ -293,8 +293,8 @@ static layout_t layout(int n)
 	case M_TITLE:
 		L.f = FONT_L;
 		L.row = 37.0f;
-		L.w = 520.0f;
-		L.x = 56.0f;
+		L.w = 300.0f;                               /* narrow, so the tower shows to its right */
+		L.x = 48.0f;
 		L.y = G.ui_h - 60.0f - n * L.row;
 		break;
 	default:
