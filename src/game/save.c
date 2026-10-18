@@ -14,6 +14,8 @@
 #include "game/radio.h"
 #include "game/listen.h"
 #include "game/director.h"
+#include "game/guide.h"
+#include "game/notebook.h"
 #include "audio/audio.h"
 #include "core/saveio.h"
 #include "core/storage.h"
@@ -43,7 +45,8 @@ static void write_settings(sw_t *w)
 	sw_u8(w, OPT.comfort);
 	u16 bits = (u16)(OPT.invert_pitch | OPT.snap_turn << 1 | OPT.head_sway << 2 | OPT.walk_bob << 3 |
 	                 OPT.compass << 4 | OPT.subs_large << 5 | OPT.subs_backing << 6 | OPT.hearing << 7 |
-	                 OPT.mono << 8 | OPT.lock30 << 9 | OPT.playtest << 10);
+	                 OPT.mono << 8 | OPT.lock30 << 9 | OPT.playtest << 10 |
+	                 OPT.manual_dialogue << 11 | OPT.film_grain << 12);
 	sw_u16(w, bits);
 	sw_u8(w, OPT.vol_music);
 	sw_u8(w, OPT.vol_ambience);
@@ -67,6 +70,8 @@ static void read_settings(sr_t *r)
 	o.mono = (b >> 8) & 1;
 	o.lock30 = (b >> 9) & 1;
 	o.playtest = (b >> 10) & 1;           /* (saves from before 1.1 read as off) */
+	o.manual_dialogue = (b >> 11) & 1;
+	o.film_grain = (b >> 12) & 1;
 	o.vol_music = sr_u8(r) % 11;
 	o.vol_ambience = sr_u8(r) % 11;
 	o.vol_voice = sr_u8(r) % 11;
@@ -102,6 +107,7 @@ static void write_game(sw_t *w)
 	story_save(w);
 	dlg_save(w);
 	radio_log_save(w);
+	guide_save(w);
 }
 
 /* Read only the day and hour, for the title screen. */
@@ -140,13 +146,13 @@ static bool read_game(const u8 *p, u32 n)
 	S.lamp_on = (f >> 4) & 1;
 	S.ended = (f >> 5) & 1;
 	S.areas_today = sr_u32(&r);
-	S.notebook_page = sr_u8(&r) % 5;
+	S.notebook_page = sr_u8(&r) % NB_PAGES;
 	S.notebook_sel = sr_u8(&r) % NOTE_COUNT;
 	S.sound_sel = sr_u8(&r) % SND_COUNT;
 	story_load(&r);
 	dlg_load(&r);
 	radio_log_load(&r);
-	if (r.bad) return false;
+	if (r.bad || !guide_load(&r)) return false;
 	/* A position that isn't on the map (or not on solid ground) falls back to
 	 * the morning spot beside the cot. */
 	if (!(P.pos.x > 2.0f && P.pos.x < WORLD_SIZE - 2.0f && P.pos.z > 2.0f && P.pos.z < WORLD_SIZE - 2.0f)) {
@@ -230,7 +236,13 @@ save_summary save_status(void)
 	return s;
 }
 
-bool save_game(void) { return write_file(true); }
+bool save_game(void)
+{
+	bool ok = write_file(true);
+	S.save_failed = !ok;
+	S.saved_t = 0.0f;
+	return ok;
+}
 bool save_settings(void) { return write_file(false); }
 
 bool save_continue(void)

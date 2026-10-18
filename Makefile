@@ -19,11 +19,19 @@
 .SUFFIXES:
 .SECONDARY:
 
+ifneq ($(strip $(MAKECMDGOALS)),)
+ifeq ($(strip $(filter-out test assets voice-plan voice-sample voices voice-pack clean,$(MAKECMDGOALS))),)
+HOST_ONLY := 1
+endif
+endif
+
+ifneq ($(HOST_ONLY),1)
 ifeq ($(strip $(DEVKITPPC)),)
 $(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>devkitPPC")
 endif
 
 include $(DEVKITPPC)/wii_rules
+endif
 
 #---------------------------------------------------------------------------------
 TARGET		:=	lonelookout
@@ -46,6 +54,11 @@ ifeq ($(SHOTS),1)
 DEFINES		+=	-DLL_SHOT_TOUR=1
 TARGET		:=	lonelookout_shots
 BUILD		:=	build_shots
+endif
+ifeq ($(REVIEW),1)
+DEFINES += -DLL_SHOT_TOUR=1 -DLL_REVIEW_TOUR=1
+TARGET := lonelookout_review
+BUILD := build_review
 endif
 ifeq ($(WALKTEST),1)
 DEFINES		+=	-DLL_INPUT_SCRIPT=1
@@ -120,7 +133,7 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) -L$(LIBOGC_LIB)
 export DEFINES
 
-.PHONY: all $(BUILD) clean run package test
+.PHONY: all $(BUILD) clean run package test assets voice-plan voice-sample voices voice-pack
 
 # Host-side tests of pure game logic (system compiler, no Wii toolchain needed).
 HOST_CC		?=	cc
@@ -130,6 +143,8 @@ HOST_TEST_SRC	:=	tests/host/test_world.c tests/host/blobs_host.c src/world/ashen
 HOST_STORY_SRC	:=	tests/host/test_story.c src/game/dialogue.c src/audio/voice.c src/core/noise.c src/core/saveio.c
 HOST_AUDIO_SRC	:=	tests/host/test_audio.c src/audio/music.c src/audio/ambient.c
 HOST_SAVE_SRC	:=	tests/host/test_save.c src/core/saveio.c src/game/dialogue.c
+HOST_GUIDE_SRC := tests/host/test_guide.c src/game/guide.c src/core/saveio.c
+HOST_GAME_SAVE_SRC := tests/host/test_game_save.c src/game/save.c src/game/guide.c src/core/saveio.c
 
 test: $(GEN)/assets.mk
 	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
@@ -140,12 +155,28 @@ test: $(GEN)/assets.mk
 		-o tests/host/run_audio $(HOST_AUDIO_SRC) -lm
 	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Wno-unused-parameter -Itests/host/stub -Isrc -I$(GEN) \
 		-o tests/host/run_save $(HOST_SAVE_SRC) -lm
+	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Itests/host/stub -Isrc -I$(GEN) \
+		-o tests/host/run_guide $(HOST_GUIDE_SRC) -lm
+	@$(HOST_CC) -std=gnu11 -O1 -Wall -Wextra -Itests/host/stub -Isrc -I$(GEN) \
+		-o tests/host/run_game_save $(HOST_GAME_SAVE_SRC) -lm
 	@./tests/host/run_tests
 	@./tests/host/run_story
 	@./tests/host/run_audio
 	@./tests/host/run_save
+	@./tests/host/run_guide
+	@./tests/host/run_game_save
 	@$(PYTHON) tests/host/test_generate_vo.py
 	@$(PYTHON) tests/host/test_playtest_summary.py
+
+assets: $(GEN)/assets.mk
+voice-plan:
+	@$(PYTHON) tools/voice/generate_vo.py --plan
+voice-sample:
+	@$(PYTHON) tools/voice/generate_vo.py --sample
+voices:
+	@$(PYTHON) tools/voice/generate_vo.py
+voice-pack:
+	@$(PYTHON) tools/voice/generate_vo.py --pack
 
 all: $(BUILD)
 
@@ -155,7 +186,7 @@ $(BUILD):
 
 clean:
 	@echo clean ...
-	@rm -fr build build_shots build_walktest build_soak build_menutest build_perf build_remotetest build_soakridge $(GEN) dist tests/host/run_tests tests/host/run_story tests/host/run_audio tests/host/run_save *.elf *.dol *.map
+	@rm -fr build build_shots build_review build_walktest build_soak build_menutest build_perf build_remotetest build_soakridge $(GEN) dist tests/host/run_tests tests/host/run_story tests/host/run_audio tests/host/run_save tests/host/run_guide tests/host/run_game_save *.elf *.dol *.map
 
 run: $(BUILD)
 	wiiload $(OUTPUT).dol

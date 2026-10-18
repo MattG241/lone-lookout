@@ -7,6 +7,7 @@
 #include "gfx/gfx.h"
 #include "core/noise.h"
 #include "assets.h"
+#include "game/game.h"
 
 #define FIFO_SIZE (256 * 1024)
 /* Meshes are wound counter-clockwise seen from outside (right-handed, the
@@ -29,7 +30,7 @@ static bool s_first_frame = true;
 
 /* Copy filter: the hardware deflicker filter, reused as gentle softening.
  * Seven taps over lines (-1,-1, 0,0,0, +1,+1), summing to 64. */
-static u8 s_soft_vfilter[7] = { 6, 6, 10, 20, 10, 6, 6 };
+static u8 s_soft_vfilter[7] = { 2, 4, 8, 36, 8, 4, 2 };
 
 GXColor gx_col(rgbf c, float a)
 {
@@ -626,8 +627,9 @@ void gfx_post(const daylight *d, float fade)
 	/* 3. Paper grain + vignette in one pass: dst = 2 * dst * src.
 	 *    The grain texture is centred on 0.5, so 0.5 * vignette = neutral. */
 	GX_SetBlendMode(GX_BM_BLEND, GX_BL_DSTCLR, GX_BL_SRCCLR, GX_LO_CLEAR);
-	mat_vcolor_tex(&T_GRAIN, false, false);
-	vdesc_2d(true);
+	if (OPT.film_grain) mat_vcolor_tex(&T_GRAIN, false, false);
+	else mat_vcolor();
+	vdesc_2d(OPT.film_grain);
 	const int NX = 6, NY = 4;
 	float ox = (float)(hash32(G.frame / 2u) & 127) / 128.0f;
 	float oy = (float)(hash32(G.frame / 2u + 77u) & 127) / 128.0f;
@@ -640,10 +642,10 @@ void gfx_post(const daylight *d, float fade)
 				float dx = (u - 0.5f) * 1.25f, dy = v - 0.5f;
 				float r = sqrtf(dx * dx + dy * dy) / 0.72f;
 				float vig = 1.0f - 0.22f * smoothstepf(0.45f, 1.05f, r) - 0.06f * fade;
-				u8 c = (u8)(clampf(vig * (1.0f - fade), 0.0f, 1.0f) * 255.0f);
+				u8 c = (u8)(clampf(vig * (1.0f - fade), 0.0f, 1.0f) * (OPT.film_grain ? 255.0f : 127.5f));
 				GX_Position2f32(u * W, v * H);
 				GX_Color4u8(c, c, c, 255);
-				GX_TexCoord2f32(ox + u * su, oy + v * sv);
+				if (OPT.film_grain) GX_TexCoord2f32(ox + u * su, oy + v * sv);
 			}
 		}
 		GX_End();

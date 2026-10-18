@@ -5,6 +5,11 @@ end of a fire season as the lookout on Kestrel Knob in the fictional **Ashen Pea
 listen, sit, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states.
 Eleven in-game days, with a story path of about 4–6 hours.
 
+**1.2: A season worth keeping.** Eight destinations with optional map pins, eight
+keepsakes to discover by watching and listening, a field guide, a readable radio history,
+automatic saves between calls, an in-game control guide, and a cleaner picture with subtle
+pollen, autumn leaves, fireflies and dawn mist. Existing 1.0/1.1 seasons still load.
+
 ![The title screen (Dolphin capture)](docs/screenshots/phase5/title.png)
 
 *Above: the title screen, Augie's bench on Cinder Ridge at golden hour, running in Dolphin at the
@@ -40,7 +45,7 @@ no binary assets to download.
 
 ## Running
 
-**On a Wii:** unzip `dist/lonelookout-1.1.zip` to the root of the SD card (it holds
+**On a Wii:** unzip `dist/lonelookout-1.2.zip` to the root of the SD card (it holds
 `apps/lonelookout/boot.dol`, `meta.xml` and `icon.png`) and launch *Lone Lookout* from the
 Homebrew Channel. (Or `make run` to send it over the network with `wiiload`; saves still need
 the SD card.) It runs in 480i, 480p (with component cables and progressive scan on), PAL 50 Hz
@@ -75,7 +80,7 @@ and PAL 60, in 4:3 or 16:9 as set in the Wii's settings.
 | Hold **1 + 2** | Developer overlay (frame time, position, state, mixer stats, triangles, video mode) |
 
 The title screen has **Continue** (with the saved day and time), **New season**, **Options** and
-**Homebrew Channel**. **HOME** on the title returns to the Homebrew Channel.
+**How to play**, plus **Homebrew Channel**. **HOME** on the title returns to the Homebrew Channel.
 
 You arrive at the trailhead on Day 1 at 15:30. The tower is up the trail to the north. Each day
 there are weather readings to take at the shelter on the catwalk (one before noon, one after
@@ -84,6 +89,24 @@ the day's work is done, the rest of the day is yours: wander, or sit and let tim
 lets you sleep from 19:00, and each morning is a new day. On the last evening, the road gate is
 the way out, and the closing card remembers a few of the things you did.
 
+### Places and things worth keeping
+
+The notebook has **Places** and **Moments** pages alongside Today, Map, Notes, Radio and Sounds.
+Places gives a short invitation to each of eight stops, with notes about the best time to visit.
+On Places or Map, **up/down** selects a destination and **A** pins or unpins it. A pinned stop
+adds a bearing and straight-line distance to the view. Follow the trails around steep ground;
+the marker is a compass bearing, not a walking route.
+
+Moments holds eight optional keepsakes. Listen on the dock at dawn, watch the fawns through
+binoculars, read Augie's flower book, sit on the ridge at sunset, hear the burn, shelter through
+the dry storm, listen to the first rain, or find the quiet after dark. Each page gives a gentle
+hint before you find it, then Theo's own words and the day you kept it. Nothing is required to
+finish the season. Places, pins and keepsakes survive saving and continuing.
+
+**Radio history:** up/down scrolls earlier and later entries. **Options → Conversation pace →
+Press A** lets each spoken line finish and waits for you to advance. Film grain is optional and
+off by default. **How to play** is available from both title and pause menus.
+
 ### Saves and options
 
 The game saves to `SD:/apps/lonelookout/save.dat` when you go to sleep and when you choose
@@ -91,6 +114,9 @@ The game saves to `SD:/apps/lonelookout/save.dat` when you go to sleep and when 
 are, what you've found, written and logged, the radio log and the radio script's progress, and
 your options. It is versioned and checksummed, so a damaged file is ignored rather than loaded.
 Without an SD card the game still plays, and the title says the season won't be saved.
+The game also autosaves about every 90 seconds while walking or sitting between calls. A small
+message confirms the save. If a manual save fails, the pause menu stays open so you can retry.
+Back up `save.dat` before trying a new build, and use Save and quit before removing the card.
 
 **Options:** look sensitivity, comfort-box size, invert look, snap turn, head sway, walk bob,
 compass, larger subtitles, subtitle backing, the hearing effect (Theo's bad left ear while
@@ -108,22 +134,33 @@ by a recording: `SD:/apps/lonelookout/vo/<LINE_ID>.pcm` (raw 16-bit little-endia
 [ElevenLabs](https://elevenlabs.io) text to speech, cast from `data/voices.json` (Dot, Theo
 and the Harrow crew, matched to the character notes in the design):
 
+Only **Python 3's standard library** is needed for the voice tool. It prepares its own dialogue
+list, so no Wii compiler, numpy, Pillow or full asset build is required:
+
 ```sh
-export ELEVENLABS_API_KEY=...                     # from your ElevenLabs account; never commit it
-python3 tools/voice/generate_vo.py --plan         # what it would voice, and the cost in credits
+python3 tools/voice/generate_vo.py --plan         # works offline before creating an API key
+export ELEVENLABS_API_KEY=...                     # account key with TTS, Voices, User and Models access
+python3 tools/voice/generate_vo.py --plan         # checks casting, remaining allowance and model rate
 python3 tools/voice/generate_vo.py --sample       # a few lines per speaker: voices/samples/*.wav
 python3 tools/voice/generate_vo.py --list-voices  # recast in data/voices.json if you like
-python3 tools/voice/generate_vo.py                # voice as much as this month's credits allow
-make package                                      # + dist/lonelookout-1.1-voices.zip
+python3 tools/voice/generate_vo.py --calls D1_ARRIVE --budget 1000 # try the opening conversation
+python3 tools/voice/generate_vo.py                # continue with as much as the allowance permits
+python3 tools/voice/generate_vo.py --pack         # dist/lonelookout-1.2-voices.zip, no compiler or key
 ```
+
+On Windows PowerShell, use `$env:ELEVENLABS_API_KEY="your key"` and `python` in place of
+`python3`. Samples consume allowance; `--budget` applies to samples as well as full generation.
+The game reports the number of recorded lines it found at the bottom of **Options**.
 
 The script is 505 lines, about 24,000 characters (the 20 lines that read out live values stay
 murmured). It voices whole calls in story order and never starts a call it can't finish, so a
 partial set never switches voices mid-conversation; run it again when your credits renew and it
-carries on where it stopped. On the free plan (about 10,000 credits a month) with the default
-Flash model, that's most of the story in the first month and the rest in the second. Unzip the
-voices zip to the SD card's root next to the game. ElevenLabs' free plan is for non-commercial use
-and asks you to credit them; the game's credits do that when these voices are on the card.
+carries on where it stopped. Check the allowance and rate for your own ElevenLabs account;
+the tool's plan is an estimate. Unzip the voices zip to the SD card's root next to the game,
+then restart. Keep `voices/manifest.json` with your local recordings so resuming can skip lines
+already generated. The pack includes an ElevenLabs attribution marker for the game credits.
+If your account requires MP3 output, install ffmpeg for conversion. Check ElevenLabs' current
+terms for your intended use.
 
 ### Playtesting
 

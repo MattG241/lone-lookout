@@ -16,8 +16,12 @@ Primitives:  L(x0, y0, x1, y1)            straight stroke
 
 import math
 
-import numpy as np
-from PIL import Image, ImageDraw
+def _raster_modules():
+    # The dialogue compiler only needs slot_codes(). Keep that path usable
+    # with Python alone; the image libraries are needed only when baking fonts.
+    global np, Image, ImageDraw
+    import numpy as np
+    from PIL import Image, ImageDraw
 
 
 def L(x0, y0, x1, y1):
@@ -197,6 +201,7 @@ def _sample(prim, rng, wobble):
 
 def render_glyph(code, scale, variant, seed=1234):
     """Rasterise one glyph. Returns (coverage HxW float, left_px, top_px, advance_px)."""
+    _raster_modules()
     rng = np.random.default_rng(seed + code * 7 + variant * 1009)
     prims = glyph_strokes(code)
     ss = 4                                     # supersampling
@@ -247,6 +252,7 @@ def render_glyph(code, scale, variant, seed=1234):
 
 
 def build_atlas(scale, atlas_w, atlas_h):
+    _raster_modules()
     """Pack all glyph variants into one atlas. Returns (atlas, table, line metrics)."""
     atlas = np.zeros((atlas_h, atlas_w))
     table = []

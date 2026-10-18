@@ -13,6 +13,7 @@ to the SD card (or use the voices zip `make package` builds from it).
     python3 tools/voice/generate_vo.py --list-voices   # the voices your account can use
     python3 tools/voice/generate_vo.py --sample        # a few lines per speaker, as WAVs to listen to
     python3 tools/voice/generate_vo.py                 # voice as much as the quota allows
+    python3 tools/voice/generate_vo.py --pack          # ready-to-extract SD-card zip
 
 It voices whole calls in story order (Day 1 first, the check-ins last) and
 stops before a call it can't finish, so the game never switches between a
@@ -38,6 +39,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import wave
+import zipfile
+import xml.etree.ElementTree as ET
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 API = "https://api.elevenlabs.io"
@@ -55,6 +58,20 @@ MAX_SECONDS = 30              # the game's per-line buffer (VO_MAX_SECONDS in sr
 
 def read_lines(path=None):
     """[(line_id, speaker, text)] in script order, without the LIVE lines."""
+    if path is None and LINES == os.path.join(ROOT, "gen", "vo_lines.txt"):
+        # Voice generation needs only the dialogue compiler, not textures, numpy,
+        # devkitPro or a full Wii build. Refresh it when the script changes.
+        import glob
+        sources = glob.glob(os.path.join(ROOT, "data", "dialogue", "*.lls"))
+        compiler = os.path.join(ROOT, "tools", "dialogue", "compile_lls.py")
+        if not os.path.exists(LINES) or any(os.path.getmtime(p) > os.path.getmtime(LINES) for p in sources + [compiler]):
+            sys.path.insert(0, os.path.dirname(compiler))
+            import compile_lls
+            _, _, stats = compile_lls.compile_dir(os.path.join(ROOT, "data", "dialogue"))
+            os.makedirs(os.path.dirname(LINES), exist_ok=True)
+            with open(LINES + ".tmp", "w", encoding="utf-8") as f:
+                f.write(stats["vo"])
+            os.replace(LINES + ".tmp", LINES)
     out = []
     with open(path or LINES, encoding="utf-8") as f:
         for raw in f:
@@ -199,9 +216,9 @@ def synthesize(key, voice_id, model, settings, text, prev_text, next_text, seed)
         if e.status not in (400, 403, 422) or "format" not in e.body.lower():
             raise
     # This plan can't have PCM: take MP3 and decode it with ffmpeg.
-    mp3 = api(key, "POST", path, body, accept="audio/mpeg", query={"output_format": "mp3_22050_32"})
     if not shutil.which("ffmpeg"):
-        raise SystemExit("the API returned MP3 and ffmpeg isn't installed to decode it")
+        raise SystemExit("this account needs MP3 conversion: install ffmpeg and run again (no MP3 was requested)")
+    mp3 = api(key, "POST", path, body, accept="audio/mpeg", query={"output_format": "mp3_22050_32"})
     pcm = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", "pipe:0", "-f", "s16le", "-ac", "1",
                           "-ar", str(RATE), "pipe:1"], input=mp3, capture_output=True, check=True).stdout
     return array.array("h", pcm)
@@ -279,6 +296,26 @@ def save_manifest(m):
     os.replace(tmp, MANIFEST)
 
 
+def pack_voices(destination=None):
+    """A ready-to-extract SD-card pack, without needing the Wii compiler or key."""
+    if not os.path.isdir(OUT):
+        raise SystemExit("no generated voices yet: run generate_vo.py first")
+    names = sorted(n for n in os.listdir(OUT)
+                   if (n.endswith(".pcm") or n == "ELEVENLABS.txt") and os.path.isfile(os.path.join(OUT, n)))
+    count = sum(n.endswith(".pcm") for n in names)
+    if not count:
+        raise SystemExit("no PCM recordings to package yet")
+    version = ET.parse(os.path.join(ROOT, "hbc", "meta.xml")).findtext("version") or "latest"
+    destination = destination or os.path.join(ROOT, "dist", f"lonelookout-{version}-voices.zip")
+    os.makedirs(os.path.dirname(os.path.abspath(destination)), exist_ok=True)
+    with zipfile.ZipFile(destination + ".tmp", "w", zipfile.ZIP_DEFLATED) as z:
+        for name in names:
+            z.write(os.path.join(OUT, name), "apps/lonelookout/vo/" + name)
+    os.replace(destination + ".tmp", destination)
+    print(f"{count} recordings packaged: {destination}")
+    return destination
+
+
 def plan(calls, manifest, casting_hash):
     """Calls still to voice, in order, with their characters."""
     todo = []
@@ -296,26 +333,21 @@ def main():
     ap.add_argument("--plan", action="store_true", help="show what would be voiced and its cost, then stop")
     ap.add_argument("--list-voices", action="store_true", help="list the voices this account can use")
     ap.add_argument("--sample", action="store_true", help="voice a few lines per speaker as WAVs in voices/samples")
+    ap.add_argument("--pack", action="store_true", help="package existing recordings as an SD-card zip; no API key needed")
     ap.add_argument("--budget", type=int, default=0, help="spend at most this many credits (default: what's left)")
     ap.add_argument("--calls", nargs="*", help="only these calls (e.g. D7_SEVEN D11_LAST)")
     ap.add_argument("--model", help="override the model in data/voices.json")
     args = ap.parse_args()
-
-    with open(CASTING, encoding="utf-8") as f:
-        casting = json.load(f)
-    model = args.model or casting.get("model", "eleven_flash_v2_5")
-    calls = group_calls(read_lines())
-    if args.calls:
-        calls = [(c, l) for c, l in calls if c in set(args.calls)]
-    total_chars = sum(len(speakable(t)) for _, ls in calls for _, _, t in ls)
+    if args.budget < 0:
+        ap.error("--budget must be zero or a positive credit limit")
+    if args.pack:
+        pack_voices()
+        return
 
     key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
-    if not key:
-        n = sum(len(ls) for _, ls in calls)
-        print(f"{n} lines in {len(calls)} calls, {total_chars} characters to voice.")
-        raise SystemExit("ELEVENLABS_API_KEY isn't set: add it to the environment (never to the repo).")
-
     if args.list_voices:
+        if not key:
+            raise SystemExit("set ELEVENLABS_API_KEY before listing your account's voices")
         try:
             voices = list_voices(key)
         except ApiError as e:
@@ -324,6 +356,27 @@ def main():
             labels = ", ".join(f"{k}: {v}" for k, v in (v.get("labels") or {}).items())
             print(f"{v['name']:<28} {v['voice_id']}  [{v.get('category', '')}] {labels}")
         return
+
+    with open(CASTING, encoding="utf-8") as f:
+        casting = json.load(f)
+    model = args.model or casting.get("model", "eleven_flash_v2_5")
+    calls = group_calls(read_lines())
+    if args.calls:
+        unknown = set(args.calls) - {c for c, _ in calls}
+        if unknown:
+            ap.error("unknown call IDs: " + ", ".join(sorted(unknown)))
+        calls = [(c, l) for c, l in calls if c in set(args.calls)]
+    total_chars = sum(len(speakable(t)) for _, ls in calls for _, _, t in ls)
+
+    if not key:
+        n = sum(len(ls) for _, ls in calls)
+        print(f"{n} lines in {len(calls)} calls, {total_chars} characters to voice.")
+        if args.plan:
+            print("Offline plan. Set ELEVENLABS_API_KEY to check casting, allowance and the account's model rate.")
+            for call, lines in calls:
+                print(f"  {call:<14} {len(lines):3d} lines  {sum(len(speakable(t)) for _, _, t in lines):5d} characters")
+            return
+        raise SystemExit("ELEVENLABS_API_KEY isn't set: add it to the environment (never to the repo).")
 
     try:
         cast_map = cast(key, casting)
@@ -349,8 +402,9 @@ def main():
                 if spk in cast_map and len(picks.setdefault(spk, [])) < 3 and 40 < len(text) < 140:
                     picks[spk].append((lid, spk, text))
         cost = sum(len(speakable(t)) for ls in picks.values() for _, _, t in ls) * rate
-        if cost > left:
-            raise SystemExit(f"the samples need {cost:.0f} credits and {left} are left")
+        available = min(left, args.budget) if args.budget else left
+        if cost > available:
+            raise SystemExit(f"the samples need {cost:.0f} credits and the available budget is {available}")
         for spk, ls in picks.items():
             for lid, _, text in ls:
                 vid, _, settings = cast_map[spk]

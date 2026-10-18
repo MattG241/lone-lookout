@@ -2,12 +2,12 @@
 <app version="1">
   <name>Lone Lookout</name>
   <coder>Lone Lookout contributors</coder>
-  <version>1.1</version>
-  <release_date>20261016</release_date>
+  <version>1.2</version>
+  <release_date>20261018</release_date>
   <short_description>A quiet season in a fire lookout</short_description>
-  <long_description>Spend the last eleven days of a fire season as the lookout on Kestrel Knob in the Ashen Peaks. Walk the six places around the tower, read the old lookout's notes, listen for the sounds he logged, keep the weather readings, and talk on the radio with Dot at Basin Station. No combat, no timers, no fail states. The story takes four to six hours.
+  <long_description>Spend the last eleven days of a fire season as the lookout on Kestrel Knob in the Ashen Peaks. Walk the trails, read the old lookout's notes, listen for the sounds he logged, keep the weather readings, and talk on the radio with Dot at Basin Station. Discover eight places and eight optional keepsakes, pin destinations in your field guide, and watch the valley change from summer into autumn. No combat, no timers, no fail states. The story takes four to six hours.
 
 Controls (Wii Remote + Nunchuk): stick to walk, point to look, A to use or sit, B for the radio, hold C to listen, hold Z to stride, D-pad up for the binoculars, D-pad down for the notebook, HOME or + to pause. Without a Nunchuk: D-pad to walk and turn, 1 binoculars, 2 notebook, hold - to listen; seated, hold the D-pad down to let time pass.
 
-Saves go to sd:/apps/lonelookout/save.dat. Recorded voice lines, if you have them, go in sd:/apps/lonelookout/vo/.</long_description>
+The game autosaves between conversations. Saves go to sd:/apps/lonelookout/save.dat. Recorded voice lines go in sd:/apps/lonelookout/vo/. How to play is available from the title and pause menus. Existing saves remain compatible.</long_description>
 </app>

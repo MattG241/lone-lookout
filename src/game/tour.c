@@ -15,17 +15,22 @@
 #include "game/story.h"
 #include "game/listen.h"
 #include "game/menu.h"
+#include "game/guide.h"
 #include "world/world.h"
 #include "world/sites.h"
 
 #ifdef LL_SHOT_TOUR
 
 #define BLACK_FRAMES 12
+#ifdef LL_REVIEW_TOUR
+#define HOLD_FRAMES 48
+#else
 #define HOLD_FRAMES 110
+#endif
 
 typedef enum {
 	SHOT_PLAIN, SHOT_DAY_CARD, SHOT_CHOICES, SHOT_SEAT, SHOT_LAMP, SHOT_NOTEBOOK, SHOT_BINOCULARS, SHOT_FINDER,
-	SHOT_READ, SHOT_ENDING, SHOT_LISTEN, SHOT_TITLE,
+	SHOT_READ, SHOT_ENDING, SHOT_LISTEN, SHOT_TITLE, SHOT_MENU, SHOT_PIN,
 } shot_kind;
 
 typedef struct {
@@ -44,7 +49,20 @@ typedef struct {
 #define TX TOWER_X
 #define TZ TOWER_Z
 
-#ifdef LL_PERF
+#ifdef LL_REVIEW_TOUR
+static const shot_t SHOTS[] = {
+	{ "title", 1, 18.3f, 0, 0, 0, 0, 0, 0, SHOT_TITLE },
+	{ "ridge", 1, 18.65f, 0, 0, 0, TX, 8.0f, TZ, SHOT_SEAT, 4 },
+	{ "tarn_dawn", 2, 6.4f, 0, 0, 0, 104, 4, 200, SHOT_SEAT, 3 },
+	{ "fireflies", 2, 21.0f, 156, 150, 1.62f, 124, 1, 136, SHOT_PLAIN },
+	{ "destination", 2, 12.5f, 120, 330, 1.62f, 196, 1, 213, SHOT_PIN },
+	{ "map", 4, 10.4f, TX, TZ + 1, 1.62f, TX, 1, TZ - 2, SHOT_NOTEBOOK, NB_MAP },
+	{ "places", 4, 10.4f, TX, TZ + 1, 1.62f, TX, 1, TZ - 2, SHOT_NOTEBOOK, NB_PLACES },
+	{ "moments", 4, 10.4f, TX, TZ + 1, 1.62f, TX, 1, TZ - 2, SHOT_NOTEBOOK, NB_MOMENTS },
+	{ "help", 1, 16, TX, TZ + 1, 1.62f, TX, 1, TZ - 2, SHOT_MENU, 5 },
+	{ "options", 1, 16, TX, TZ + 1, 1.62f, TX, 1, TZ - 2, SHOT_MENU, MENU_OPTIONS },
+};
+#elif defined(LL_PERF)
 /* The worst views for the frame budget (make PERF=1), shown with the
  * developer overlay. DESIGN.md section 11 names the ridge at golden hour,
  * looking south-west, as the heaviest. */
@@ -100,6 +118,8 @@ static const shot_t SHOTS[] = {
 	  CALL_D1_ARRIVE + 1, 1 },
 	{ "note_bench", 7, 18.7f, 0, 0, 0, TX, 8.0f, TZ, SHOT_READ, NOTE_BENCH },
 	{ "ending_card", 11, 21.0f, GATE_X, GATE_Z - 3.0f, 1.62f, GATE_X, 1.0f, GATE_Z + 20.0f, SHOT_ENDING, 0 },
+	{ "field_guide", 4, 10.4f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2, SHOT_NOTEBOOK, NB_PLACES },
+	{ "moments", 4, 10.4f, TX + 0.3f, TZ + 1.2f, 1.62f, TX, 1.0f, TZ - 2, SHOT_NOTEBOOK, NB_MOMENTS },
 };
 #endif
 #define NUM_SHOTS ((int)(sizeof(SHOTS) / sizeof(SHOTS[0])))
@@ -142,6 +162,7 @@ static void begin_shot(const shot_t *s)
 		APP = APP_PLAY;
 		menu_close();
 	}
+	menu_close();
 	if (S.day != s->day) {
 		S.day = s->day;
 		S.season_dirty = true;
@@ -172,6 +193,15 @@ static void begin_shot(const shot_t *s)
 	dlg_init();
 	story_init();
 	story_new_day(S.day);
+	guide_init();
+	if (s->kind == SHOT_NOTEBOOK) {
+		GUIDE.visited = 0xA7;
+		GUIDE.selected = 3;
+		GUIDE.pin = 3;
+		guide_keep(0, 2);
+		guide_keep(1, 2);
+		guide_keep(2, 3);
+	}
 	if (s->play1) play_through(s->play1 - 1);
 	if (s->kind == SHOT_NOTEBOOK) S.obs_am = true;
 	listen_debug_force(s->kind == SHOT_LISTEN);
@@ -209,6 +239,14 @@ static void begin_shot(const shot_t *s)
 	if (s->call1) radio_debug_call(s->call1 - 1, s->lines);
 
 	switch (s->kind) {
+	case SHOT_MENU:
+		menu_debug_screen(s->arg, s->arg == MENU_OPTIONS ? 17 : 0);
+		break;
+	case SHOT_PIN:
+		GUIDE.selected = GUIDE.pin = 6;
+		S.notice_t = 1.0f;
+		game_notice("Larkspur Meadow", "A new place in your field guide.");
+		break;
 	case SHOT_ENDING:
 		P.mode = MODE_ENDING;
 		S.ending_t = 8.5f;

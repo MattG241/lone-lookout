@@ -26,5 +26,6 @@ bool menu_quit_requested(void);       /* back to the Homebrew Channel */
 /* For the scripted menu test: which screen is up. */
 enum { MENU_NONE, MENU_TITLE, MENU_PAUSE, MENU_OPTIONS, MENU_CONFIRM_NEW };
 int menu_screen(void);
+void menu_debug_screen(int screen, int selected);   /* scripted screenshot tour */
 
 #endif

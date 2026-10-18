@@ -220,6 +220,7 @@ static void write_down(int id, const char *thought)
 {
 	if (S.sound_day[id]) return;
 	S.sound_day[id] = (u8)S.day;
+	game_notice("A sound worth keeping", SOUNDS[id].name);
 	audio_ui(UI_PENCIL);
 	playtest_event("sound", "%s", SOUNDS[id].name);
 	story_raise(FLAG_SOUND_LOGGED);

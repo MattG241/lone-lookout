@@ -18,6 +18,7 @@
 #include "game/listen.h"
 #include "game/director.h"
 #include "game/menu.h"
+#include "game/guide.h"
 #include "audio/vo.h"
 #include "core/storage.h"
 #include "audio/audio.h"
@@ -456,6 +457,47 @@ static void draw_compass(void)
 	centred(FONT_S, 30.0f, s, gx_col(rgb_from(UI_SUBTITLE), 0.75f), 0.75f);
 }
 
+static void draw_field_hud(void)
+{
+	if (menu_active() || (P.mode != MODE_WALK && P.mode != MODE_SIT) || P.zoom > 0.1f ||
+	    radio_in_call() || P.day_card < 7.0f || listen_amount() > 0.3f) return;
+	GXColor paper = gx_col(rgb_from(UI_SUBTITLE), 0.9f);
+	float dist, angle;
+	if (guide_bearing(P.pos, P.yaw, &dist, &angle)) {
+		guide_place p = guide_get(GUIDE.pin);
+		char line[96];
+		const char *arrow = fabsf(angle) < DEG2RAD(14.0f) ? "^" : angle < 0 ? "<" : ">";
+		if (dist < p.radius) snprintf(line, sizeof(line), "%s  You are here", p.name);
+		else snprintf(line, sizeof(line), "%s  %s  %.0f m", arrow, p.name, dist);
+		text_begin();
+		centred(FONT_S, 55, line, paper, 0.9f);
+	}
+	if (S.notice[0] && S.notice_t < 6.0f) {
+		float a = saturatef(S.notice_t * 3.0f) * saturatef(6.0f - S.notice_t);
+		float w = 300, x = G.ui_w - w - 26, y = 82;
+		mat_vcolor();
+		gfx_blend_alpha();
+		ui_rect(x, y, w, 82, (GXColor){ 21, 30, 32, (u8)(215 * a) });
+		ui_rect(x, y, 3, 82, (GXColor){ 220, 173, 107, (u8)(255 * a) });
+		text_begin();
+		text_draw(FONT_S, x + 15, y + 25, S.notice, -1, gx_col(rgb_from(UI_SPEAKER_DOT), a));
+		int st[2], ln[2];
+		int n = text_wrap(FONT_S, S.notice_detail, w - 30, st, ln, 2);
+		for (int i = 0; i < n; i++) text_draw(FONT_S, x + 15, y + 49 + i * 21, S.notice_detail + st[i], ln[i],
+		                                     gx_col(rgb_from(UI_SUBTITLE), a));
+	}
+	if (S.saved_t < 4.0f) {
+		text_begin();
+		text_draw_soft(FONT_S, 28, 35, S.save_failed ? "Could not save to the SD card" : "Season saved", -1, paper, saturatef(4.0f - S.saved_t));
+	}
+	if (S.day == 1 && P.day_card < 26.0f && !radio_busy()) {
+		text_begin();
+		const char *help = IN.nunchuk ? "Stick: walk   Z: stride   A: use   B: radio   Down: notebook"
+		                               : "D-pad: walk / turn   A: use   B: radio   2: notebook";
+		centred(FONT_S, 465, help, paper, saturatef(26.0f - P.day_card));
+	}
+}
+
 void hud_draw(void)
 {
 	gfx_ortho();
@@ -470,6 +512,7 @@ void hud_draw(void)
 		draw_thought();
 		draw_hint();
 		draw_compass();
+		draw_field_hud();
 		radio_draw();
 		draw_finder();
 		notebook_draw();
