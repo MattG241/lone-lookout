@@ -10,6 +10,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <gccore.h>
 #include "audio/vo.h"
 #include "core/storage.h"
@@ -23,6 +24,7 @@ static lwp_t s_thread;
 static lwpq_t s_wake;
 static u8 *s_stack;
 static volatile bool s_ready_card, s_available, s_eleven;
+static volatile int s_recordings;
 static s16 *s_buf[2];
 static int s_slot;
 
@@ -36,6 +38,7 @@ static char s_last[48];               /* the last line asked for, for the dev ov
 
 bool vo_available(void) { return s_available; }
 bool vo_elevenlabs(void) { return s_eleven; }
+int vo_recordings(void) { return s_recordings; }
 
 static void load(const char *id)
 {
@@ -65,9 +68,21 @@ static void *loader(void *arg)
 	(void)arg;
 	struct stat st;
 	if (storage_ok() && stat(VO_DIR, &st) == 0 && S_ISDIR(st.st_mode)) {
-		s_buf[0] = memalign(32, VO_MAX_SAMPLES * 2);
-		s_buf[1] = memalign(32, VO_MAX_SAMPLES * 2);
-		s_available = s_buf[0] && s_buf[1];
+		DIR *dir = opendir(VO_DIR);
+		struct dirent *entry;
+		while (dir && (entry = readdir(dir))) {
+			size_t n = strlen(entry->d_name);
+			if (n < 5 || strcmp(entry->d_name + n - 4, ".pcm")) continue;
+			char path[320];
+			snprintf(path, sizeof(path), VO_DIR "/%s", entry->d_name);
+			if (stat(path, &st) == 0 && S_ISREG(st.st_mode) && st.st_size >= 2 && !(st.st_size & 1)) s_recordings++;
+		}
+		if (dir) closedir(dir);
+		if (s_recordings) {
+			s_buf[0] = memalign(32, VO_MAX_SAMPLES * 2);
+			s_buf[1] = memalign(32, VO_MAX_SAMPLES * 2);
+			s_available = s_buf[0] && s_buf[1];
+		}
 		s_eleven = stat(VO_DIR "/ELEVENLABS.txt", &st) == 0;
 	}
 	s_ready_card = true;

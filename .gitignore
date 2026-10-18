@@ -1,6 +1,7 @@
 # Build outputs
 build/
 build_shots/
+build_review/
 build_walktest/
 build_soak/
 build_menutest/
@@ -17,6 +18,8 @@ tests/host/run_tests
 tests/host/run_story
 tests/host/run_audio
 tests/host/run_save
+tests/host/run_guide
+tests/host/run_game_save
 
 # Python
 __pycache__/

@@ -15,21 +15,25 @@
 #include "game/radio.h"
 #include "game/director.h"
 #include "audio/audio.h"
+#include "audio/vo.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/text.h"
 #include "gfx/foliage.h"
 #include "gfx/water.h"
+#include "gfx/atmosphere.h"
 #include "world/sites.h"
 #include "palette_data.h"
 
 app_state APP = APP_PLAY;
 
-typedef enum { M_NONE, M_TITLE, M_PAUSE, M_OPTIONS, M_CONFIRM_NEW } menu_id;
+typedef enum { M_NONE, M_TITLE, M_PAUSE, M_OPTIONS, M_CONFIRM_NEW, M_HELP } menu_id;
 
 static struct {
 	menu_id id, back;            /* back: where Options returns to */
 	int sel;
+	int first;
+	bool save_error;
 	float t;                     /* seconds on this screen */
 	bool quit;
 	float yaw0;                  /* the title camera's resting heading */
@@ -48,6 +52,7 @@ enum {
 	A_CONTINUE, A_NEW, A_OPTIONS, A_QUIT, A_RESUME, A_SAVE_TITLE, A_SAVE_QUIT, A_YES_NEW, A_NO,
 	A_SENS, A_COMFORT, A_INVERT, A_SNAP, A_SWAY, A_BOB, A_COMPASS, A_SUBS, A_BACKING, A_HEARING, A_MONO,
 	A_VOL_MUSIC, A_VOL_WORLD, A_VOL_RADIO, A_LOCK30, A_PLAYTEST, A_BACK,
+	A_HELP, A_PACE, A_GRAIN,
 };
 
 bool menu_active(void) { return M.id != M_NONE; }
@@ -58,7 +63,18 @@ static void go(menu_id id)
 {
 	M.id = id;
 	M.sel = 0;
+	M.first = 0;
+	M.save_error = false;
 	M.t = 0.0f;
+}
+
+void menu_debug_screen(int screen, int selected)
+{
+	M.back = M_PAUSE;
+	go((menu_id)screen);
+	M.sel = selected;
+	M.first = selected >= 15 ? selected - 14 : 0;
+	M.t = 2.0f;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -105,6 +121,7 @@ void title_update(float dt)
 	weather_update(S.day, DAY.hour, dt);
 	foliage_update(dt);
 	water_update(dt);
+	atmosphere_update(dt);
 	P.yaw = M.yaw0 + DEG2RAD(4.0f) * sinf(M.clock * 0.05f);
 	P.pitch = DEG2RAD(-1.5f + 1.0f * sinf(M.clock * 0.037f));
 	/* A new season's theme, again, once it has rung out. */
@@ -149,13 +166,18 @@ static int build(item_t *it)
 		}
 		ADD("New season", A_NEW);
 		ADD("Options", A_OPTIONS);
+		ADD("How to play", A_HELP);
 		ADD("Homebrew Channel", A_QUIT);
 		break;
 	case M_PAUSE:
 		ADD("Resume", A_RESUME);
 		ADD("Options", A_OPTIONS);
+		ADD("How to play", A_HELP);
 		ADD(sv.card ? "Save and return to the title" : "Return to the title", A_SAVE_TITLE);
 		ADD(sv.card ? "Save and quit" : "Quit", A_SAVE_QUIT);
+		break;
+	case M_HELP:
+		ADD("Back", A_BACK);
 		break;
 	case M_CONFIRM_NEW:
 		ADD("Start a new season", A_YES_NEW);
@@ -195,6 +217,10 @@ static int build(item_t *it)
 		snprintf(x->value, sizeof(x->value), "%s", on_off(OPT.lock30));
 		x = ADD("Playtest log (SD card)", A_PLAYTEST);
 		snprintf(x->value, sizeof(x->value), "%s", on_off(OPT.playtest));
+		x = ADD("Conversation pace", A_PACE);
+		snprintf(x->value, sizeof(x->value), "%s", OPT.manual_dialogue ? "Press A" : "Automatic");
+		x = ADD("Film grain", A_GRAIN);
+		snprintf(x->value, sizeof(x->value), "%s", on_off(OPT.film_grain));
 		ADD("Back", A_BACK);
 		break;
 	}
@@ -228,6 +254,8 @@ static void change(int action, int dir, bool wrap)
 	case A_MONO: OPT.mono = !OPT.mono; break;
 	case A_LOCK30: OPT.lock30 = !OPT.lock30; break;
 	case A_PLAYTEST: OPT.playtest = !OPT.playtest; break;
+	case A_PACE: OPT.manual_dialogue = !OPT.manual_dialogue; break;
+	case A_GRAIN: OPT.film_grain = !OPT.film_grain; break;
 	case A_VOL_MUSIC:
 	case A_VOL_WORLD:
 	case A_VOL_RADIO: {
@@ -263,16 +291,20 @@ static void activate(int action)
 		M.back = M.id;
 		go(M_OPTIONS);
 		break;
+	case A_HELP:
+		M.back = M.id;
+		go(M_HELP);
+		break;
 	case A_QUIT: M.quit = true; break;
 	case A_RESUME: go(M_NONE); break;
 	case A_SAVE_TITLE:
-		save_game();
+		if (save_status().card && !save_game()) { M.save_error = true; break; }
 		playtest_event("to_title", NULL);
 		playtest_flush();
 		title_enter();
 		break;
 	case A_SAVE_QUIT:
-		save_game();
+		if (save_status().card && !save_game()) { M.save_error = true; break; }
 		playtest_event("quit", NULL);
 		playtest_flush();
 		M.quit = true;
@@ -300,7 +332,7 @@ static layout_t layout(int n)
 		L.row = 21.0f;                              /* 17 rows inside the screen's safe area */
 		L.w = 470.0f;
 		L.x = (G.ui_w - L.w) * 0.5f;
-		L.y = 72.0f;
+		L.y = 92.0f;
 		break;
 	case M_TITLE:
 		L.f = FONT_L;
@@ -349,6 +381,9 @@ void menu_update(float dt)
 		M.sel = (M.sel + 1) % n;
 		audio_ui(UI_TICK);
 	}
+	int visible = M.id == M_OPTIONS ? 15 : n;
+	if (M.sel < M.first) M.first = M.sel;
+	if (M.sel >= M.first + visible) M.first = M.sel - visible + 1;
 	/* The pointer picks the row it's over. */
 	if (IN.ir_valid) {
 		layout_t L = layout(n);
@@ -359,8 +394,8 @@ void menu_update(float dt)
 		last_py = py;
 		if (moved && px > L.x - 20 && px < L.x + L.w + 20) {
 			int row = (int)floorf((py - (L.y - L.row * 0.75f)) / L.row);
-			if (row >= 0 && row < n && row != M.sel) {
-				M.sel = row;
+			if (row >= 0 && row < visible && row + M.first < n && row + M.first != M.sel) {
+				M.sel = row + M.first;
 				audio_ui(UI_TICK);
 			}
 		}
@@ -376,6 +411,7 @@ void menu_update(float dt)
 			break;
 		case M_PAUSE: go(M_NONE); audio_ui(UI_PAGE); break;
 		case M_OPTIONS: activate(A_BACK); break;
+		case M_HELP: go(M.back); audio_ui(UI_PAGE); break;
 		case M_CONFIRM_NEW: go(M_TITLE); audio_ui(UI_PAGE); break;
 		default: break;
 		}
@@ -391,6 +427,37 @@ static void centred(font_id f, float y, const char *s, GXColor c)
 	text_draw_soft(f, (G.ui_w - text_width(f, s, -1)) * 0.5f, y, s, -1, c, (float)c.a / 255.0f);
 }
 
+static void draw_help(float a)
+{
+	float w = 560, x = (G.ui_w - w) * 0.5f, y = 36;
+	mat_vcolor();
+	gfx_blend_alpha();
+	ui_rect(0, 0, G.ui_w, G.ui_h, (GXColor){ 10, 15, 18, (u8)(150 * a) });
+	ui_rect(x, y, w, 408, gx_col(rgb_from(UI_PAPER), a));
+	GXColor ink = gx_col(rgb_from(UI_INK), 0.92f * a);
+	GXColor red = gx_col(rgb_make(0.55f, 0.18f, 0.14f), a);
+	const char *labels[] = { "Walk & look", "Use", "Radio", "Notebook", "Listen", "Pass time", "Saving" };
+	const char *body[] = {
+		IN.nunchuk ? "Stick to walk, Z to stride. Point near the screen edges to turn." : "D-pad up / down walks; left / right turns. Point near screen edges to look.",
+		"Aim at a prompt and press A. B closes a note or the notebook.",
+		"B answers Dot or calls Basin. A advances a line. Choices wait for you.",
+		IN.nunchuk ? "Down opens it. Left / right: tabs. Up / down: choose. A: read or pin." : "2 opens it. Left / right: tabs. Up / down: choose. A: read or pin.",
+		IN.nunchuk ? "Hold C. Face a sound and keep listening to write it down." : "Hold minus. Face a sound and keep listening to write it down.",
+		IN.nunchuk ? "Sit, then hold Z. A stands up. The cot is free after seven." : "Sit, then hold D-pad down. A stands up. Sleep after seven.",
+		"Autosaves between calls. HOME pauses; save and quit before removing the SD card.",
+	};
+	text_begin();
+	text_draw(FONT_L, x + 22, y + 36, "Your first season", -1, ink);
+	for (int i = 0; i < 7; i++) {
+		float ly = y + 77 + i * 43.0f;
+		text_draw(FONT_S, x + 20, ly, labels[i], -1, red);
+		int st[2], ln[2];
+		int n = text_wrap(FONT_S, body[i], w - 168, st, ln, 2);
+		for (int k = 0; k < n; k++) text_draw(FONT_S, x + 148, ly + k * 20.0f, body[i] + st[k], ln[k], ink);
+	}
+	text_draw(FONT_S, x + 22, y + 391, "A / B: back     No rush. There is nothing to fail here.", -1, ink);
+}
+
 void menu_draw(void)
 {
 	if (M.id == M_NONE) return;
@@ -398,6 +465,8 @@ void menu_draw(void)
 	int n = build(it);
 	float a = saturatef(M.t / 0.35f);
 	if (M.id == M_TITLE) a = saturatef(M.t / 1.2f);
+	if (M.id == M_HELP) { draw_help(a); return; }
+	int visible = M.id == M_OPTIONS ? 15 : n;
 	layout_t L = layout(n);
 	GXColor paper = gx_col(rgb_from(UI_SUBTITLE), a);
 	rgbf pc = rgb_from(UI_PAPER);
@@ -426,8 +495,8 @@ void menu_draw(void)
 	} else {
 		/* Pause and Options: the world dims behind a paper card. */
 		ui_rect(0, 0, G.ui_w, G.ui_h, (GXColor){ 10, 10, 14, (u8)(120 * a) });
-		float top = L.y - L.row - (M.id == M_OPTIONS ? 34.0f : 50.0f);
-		float h = n * L.row + (M.id == M_OPTIONS ? 88.0f : 76.0f);
+		float top = L.y - L.row - (M.id == M_OPTIONS ? 48.0f : 50.0f);
+		float h = visible * L.row + (M.id == M_OPTIONS ? 102.0f : 76.0f);
 		ui_rect(L.x - 30 + 5, top + 6, L.w + 60, h, (GXColor){ 0, 0, 0, (u8)(60 * a) });
 		ui_rect_grad(L.x - 30, top, L.w + 60, h, gx_col(pc, a), gx_col(rgb_scale(pc, 0.93f), a));
 		text_begin();
@@ -446,8 +515,8 @@ void menu_draw(void)
 	}
 
 	/* The rows. */
-	for (int i = 0; i < n; i++) {
-		float y = L.y + i * L.row;
+	for (int i = M.first; i < n && i < M.first + visible; i++) {
+		float y = L.y + (i - M.first) * L.row;
 		bool on = i == M.sel;
 		GXColor c = on ? ink : gx_col(rgb_from(UI_INK), 0.7f * a);
 		if (on) {
@@ -460,7 +529,7 @@ void menu_draw(void)
 		if (it[i].value[0]) {
 			font_id vf = FONT_S;
 			float vw = text_width(vf, it[i].value, -1);
-			bool setting = it[i].action >= A_SENS && it[i].action <= A_PLAYTEST;
+			bool setting = (it[i].action >= A_SENS && it[i].action <= A_PLAYTEST) || it[i].action == A_PACE || it[i].action == A_GRAIN;
 			float vx = L.x + L.w - vw - (setting ? 18.0f : 0.0f);
 			text_draw(vf, vx, y, it[i].value, -1, on ? ink : faint);
 			if (setting && on) {
@@ -473,6 +542,17 @@ void menu_draw(void)
 	if (M.id == M_OPTIONS) {
 		text_begin();
 		const char *hint = "Left / right to change     A to choose     B back";
-		text_draw(FONT_S, L.x, L.y + n * L.row + 8.0f, hint, -1, faint);
+		text_draw(FONT_S, L.x, L.y + visible * L.row + 8.0f, hint, -1, faint);
+		char page[24];
+		snprintf(page, sizeof(page), "%d / %d", M.sel + 1, n);
+		text_draw(FONT_S, L.x + L.w - text_width(FONT_S, page, -1), 62, page, -1, faint);
+		char voices[100];
+		if (vo_recordings()) snprintf(voices, sizeof(voices), "Recorded voices: %d lines on the SD card", vo_recordings());
+		else snprintf(voices, sizeof(voices), "Voices: murmur. Add recordings to apps/lonelookout/vo/.");
+		text_draw_soft(FONT_S, (G.ui_w - text_width(FONT_S, voices, -1)) * 0.5f, 463, voices, -1, paper, a);
+	}
+	if (M.save_error) {
+		text_begin();
+		centred(FONT_S, 450, "Save failed. Check the SD card and try again.", paper);
 	}
 }

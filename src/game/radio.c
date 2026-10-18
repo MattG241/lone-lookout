@@ -210,7 +210,8 @@ void radio_update(float dt)
 		break;
 	case DS_LINE:
 		if (R.vo_wait) vo_check();
-		if (R.t > R.line_len || (!P.input_locked && R.t > 0.35f && in_down(WPAD_BUTTON_A))) {
+		if ((!OPT.manual_dialogue && R.t > R.line_len) ||
+		    (!P.input_locked && R.t > 0.35f && in_take(WPAD_BUTTON_A))) {
 			if (R.t <= R.line_len) audio_voice_stop();
 			dlg_next();
 		}
@@ -315,6 +316,9 @@ void radio_draw(void)
 		text_draw_soft(f, x, ly, name, -1, sc, R.sub_alpha);
 		for (int i = 0; i < n; i++)
 			text_draw_soft(f, nx, ly + i * lh, R.sub_text + starts[i], lens[i], tc, R.sub_alpha);
+		if (OPT.manual_dialogue && st == DS_LINE && R.t > R.line_len) {
+			text_draw_soft(FONT_S, G.ui_w - 155.0f, 462.0f, "A  Continue", -1, paper, R.sub_alpha);
+		}
 	}
 
 	/* Choice cards: little paper slips with pencil text. */

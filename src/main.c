@@ -18,6 +18,7 @@
 #include "gfx/props.h"
 #include "gfx/weather_fx.h"
 #include "gfx/creatures.h"
+#include "gfx/atmosphere.h"
 #include "game/game.h"
 #include "game/hud.h"
 #include "game/tour.h"
@@ -63,6 +64,7 @@ static void draw_scene(const daylight *d)
 	G.stat_trees = foliage_draw(d, WX.wind * 1.6f);
 	G.tri_cat = TRI_SKY;
 	water_draw(d);
+	atmosphere_draw(d, indoor);
 	rain_draw(d, WX.rain, WX.wind, indoor);
 	gfx_fog_off();
 

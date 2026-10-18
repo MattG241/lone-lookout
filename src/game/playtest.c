@@ -56,7 +56,7 @@ void playtest_event(const char *event, const char *fmt, ...)
 		s_started = true;
 		/* A header line per session, so logs from several sittings can share a file. */
 		char head[160];
-		snprintf(head, sizeof(head), "#session\t%s\t%s\n", "Lone Lookout 1.1", IN.nunchuk ? "nunchuk" : "remote only");
+		snprintf(head, sizeof(head), "#session\t%s\t%s\n", "Lone Lookout 1.2", IN.nunchuk ? "nunchuk" : "remote only");
 		int n = (int)strlen(head);
 		if (s_len + n < BUF_SIZE) {
 			memcpy(s_buf + s_len, head, n);

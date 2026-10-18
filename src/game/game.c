@@ -19,11 +19,14 @@
 #include "game/director.h"
 #include "game/save.h"
 #include "game/playtest.h"
+#include "game/guide.h"
+#include "core/storage.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/foliage.h"
 #include "gfx/water.h"
+#include "gfx/atmosphere.h"
 #include "world/sites.h"
 
 #define EYE_HEIGHT 1.62f
@@ -48,6 +51,7 @@ story_t S;
 options_t OPT = {
 	.look_sens = 1.0f, .comfort = 1, .snap_turn = true, .head_sway = true, .walk_bob = true,
 	.hearing = true, .vol_music = 8, .vol_ambience = 8, .vol_voice = 8,
+	.subs_backing = true,
 };
 
 /* ------------------------------------------------------------------------ */
@@ -124,6 +128,13 @@ void game_think(const char *text)
 	S.thought_t = 0.0f;
 }
 
+void game_notice(const char *title, const char *detail)
+{
+	snprintf(S.notice, sizeof(S.notice), "%s", title);
+	snprintf(S.notice_detail, sizeof(S.notice_detail), "%s", detail ? detail : "");
+	S.notice_t = 0.0f;
+}
+
 /* The closing card: two lines always, then up to five that remember what you
  * did, most personal first. Nothing here is a score: missing things just
  * leaves them out. */
@@ -149,6 +160,7 @@ int game_ending_card(const char **lines)
 	int found = 0;
 	for (int i = 0; i < NOTE_COUNT; i++) found += S.found[i];
 	if (found >= NOTE_COUNT - 1) more[m++] = "Augie's notes stayed where he left them, read.";
+	if (guide_moments() >= 6) more[m++] = "Theo kept a few pages of his own, for the things worth remembering.";
 	for (int i = 0; i < m && n < ENDING_LINES; i++) lines[n++] = more[i];
 	return n;
 }
@@ -167,6 +179,8 @@ const char *game_next_step(void)
 	float h = DAY.hour;
 	if (S.day >= NUM_DAYS && story_flag(FLAG_SEASON_OVER))
 		return "The season's over. The road gate at the trailhead is open whenever you're ready.";
+	if (S.day == 1 && !dlg_call_done(CALL_D1_ARRIVE))
+		return "Follow the trail uphill to Kestrel Lookout. B answers Dot when the radio rings.";
 	if (!S.obs_am && h < 12.0f) return "Next: the morning readings, at the shelter on the catwalk.";
 	const char *errand = story_errand();
 	if (errand && !story_errand_done()) return "Next: Dot's errand, above.";
@@ -236,6 +250,8 @@ void game_init(void)
 	S.area_card = -1;
 	S.area_card_t = 100.0f;
 	S.last_tread = -1;
+	S.notice_t = S.saved_t = 100.0f;
+	guide_init();
 	P.pos = v3_make(START_X, 0.0f, START_Z);
 	P.pos.y = world_ground(P.pos.x, P.pos.z, 1e9f, &P.surface);
 	face(START_YAW, DEG2RAD(4.0f));
@@ -445,6 +461,7 @@ static void update_walk(float dt)
 static void open_text(int id)
 {
 	P.mode = MODE_READ;
+	P.read_from_notebook = false;
 	P.reading = id;
 	audio_ui(UI_PAGE);
 }
@@ -463,6 +480,7 @@ static void use(int index)
 	               h->id);
 	switch (h->kind) {
 	case IA_NOTE:
+		if (!S.found[h->id]) game_notice("Augie's notes", note_title(h->id));
 		S.found[h->id] = true;
 		story_note_read(h->id);
 		open_text(h->id);
@@ -527,9 +545,12 @@ static void use(int index)
 		}
 		break;
 	case IA_WEATHER:
-		if (DAY.hour < 12.0f) S.obs_am = true;
-		else S.obs_pm = true;
-		story_readings_taken(DAY.hour < 12.0f);
+		if (DAY.hour < 12.0f || DAY.hour >= 17.0f) {
+			if (DAY.hour < 12.0f) S.obs_am = true;
+			else S.obs_pm = true;
+			story_readings_taken(DAY.hour < 12.0f);
+			game_notice("Readings recorded", DAY.hour < 12.0f ? "Morning observations in the notebook." : "Evening observations. Call Basin on B.");
+		} else game_think("The evening reading is after five. I'll come back.");
 		open_text(TEXT_WEATHER);
 		break;
 	case IA_CHIMES:
@@ -585,8 +606,9 @@ static void update_interact(float dt)
 				audio_ui(UI_PAGE);
 				return;
 			}
-			P.mode = S.notebook_page == 1 && P.notebook_fade > 0.5f ? MODE_NOTEBOOK
+			P.mode = P.read_from_notebook ? MODE_NOTEBOOK
 			         : (P.sit_blend > 0.5f ? MODE_SIT : MODE_WALK);
+			P.read_from_notebook = false;
 			audio_ui(UI_PAGE);
 		}
 		return;
@@ -623,7 +645,7 @@ static void update_tools(float dt)
 	if (!P.input_locked) {
 		bool other1 = in_held(WPAD_BUTTON_2), other2 = in_held(WPAD_BUTTON_1);   /* 1+2 is the dev overlay */
 		if (P.mode == MODE_NOTEBOOK) {
-			if ((in_take(WPAD_BUTTON_2) && !other1) | in_take(WPAD_BUTTON_B)) {
+			if ((in_take(WPAD_BUTTON_2) && !other2) | in_take(WPAD_BUTTON_B)) {
 				P.mode = P.sit_blend > 0.5f ? MODE_SIT : MODE_WALK;
 				audio_ui(UI_PAGE);
 			}
@@ -663,6 +685,16 @@ static void update_places(float dt)
 	S.area_card_t += dt;
 	S.thought_t += dt;
 	S.hint_t += dt;
+	S.notice_t += dt;
+	S.saved_t += dt;
+	if (!P.input_locked && P.day_card > 7.0f && P.mode != MODE_ENDING && P.mode != MODE_SLEEP) {
+		int discovered = guide_visit(P.pos);
+		if (discovered >= 0) {
+			game_notice(guide_get(discovered).name, "A new place in your field guide.");
+			audio_ui(UI_PENCIL);
+			playtest_event("place", "%s", guide_get(discovered).name);
+		}
+	}
 
 	/* The day's work done: say so once, so nobody wanders looking for more. */
 	static int s_done_day;
@@ -715,6 +747,35 @@ static void update_sleep(float dt)
 	}
 }
 
+static void update_memories(float dt)
+{
+	static float held[GUIDE_MOMENTS];
+	if (P.input_locked || radio_busy()) return;
+	bool seated = P.mode == MODE_SIT;
+	int seat = -1, count;
+	const interactable_t *ia = world_interactables(&count);
+	if (seated && P.sit_id >= 0 && P.sit_id < count) seat = ia[P.sit_id].id;
+	bool hearing = listen_amount() > 0.6f;
+	bool conditions[GUIDE_MOMENTS] = {
+		seated && seat == 3 && hearing && DAY.hour >= 6 && DAY.hour < 8,
+		P.binoculars_up && story_flag(FLAG_FAWNS_SEEN) && S.area == AREA_MEADOW,
+		S.found[NOTE_FLOWERS],
+		seated && seat == 4 && hearing && DAY.hour >= 18.5f && DAY.hour < 20,
+		S.sound_day[SND_SNAGS] != 0,
+		S.day == 5 && WX.storm > 0.3f && world_indoor(P.pos) == INDOOR_CAB,
+		S.sound_day[SND_TIN_RAIN] != 0,
+		S.sound_day[SND_NOTHING] != 0,
+	};
+	for (int i = 0; i < GUIDE_MOMENTS; i++) {
+		held[i] = conditions[i] ? held[i] + dt : 0.0f;
+		if (held[i] >= 3.0f && guide_keep(i, S.day)) {
+			game_notice("A moment to keep", guide_moment_name(i));
+			audio_ui(UI_PENCIL);
+			playtest_event("moment", "%s", guide_moment_name(i));
+		}
+	}
+}
+
 /* Through the gate on the last evening: fade out, a closing card, the credits. */
 static void update_ending(float dt)
 {
@@ -751,7 +812,7 @@ void game_update(float dt)
 	P.sit_blend = approachf(P.sit_blend, seated ? 1.0f : 0.0f, 5.0f, dt);
 	P.finder_fade = approachf(P.finder_fade, P.mode == MODE_FINDER ? 1.0f : 0.0f, 8.0f, dt);
 	P.notebook_fade = approachf(P.notebook_fade, P.mode == MODE_NOTEBOOK ||
-	                            (P.mode == MODE_READ && P.notebook_fade > 0.5f) ? 1.0f : 0.0f, 9.0f, dt);
+	                            (P.mode == MODE_READ && P.read_from_notebook) ? 1.0f : 0.0f, 9.0f, dt);
 
 	/* Let time pass: hold Z while seated (stops if the radio rings). */
 	/* (Without a Nunchuk, holding the D-pad down does it: seated, the D-pad has nothing else to do.) */
@@ -772,10 +833,19 @@ void game_update(float dt)
 	weather_update(S.day, DAY.hour, dt);
 	foliage_update(dt);
 	water_update(dt);
+	atmosphere_update(dt);
 	P.day_card += dt;
 	update_places(dt);
 	story_update(dt);
+	update_memories(dt);
 	director_update(dt);
 	update_sleep(dt);
 	update_ending(dt);
+	/* Save only between conversations and interactions, never halfway through a line. */
+	S.autosave_t += dt;
+	if (!P.input_locked && S.autosave_t >= 90.0f && !radio_busy() && storage_ok() &&
+	    (P.mode == MODE_WALK || P.mode == MODE_SIT) && S.fade < 0.01f) {
+		save_game();
+		S.autosave_t = 0.0f;
+	}
 }

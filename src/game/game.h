@@ -38,6 +38,7 @@ typedef struct {
 	int hover;               /* interactable index or -1 */
 	int reading;             /* text id (see game_text) or -1 */
 	float read_fade;
+	bool read_from_notebook;
 	float timelapse;         /* 0..1 visual cue while time is passing */
 	float day_card;          /* seconds since the day title card started */
 	bool binoculars_up;
@@ -77,6 +78,10 @@ typedef struct {
 	u8 sound_day[SND_COUNT];         /* the sound log: the day each was written down, 0 if not yet */
 	float ending_t;                  /* MODE_ENDING timer */
 	bool ended;                      /* the credits have rolled once */
+	char notice[80], notice_detail[120];
+	float notice_t, autosave_t, saved_t;
+	bool save_failed;
+	int radio_scroll;
 } story_t;
 
 extern story_t S;
@@ -97,6 +102,8 @@ typedef struct {
 	u8 vol_music, vol_ambience, vol_voice;   /* 0..10 */
 	bool lock30;             /* always 30 fps (25 on PAL) */
 	bool playtest;           /* write a play log to the SD card (game/playtest.h) */
+	bool manual_dialogue;    /* let readers advance radio lines at their own pace */
+	bool film_grain;         /* optional animated texture; clean picture by default */
 } options_t;
 
 extern options_t OPT;
@@ -109,6 +116,7 @@ v3 game_reticle_dir(void);               /* world-space ray through the reticle 
 float game_fov(void);
 bool game_radio_allowed(void);           /* B may raise the radio now */
 void game_think(const char *text);       /* show one of Theo's thoughts */
+void game_notice(const char *title, const char *detail);
 const char *game_next_step(void);        /* what's left today, for the notebook's Today page */
 void game_new_day(int day);              /* jump to a morning (sleep, tour) */
 float game_season(void);

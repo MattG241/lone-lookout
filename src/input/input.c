@@ -178,10 +178,12 @@ static const mstep MSTEPS[] = {
 	{ MENU_OPTIONS, 40, WPAD_BUTTON_A, 0 },                   /* Playtest log: on */
 	{ MENU_OPTIONS, 60, WPAD_BUTTON_B, 0 },                   /* back (settings saved) */
 	{ MENU_PAUSE, 60, WPAD_BUTTON_DOWN, 0 }, { MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
 	{ MENU_PAUSE, 40, WPAD_BUTTON_A, 0 },                     /* Save and return to the title */
 	{ MENU_TITLE, 180, WPAD_BUTTON_A, 0 },                    /* Continue */
 	{ PLAYING, 240, WPAD_BUTTON_HOME, 0 },
 	{ MENU_PAUSE, 60, WPAD_BUTTON_DOWN, 0 }, { MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
+	{ MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
 	{ MENU_PAUSE, 15, WPAD_BUTTON_DOWN, 0 },
 	{ MENU_PAUSE, 60, WPAD_BUTTON_A, 0 },                     /* Save and quit */
 };

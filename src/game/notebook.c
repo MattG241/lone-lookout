@@ -15,13 +15,15 @@
 #include "game/radio.h"
 #include "game/story.h"
 #include "game/listen.h"
+#include "game/guide.h"
 #include "audio/audio.h"
 #include "input/input.h"
 #include "gfx/gfx.h"
 #include "gfx/text.h"
 #include "palette_data.h"
 
-static const char *TABS[NB_PAGES] = { "Today", "Map", "Notes", "Radio", "Sounds" };
+static const char *TABS[NB_PAGES] = { "Today", "Map", "Notes", "Radio", "Sounds", "Places", "Moments" };
+static int s_moment_sel;
 
 void notebook_update(float dt)
 {
@@ -45,6 +47,7 @@ void notebook_update(float dt)
 		}
 		if (in_take(WPAD_BUTTON_A) && S.found[S.notebook_sel]) {
 			P.mode = MODE_READ;
+			P.read_from_notebook = true;
 			P.reading = S.notebook_sel;
 			audio_ui(UI_PAGE);
 		}
@@ -58,6 +61,24 @@ void notebook_update(float dt)
 			S.sound_sel = (S.sound_sel + 1) % SND_COUNT;
 			audio_ui(UI_TICK);
 		}
+	}
+	if (S.notebook_page == NB_MAP || S.notebook_page == NB_PLACES) {
+		if (in_take(WPAD_BUTTON_UP)) { guide_select(-1); audio_ui(UI_TICK); }
+		if (in_take(WPAD_BUTTON_DOWN)) { guide_select(1); audio_ui(UI_TICK); }
+		if (in_take(WPAD_BUTTON_A) && (S.notebook_page == NB_PLACES || S.found[NOTE_MAP])) {
+			guide_toggle_pin();
+			audio_ui(UI_PENCIL);
+		}
+	}
+	if (S.notebook_page == NB_RADIO) {
+		const radio_log_entry *log;
+		int count = radio_log(&log);
+		if (in_take(WPAD_BUTTON_UP) && S.radio_scroll < count - 1) S.radio_scroll++;
+		if (in_take(WPAD_BUTTON_DOWN) && S.radio_scroll > 0) S.radio_scroll--;
+	}
+	if (S.notebook_page == NB_MOMENTS) {
+		if (in_take(WPAD_BUTTON_UP)) s_moment_sel = (s_moment_sel + GUIDE_MOMENTS - 1) % GUIDE_MOMENTS;
+		if (in_take(WPAD_BUTTON_DOWN)) s_moment_sel = (s_moment_sel + 1) % GUIDE_MOMENTS;
 	}
 	(void)dt;
 }
@@ -160,7 +181,7 @@ static void map_page(float x, float y, float w, float h, float a)
 		return;
 	}
 	/* The map itself, a little inset like a page glued in. */
-	float s = fminf(w, h) - 8.0f, mx = x + (w - s) * 0.5f, my = y + (h - s) * 0.5f;
+	float s = fminf(w - 180.0f, h - 58.0f), mx = x + 2.0f, my = y + 4.0f;
 	gfx_blend_alpha();
 	mat_vcolor_tex(&T_MAP, false, false);
 	vdesc_2d(true);
@@ -171,6 +192,25 @@ static void map_page(float x, float y, float w, float h, float a)
 	GX_Position2f32(mx + s, my + s); GX_Color4u8(255, 255, 255, al); GX_TexCoord2f32(1, 1);
 	GX_Position2f32(mx, my + s); GX_Color4u8(255, 255, 255, al); GX_TexCoord2f32(0, 1);
 	GX_End();
+	/* Destinations are bearings, not routes across steep ground. Follow the trails. */
+	for (int i = 0; i < GUIDE_PLACES; i++) {
+		guide_place p = guide_get(i);
+		float dx = mx + p.x / WORLD_SIZE * s, dy = my + p.z / WORLD_SIZE * s;
+		bool selected = i == GUIDE.selected;
+		mat_vcolor();
+		GXColor c = gx_col(selected ? rgb_make(0.65f, 0.22f, 0.14f) : rgb_make(0.22f, 0.29f, 0.27f), a);
+		ui_rect(dx - 3, dy - 3, 6, 6, c);
+		if (i == GUIDE.pin) { ui_rect(dx - 1, dy - 12, 2, 10, c); ui_rect(dx, dy - 12, 8, 5, c); }
+		char label[64];
+		snprintf(label, sizeof(label), "%s%s", i == GUIDE.pin ? "* " : "", p.name);
+		float lx = mx + s + 16.0f, ly = y + 46.0f + i * 29.0f;
+		if (selected) ui_rect(lx - 7, ly - 18, w - s - 16, 27, gx_col(rgb_make(0.85f, 0.80f, 0.66f), a));
+		text_begin();
+		text_draw(FONT_S, lx, ly, label, -1, c);
+	}
+	text_begin();
+	text_draw(FONT_S, mx + s + 9, y + 18, "Choose a destination", -1, ink);
+	text_draw(FONT_S, x + 4, y + h - 30, "Up / down: choose   A: pin or unpin   Follow the trails.", -1, ink);
 	/* "You are here": a pencil ring and a tick for the way you face. */
 	float px = mx + P.pos.x / WORLD_SIZE * s, py = my + P.pos.z / WORLD_SIZE * s;
 	mat_vcolor();
@@ -226,7 +266,8 @@ static void radio_page(float x, float y, float w, float h, float a)
 	}
 	/* Newest at the bottom; walk back up until the page is full. */
 	float lh = text_line_height(FONT_S) * 0.92f, by = y + h - 14.0f;
-	for (int i = n - 1; i >= 0 && by > y + 20.0f; i--) {
+	if (S.radio_scroll >= n) S.radio_scroll = n - 1;
+	for (int i = n - 1 - S.radio_scroll; i >= 0 && by > y + 35.0f; i--) {
 		int st[4], ln[4];
 		const char *name = log[i].who == SPEAKER_DOT ? "Dot" : (log[i].who == SPEAKER_CREW ? "Crew" : "Theo");
 		float nw = 60.0f;
@@ -238,6 +279,47 @@ static void radio_page(float x, float y, float w, float h, float a)
 			text_draw(FONT_S, x + 16 + nw, top + lh * (0.8f + k), log[i].text + st[k], ln[k], ink);
 		by = top - 6.0f;
 	}
+	char hint[80];
+	snprintf(hint, sizeof(hint), "Up / down: earlier or later   %d / %d", n - S.radio_scroll, n);
+	text_draw(FONT_S, x + 16, y + 16, hint, -1, gx_col(rgb_from(UI_INK), 0.5f * a));
+}
+
+static void places_page(float x, float y, float w, float h, float a)
+{
+	GXColor ink = gx_col(rgb_from(UI_INK), 0.9f * a), faint = gx_col(rgb_from(UI_INK), 0.55f * a);
+	GXColor accent = gx_col(rgb_make(0.55f, 0.18f, 0.14f), a);
+	int notes = 0;
+	for (int i = 0; i < NOTE_COUNT; i++) notes += S.found[i];
+	char progress[96];
+	snprintf(progress, sizeof(progress), "%d / %d places   %d / %d notes   %d / %d sounds", guide_count(), GUIDE_PLACES,
+	         notes, NOTE_COUNT, sounds_logged(), SND_COUNT);
+	text_begin();
+	text_draw(FONT_S, x + 10, y + 24, progress, -1, faint);
+	for (int i = 0; i < GUIDE_PLACES; i++) {
+		float ly = y + 64 + i * 31.0f;
+		if (i == GUIDE.selected) {
+			mat_vcolor();
+			ui_rect(x + 4, ly - 20, 216, 29, gx_col(rgb_make(0.85f, 0.80f, 0.66f), a));
+		}
+		text_begin();
+		char label[64];
+		snprintf(label, sizeof(label), "%s %s", GUIDE.visited & (1u << i) ? "+" : "o", guide_get(i).name);
+		text_draw(FONT_S, x + 12, ly, label, -1, i == GUIDE.selected ? accent : ink);
+	}
+	guide_place p = guide_get(GUIDE.selected);
+	float rx = x + 240, rw = w - 252;
+	int starts[8], lens[8];
+	text_begin();
+	int n = text_wrap(FONT_L, p.name, rw, starts, lens, 2);
+	float ly = y + 68;
+	for (int i = 0; i < n; i++, ly += 30) text_draw(FONT_L, rx, ly, p.name + starts[i], lens[i], ink);
+	ly += 16;
+	n = text_wrap(FONT_S, p.detail, rw, starts, lens, 6);
+	for (int i = 0; i < n; i++, ly += 23) text_draw(FONT_S, rx, ly, p.detail + starts[i], lens[i], ink);
+	ly += 16;
+	n = text_wrap(FONT_S, p.best, rw, starts, lens, 4);
+	for (int i = 0; i < n; i++, ly += 23) text_draw(FONT_S, rx, ly, p.best + starts[i], lens[i], accent);
+	text_draw(FONT_S, x + 10, y + h - 30, "Up / down: choose   A: pin or unpin a destination", -1, faint);
 }
 
 /* The sound log: twelve lines, and what Theo wrote about the one picked out. */
@@ -275,6 +357,36 @@ static void sounds_page(float x, float y, float w, float h, float a)
 		          S.sound_day[S.sound_sel] ? ink : faint);
 }
 
+static void moments_page(float x, float y, float w, float h, float a)
+{
+	GXColor ink = gx_col(rgb_from(UI_INK), 0.9f * a), faint = gx_col(rgb_from(UI_INK), 0.5f * a);
+	GXColor accent = gx_col(rgb_make(0.55f, 0.18f, 0.14f), a);
+	char title[64];
+	snprintf(title, sizeof(title), "Things worth keeping. %d / %d", guide_moments(), GUIDE_MOMENTS);
+	text_begin();
+	text_draw(FONT_L, x + 12, y + 36, title, -1, ink);
+	for (int i = 0; i < GUIDE_MOMENTS; i++) {
+		float ly = y + 82 + i * 30;
+		if (i == s_moment_sel) {
+			mat_vcolor();
+			ui_rect(x + 4, ly - 20, 240, 29, gx_col(rgb_make(0.85f, 0.80f, 0.66f), a));
+		}
+		text_begin();
+		text_draw(FONT_S, x + 12, ly, guide_moment_name(i), -1, GUIDE.moments[i] ? ink : faint);
+		if (GUIDE.moments[i]) text_draw(FONT_S, x + 226, ly, "+", -1, accent);
+	}
+	bool kept = GUIDE.moments[s_moment_sel] != 0;
+	const char *note = kept ? guide_moment_note(s_moment_sel) : guide_moment_hint(s_moment_sel);
+	int st[8], ln[8];
+	int n = text_wrap(FONT_S, note, w - 280, st, ln, 8);
+	text_begin();
+	if (kept) snprintf(title, sizeof(title), "Kept on Day %d", GUIDE.moments[s_moment_sel]);
+	else snprintf(title, sizeof(title), "A little invitation");
+	text_draw(FONT_S, x + 265, y + 80, title, -1, accent);
+	for (int i = 0; i < n; i++) text_draw(FONT_S, x + 265, y + 118 + i * 26, note + st[i], ln[i], ink);
+	text_draw(FONT_S, x + 12, y + h - 30, "Up / down: choose a keepsake. All are optional.", -1, faint);
+}
+
 void notebook_draw(void)
 {
 	float a = P.notebook_fade;
@@ -290,13 +402,13 @@ void notebook_draw(void)
 	/* Tabs. */
 	float tx = x + 24.0f;
 	for (int i = 0; i < NB_PAGES; i++) {
-		float tw = text_width(FONT_L, TABS[i], -1);
+		float tw = text_width(FONT_S, TABS[i], -1);
 		bool on = i == S.notebook_page;
 		mat_vcolor();
 		ui_rect(tx - 10, y - 40, tw + 20, 42, gx_col(rgb_scale(pc, on ? 1.0f : 0.84f), a));
 		text_begin();
-		text_draw(FONT_L, tx, y - 9, TABS[i], -1, gx_col(rgb_from(UI_INK), (on ? 0.95f : 0.5f) * a));
-		tx += tw + 28.0f;
+		text_draw(FONT_S, tx, y - 12, TABS[i], -1, gx_col(rgb_from(UI_INK), (on ? 0.95f : 0.5f) * a));
+		tx += tw + 22.0f;
 	}
 	/* The day, pencilled in the bottom corner (the Today page has it in its heading). */
 	if (S.notebook_page != NB_TODAY) {
@@ -312,6 +424,8 @@ void notebook_draw(void)
 	case NB_MAP: map_page(px, py, pw, ph, a); break;
 	case NB_NOTES: notes_page(px, py, pw, ph, a); break;
 	case NB_RADIO: radio_page(px, py, pw, ph, a); break;
+	case NB_PLACES: places_page(px, py, pw, ph, a); break;
+	case NB_MOMENTS: moments_page(px, py, pw, ph, a); break;
 	default: sounds_page(px, py, pw, ph, a); break;
 	}
 }

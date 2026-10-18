@@ -14,6 +14,9 @@ import os
 import sys
 import tempfile
 import threading
+import zipfile
+import shutil
+import subprocess
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -93,7 +96,7 @@ def check(cond, msg):
 def run(*argv):
     out = io.StringIO()
     sys.argv = ["generate_vo.py", *argv]
-    with contextlib.redirect_stdout(out):
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
         try:
             g.main()
         except SystemExit as e:
@@ -185,6 +188,50 @@ def main():
     out = run("--plan")
     check("401" in out or "HTTP" in out or "exit" in out, "a bad key is reported")
     check(STATE["bad_key"] > 0, "the bad key was rejected by the server")
+
+    # An offline plan is useful before creating a key and never hits TTS.
+    del os.environ["ELEVENLABS_API_KEY"]
+    before = STATE["tts"]
+    out = run("--plan")
+    check("Offline plan" in out and "5 lines" in out, "offline planning works without a key")
+    check(STATE["tts"] == before, "offline planning spends nothing")
+
+    # A typo must not silently select no calls and appear to succeed.
+    out = run("--calls", "D1_ARRIVEE", "--plan")
+    check("exit 2" in out, "unknown call IDs are rejected")
+
+    # Package only the game recordings and attribution, never local state or temporary files.
+    open(os.path.join(g.OUT, "unfinished.pcm.tmp"), "w").write("partial")
+    open(os.path.join(g.OUT, "private.json"), "w").write("not for the card")
+    packed = g.pack_voices(os.path.join(tmp, "voices.zip"))
+    with zipfile.ZipFile(packed) as z:
+        check(len([n for n in z.namelist() if n.endswith('.pcm')]) == 5, "all five recordings are packaged")
+        check(all(n.startswith('apps/lonelookout/vo/') for n in z.namelist()), "zip extracts to the SD-card layout")
+        check(not any(n.endswith('.tmp') or n.endswith('.json') for n in z.namelist()), "zip excludes temporary and local files")
+
+    # Samples respect the same explicit spending limit as full generation.
+    os.environ["ELEVENLABS_API_KEY"] = KEY
+    STATE["limit"] = 10000
+    before = STATE["tts"]
+    out = run("--sample", "--budget", "1")
+    check("budget" in out and STATE["tts"] == before, "sample budget is checked before generation")
+
+    # A fresh checkout can plan voices with just Python's standard library.
+    fresh = os.path.join(tmp, "fresh")
+    for rel in ("tools/voice", "tools/dialogue", "tools/font", "data/dialogue", "data"):
+        os.makedirs(os.path.join(fresh, rel), exist_ok=True)
+    for rel in ("tools/voice/generate_vo.py", "tools/dialogue/compile_lls.py", "tools/font/lookout_hand.py", "data/voices.json"):
+        shutil.copyfile(os.path.join(g.ROOT, rel), os.path.join(fresh, rel))
+    for name in os.listdir(os.path.join(g.ROOT, "data", "dialogue")):
+        if name.endswith(".lls"):
+            shutil.copyfile(os.path.join(g.ROOT, "data", "dialogue", name), os.path.join(fresh, "data", "dialogue", name))
+    env = dict(os.environ)
+    env.pop("ELEVENLABS_API_KEY", None)
+    p = subprocess.run([sys.executable, "-S", "tools/voice/generate_vo.py", "--plan"], cwd=fresh, env=env,
+                       capture_output=True, text=True, check=False)
+    check(p.returncode == 0 and "505 lines" in p.stdout, f"fresh checkout plans without a build or key: {p.stderr[:300]}")
+    check(os.path.isfile(os.path.join(fresh, "gen", "vo_lines.txt")), "voice tool prepares its own dialogue list")
+    check(KEY not in p.stdout + p.stderr, "fresh-checkout output contains no key")
 
     srv.shutdown()
     print(f"{checks} checks, {fails} failed")
